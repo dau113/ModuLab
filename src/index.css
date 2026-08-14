@@ -1,0 +1,359 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    @apply antialiased text-slate-900 bg-slate-100 overflow-hidden m-0 p-0 select-none;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+/* Custom smooth scrollbar for Bento Grid container inside */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+
+/* Thanh cuộn rõ nét cho hai cột hai bên khu mô phỏng */
+.ml-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 #e2e8f0;
+}
+.ml-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+.ml-scroll::-webkit-scrollbar-track {
+  background: #e2e8f0;
+  border-radius: 9999px;
+}
+.ml-scroll::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border: 2px solid #e2e8f0;
+  border-radius: 9999px;
+}
+.ml-scroll::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* ==================================================================
+   GIAO DIỆN TỐI
+   Đảo bảng màu ở cấp biến CSS của Tailwind v4 nên toàn bộ màn hình
+   đổi theo, không phải sửa từng lớp tiện ích ở mọi thành phần.
+   ================================================================== */
+.dark body { background-color: #131e33; color: #e3eaf4; }
+
+.dark {
+  color-scheme: dark;
+
+  /* Nền – chữ trung tính */
+  --color-slate-50: #0e1626;
+  --color-slate-100: #131e33;
+  --color-slate-200: #23314e;
+  --color-slate-300: #35486d;
+  --color-slate-400: #6d80a0;
+  --color-slate-500: #93a4c0;
+  --color-slate-600: #b0bdd3;
+  --color-slate-700: #cbd5e5;
+  --color-slate-800: #e3eaf4;
+  --color-slate-900: #f2f6fb;
+  --color-slate-950: #ffffff;
+
+  /* Chàm — màu nhấn chính */
+  --color-indigo-50: #1b1a44;
+  --color-indigo-100: #26246a;
+  --color-indigo-200: #393593;
+  --color-indigo-300: #524dbe;
+  --color-indigo-400: #8b87f2;
+  --color-indigo-500: #7d78f0;
+  --color-indigo-600: #6d67f2;
+  --color-indigo-700: #b0abfd;
+  --color-indigo-800: #c8c5fe;
+  --color-indigo-900: #dedcff;
+  --color-indigo-950: #efeeff;
+
+  /* Lục — trạng thái đạt */
+  --color-emerald-50: #05261f;
+  --color-emerald-100: #073b31;
+  --color-emerald-200: #0b5a4a;
+  --color-emerald-300: #10806a;
+  --color-emerald-400: #34d3a6;
+  --color-emerald-500: #2fc99c;
+  --color-emerald-600: #12a37c;
+  --color-emerald-700: #6ee7bd;
+  --color-emerald-800: #a7f3d6;
+  --color-emerald-900: #ccfbea;
+  --color-emerald-950: #ecfdf5;
+
+  /* Đỏ hồng — cảnh báo lỗi */
+  --color-rose-50: #2b0d17;
+  --color-rose-100: #431322;
+  --color-rose-200: #661c33;
+  --color-rose-300: #8f2745;
+  --color-rose-400: #fb7899;
+  --color-rose-500: #f4577f;
+  --color-rose-600: #e11d48;
+  --color-rose-700: #fda4b8;
+  --color-rose-800: #fecdd8;
+  --color-rose-900: #ffe4e9;
+  --color-rose-950: #fff1f3;
+
+  /* Hổ phách — nhắc nhở */
+  --color-amber-50: #2b1c04;
+  --color-amber-100: #422b06;
+  --color-amber-200: #66430b;
+  --color-amber-300: #8f5f10;
+  --color-amber-400: #fbc02d;
+  --color-amber-500: #f0ad1e;
+  --color-amber-600: #d69209;
+  --color-amber-700: #fcd77a;
+  --color-amber-800: #fde8b0;
+  --color-amber-900: #fef3d3;
+  --color-amber-950: #fffaeb;
+
+  /* Lam — số đo hiệu điện thế */
+  --color-blue-50: #0c1e3d;
+  --color-blue-100: #112d5c;
+  --color-blue-200: #1a4488;
+  --color-blue-300: #2560b8;
+  --color-blue-400: #6aa8f7;
+  --color-blue-500: #4d93f2;
+  --color-blue-600: #2f7ae8;
+  --color-blue-700: #9cc5fb;
+  --color-blue-800: #c3ddfd;
+  --color-blue-900: #dbeafe;
+  --color-blue-950: #eff6ff;
+
+  /* Lơ */
+  --color-cyan-50: #06242c;
+  --color-cyan-100: #093843;
+  --color-cyan-200: #0d5566;
+  --color-cyan-300: #12798f;
+  --color-cyan-400: #3fd0e8;
+  --color-cyan-500: #2bc0da;
+  --color-cyan-600: #109ab4;
+  --color-cyan-700: #7fe2f2;
+  --color-cyan-800: #b3eff8;
+  --color-cyan-900: #d5f7fc;
+  --color-cyan-950: #ecfeff;
+
+  /* Tím */
+  --color-purple-50: #23103f;
+  --color-purple-100: #351860;
+  --color-purple-200: #4d2490;
+  --color-purple-300: #6a34bd;
+  --color-purple-400: #b184f5;
+  --color-purple-500: #a06ef2;
+  --color-purple-600: #8b4ef0;
+  --color-purple-700: #cdb0fb;
+  --color-purple-800: #e0ccfd;
+  --color-purple-900: #eee1ff;
+  --color-purple-950: #f7f1ff;
+
+  /* Cam */
+  --color-orange-50: #2c1606;
+  --color-orange-100: #43230a;
+  --color-orange-200: #663610;
+  --color-orange-300: #8f4d16;
+  --color-orange-400: #fb9a4d;
+  --color-orange-500: #f5883a;
+  --color-orange-600: #e06c14;
+  --color-orange-700: #fcc196;
+  --color-orange-800: #fdd9bd;
+  --color-orange-900: #ffedde;
+  --color-orange-950: #fff7ed;
+}
+
+/* Mặt thẻ: bg-white không đảo theo biến (còn dùng cho chữ trắng trên nút màu) */
+.dark .bg-white { background-color: #131e33; }
+.dark .bg-white\/95 { background-color: rgb(19 30 51 / 0.95); }
+.dark .bg-white\/20 { background-color: rgb(226 234 244 / 0.14); }
+.dark .bg-white\/10 { background-color: rgb(226 234 244 / 0.08); }
+.dark .focus-within\:bg-white:focus-within { background-color: #17233c; }
+.dark .hover\:bg-white:hover { background-color: #17233c; }
+
+/* Những nền vốn đã đậm thì giữ nguyên độ đậm, không sáng lên */
+.dark .bg-indigo-700,
+.dark .hover\:bg-indigo-700:hover { background-color: #4338ca; }
+.dark .hover\:bg-emerald-700:hover { background-color: #047857; }
+.dark .bg-indigo-800\/80 { background-color: rgb(55 48 163 / 0.8); }
+.dark .bg-indigo-900,
+.dark .bg-indigo-900\/80 { background-color: #312e81; }
+.dark .bg-indigo-950\/80 { background-color: rgb(30 27 75 / 0.85); }
+.dark .bg-slate-700 { background-color: #33415c; }
+.dark .bg-slate-800 { background-color: #1f2b45; }
+.dark .bg-slate-900,
+.dark .bg-slate-900\/50 { background-color: #0b1322; }
+.dark .bg-amber-400 { background-color: #d99b0c; color: #241705; }
+
+/* Thanh cuộn */
+.dark ::-webkit-scrollbar-thumb { background: #35486d; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #4b6392; }
+.dark .ml-scroll { scrollbar-color: #46597f #1a2740; }
+.dark .ml-scroll::-webkit-scrollbar-track { background: #1a2740; }
+.dark .ml-scroll::-webkit-scrollbar-thumb { background: #46597f; border-color: #1a2740; }
+.dark .ml-scroll::-webkit-scrollbar-thumb:hover { background: #5d76a6; }
+
+/* ------------------------------------------------------------------
+   Những panel vốn đã tối sẵn ở giao diện sáng (thanh bên, thẻ tím đậm…)
+   giữ nguyên bảng màu gốc để chữ sáng bên trong không bị lẫn nền.
+   ------------------------------------------------------------------ */
+.dark :is(.bg-slate-900, .bg-slate-800, .bg-indigo-900, .bg-indigo-900\/80, .bg-indigo-800\/80, .bg-indigo-950\/80) {
+  --color-slate-50: #f8fafc;
+  --color-slate-100: #f1f5f9;
+  --color-slate-200: #e2e8f0;
+  --color-slate-300: #cbd5e1;
+  --color-slate-400: #94a3b8;
+  --color-slate-500: #64748b;
+  --color-slate-600: #475569;
+  --color-slate-700: #334155;
+  --color-slate-800: #1e293b;
+  --color-slate-900: #0f172a;
+  --color-slate-950: #020617;
+  --color-indigo-50: #eef2ff;
+  --color-indigo-100: #e0e7ff;
+  --color-indigo-200: #c7d2fe;
+  --color-indigo-300: #a5b4fc;
+  --color-indigo-400: #818cf8;
+  --color-indigo-500: #6366f1;
+  --color-indigo-600: #4f46e5;
+  --color-indigo-700: #4338ca;
+  --color-indigo-800: #3730a3;
+  --color-indigo-900: #312e81;
+  --color-indigo-950: #1e1b4b;
+  --color-amber-100: #fef3c7;
+  --color-amber-200: #fde68a;
+  --color-amber-300: #fcd34d;
+  --color-amber-400: #fbbf24;
+  --color-amber-500: #f59e0b;
+  --color-emerald-100: #d1fae5;
+  --color-emerald-200: #a7f3d0;
+  --color-emerald-300: #6ee7b7;
+  --color-emerald-400: #34d399;
+  --color-rose-300: #fda4af;
+  --color-rose-400: #fb7185;
+}
+
+/* Thẻ nền trắng nằm bên trong các panel tối vẫn phải trắng */
+.dark :is(.bg-slate-900, .bg-slate-800, .bg-indigo-900, .bg-indigo-900\/80, .bg-indigo-800\/80, .bg-indigo-950\/80) .bg-white {
+  background-color: #ffffff;
+}
+.dark .focus\:bg-white:focus { background-color: #17233c; }
+
+/* ==================================================================
+   MÀU CHỦ ĐẠO
+   Người dùng chọn một trong sáu màu; toàn bộ giao diện đang dùng
+   thang màu "indigo" nên chỉ cần định nghĩa lại thang đó là đủ.
+   ================================================================== */
+
+[data-accent='teal'] {
+  --color-indigo-50: #f0fdfa;  --color-indigo-100: #ccfbf1; --color-indigo-200: #99f6e4;
+  --color-indigo-300: #5eead4; --color-indigo-400: #2dd4bf; --color-indigo-500: #14b8a6;
+  --color-indigo-600: #0d9488; --color-indigo-700: #0f766e; --color-indigo-800: #115e59;
+  --color-indigo-900: #134e4a; --color-indigo-950: #042f2e;
+}
+[data-accent='forest'] {
+  --color-indigo-50: #f0fdf4;  --color-indigo-100: #dcfce7; --color-indigo-200: #bbf7d0;
+  --color-indigo-300: #86efac; --color-indigo-400: #4ade80; --color-indigo-500: #22c55e;
+  --color-indigo-600: #16a34a; --color-indigo-700: #15803d; --color-indigo-800: #166534;
+  --color-indigo-900: #14532d; --color-indigo-950: #052e16;
+}
+[data-accent='amber'] {
+  --color-indigo-50: #fffbeb;  --color-indigo-100: #fef3c7; --color-indigo-200: #fde68a;
+  --color-indigo-300: #fcd34d; --color-indigo-400: #fbbf24; --color-indigo-500: #f59e0b;
+  --color-indigo-600: #d97706; --color-indigo-700: #b45309; --color-indigo-800: #92400e;
+  --color-indigo-900: #78350f; --color-indigo-950: #451a03;
+}
+[data-accent='crimson'] {
+  --color-indigo-50: #fff1f2;  --color-indigo-100: #ffe4e6; --color-indigo-200: #fecdd3;
+  --color-indigo-300: #fda4af; --color-indigo-400: #fb7185; --color-indigo-500: #f43f5e;
+  --color-indigo-600: #e11d48; --color-indigo-700: #be123c; --color-indigo-800: #9f1239;
+  --color-indigo-900: #881337; --color-indigo-950: #4c0519;
+}
+[data-accent='plum'] {
+  --color-indigo-50: #faf5ff;  --color-indigo-100: #f3e8ff; --color-indigo-200: #e9d5ff;
+  --color-indigo-300: #d8b4fe; --color-indigo-400: #c084fc; --color-indigo-500: #a855f7;
+  --color-indigo-600: #9333ea; --color-indigo-700: #7e22ce; --color-indigo-800: #6b21a8;
+  --color-indigo-900: #581c87; --color-indigo-950: #3b0764;
+}
+
+/* Ở giao diện tối, thang màu bị đảo nên cần bản riêng cho từng màu */
+.dark[data-accent='teal'] {
+  --color-indigo-50: #04211f;  --color-indigo-100: #07322e; --color-indigo-200: #0b4c46;
+  --color-indigo-300: #10706a; --color-indigo-400: #35d3c4; --color-indigo-500: #2fc9ba;
+  --color-indigo-600: #14b8a6; --color-indigo-700: #6ee7d8; --color-indigo-800: #a7f3e6;
+  --color-indigo-900: #ccfbf1; --color-indigo-950: #f0fdfa;
+}
+.dark[data-accent='forest'] {
+  --color-indigo-50: #04220f;  --color-indigo-100: #073518; --color-indigo-200: #0b5226;
+  --color-indigo-300: #107536; --color-indigo-400: #4ade80; --color-indigo-500: #35c96a;
+  --color-indigo-600: #22c55e; --color-indigo-700: #86efac; --color-indigo-800: #bbf7d0;
+  --color-indigo-900: #dcfce7; --color-indigo-950: #f0fdf4;
+}
+.dark[data-accent='amber'] {
+  --color-indigo-50: #2b1c04;  --color-indigo-100: #422b06; --color-indigo-200: #66430b;
+  --color-indigo-300: #8f5f10; --color-indigo-400: #fbc02d; --color-indigo-500: #f0ad1e;
+  --color-indigo-600: #d99408; --color-indigo-700: #fcd77a; --color-indigo-800: #fde8b0;
+  --color-indigo-900: #fef3d3; --color-indigo-950: #fffaeb;
+}
+.dark[data-accent='crimson'] {
+  --color-indigo-50: #2b0d17;  --color-indigo-100: #431322; --color-indigo-200: #661c33;
+  --color-indigo-300: #8f2745; --color-indigo-400: #fb7899; --color-indigo-500: #f4577f;
+  --color-indigo-600: #e11d48; --color-indigo-700: #fda4b8; --color-indigo-800: #fecdd8;
+  --color-indigo-900: #ffe4e9; --color-indigo-950: #fff1f3;
+}
+.dark[data-accent='plum'] {
+  --color-indigo-50: #23103f;  --color-indigo-100: #351860; --color-indigo-200: #4d2490;
+  --color-indigo-300: #6a34bd; --color-indigo-400: #b184f5; --color-indigo-500: #a06ef2;
+  --color-indigo-600: #9333ea; --color-indigo-700: #cdb0fb; --color-indigo-800: #e0ccfd;
+  --color-indigo-900: #eee1ff; --color-indigo-950: #f7f1ff;
+}
+
+/* ==================================================================
+   CHUYỂN ĐỘNG
+   Chỉ giữ lại những gì báo hiệu trạng thái thay đổi. Không có gì
+   tự chuyển động khi người dùng đứng yên.
+   ================================================================== */
+
+@keyframes ml-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes ml-pop {
+  0%   { transform: scale(0.9); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes ml-shake {
+  0%, 100% { transform: translateX(0); }
+  25%      { transform: translateX(-5px); }
+  75%      { transform: translateX(4px); }
+}
+
+.ml-rise  { animation: ml-fade-in 0.26s ease-out both; }
+.ml-pop   { animation: ml-pop 0.2s ease-out both; }
+.ml-shake { animation: ml-shake 0.3s ease-in-out; }
+
+/* Chuyển động của linh kiện trong mô phỏng */
+.ml-needle { transition: transform 0.6s cubic-bezier(0.25, 1.2, 0.5, 1); }
+.ml-knob   { transition: transform 0.35s cubic-bezier(0.3, 1.2, 0.6, 1); }
+.ml-lever  { transition: transform 0.25s cubic-bezier(0.3, 1.3, 0.6, 1); }
+.ml-slider { transition: transform 0.3s ease-out; }
+
+/* Thẻ nội dung: chỉ đổi bóng nhẹ khi rê chuột */
+.bento-card { transition: box-shadow 0.2s ease, border-color 0.2s ease; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
