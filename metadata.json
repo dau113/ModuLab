@@ -1,0 +1,6 @@
+{
+  "name": "ModuLab",
+  "description": "Nền tảng web hỗ trợ thực hành Vật lí (Điện học) THPT với kiến trúc Bento Grid hiện đại",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
