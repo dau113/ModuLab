@@ -4,8 +4,7 @@
  */
 import type { LabModule, ToolItem, QuizQuestion, TeacherClassStats, LabReportRow } from '../types';
 
-const BASE = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_API_URL || '/api';
-
+const BASE = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_API_URL || 'https://modulab-q2by.onrender.com/api';
 export interface ApiUser {
   id: string;
   name: string;
