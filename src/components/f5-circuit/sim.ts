@@ -92,7 +92,7 @@ export function effectiveElec(p: PlacedPart): ElecKind {
   switch (p.func ?? 'V') {
     case 'A': case 'mA': return 'ammeter';
     case 'V': case 'mV': return 'voltmeter';
-    case 'ohm': case 'cont': return 'voltmeter'; // trở kháng vào rất lớn khi cắm vào mạch
+    case 'ohm': return 'voltmeter'; // trở kháng vào rất lớn khi cắm vào mạch
     default: return 'inert';                     // núm ở OFF: coi như hở mạch
   }
 }
@@ -375,7 +375,7 @@ export function checkCircuit(parts: PlacedPart[], wires: Wire[], rxTrue: number)
   parts.filter((p) => p.kind === 'multimeter' && wired(p.id)).forEach((p) => {
     if ((p.func ?? 'V') === 'off') {
       msgs.push({ level: 'warn', text: 'Có đồng hồ đã nối vào mạch nhưng núm xoay đang ở vị trí OFF.' });
-    } else if ((p.func === 'ohm' || p.func === 'cont') && Math.abs(src?.I ?? 0) > 1e-4) {
+    } else if (p.func === 'ohm' && Math.abs(src?.I ?? 0) > 1e-4) {
       msgs.push({ level: 'warn', text: 'Đang đo điện trở trên mạch còn điện — số đọc không tin cậy. Hãy mở khóa K trước khi đo.' });
     } else if (p.ac && Math.abs(src?.I ?? 0) > 1e-4) {
       msgs.push({ level: 'warn', text: 'Có đồng hồ đang để thang xoay chiều (AC) trong mạch một chiều nên số đọc gần bằng 0. Bấm SELECT để về DC.' });

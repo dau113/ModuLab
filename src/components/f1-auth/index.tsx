@@ -35,7 +35,7 @@ export const AuthAccountView: React.FC<AuthAccountViewProps> = ({
         title="Quản lý Tài khoản & Phân quyền (Hệ thống F1)" 
         subtitle={`Xin chào, ${currentUser.name}!`}
       >
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3 text-[13px]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3 text-[clamp(13px,0.9vw,15.5px)]">
           <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2.5">
             <div className="flex items-center gap-2 text-indigo-900 font-bold">
               <UserCheck className="w-4 h-4 text-indigo-600" />
@@ -89,7 +89,7 @@ export const AuthAccountView: React.FC<AuthAccountViewProps> = ({
             <KeyRound className="w-4 h-4 text-indigo-600" />
             <span>Đăng ký tham gia Lớp học & Nhóm mới</span>
           </h4>
-          <form onSubmit={handleJoinClass} className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-[13px]">
+          <form onSubmit={handleJoinClass} className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-[clamp(13px,0.9vw,15.5px)]">
             <div>
               <label className="font-bold text-slate-600 block mb-1">Mã lớp (6 ký tự):</label>
               <input
@@ -127,7 +127,7 @@ export const AuthAccountView: React.FC<AuthAccountViewProps> = ({
 
       {/* Role Switching Bento Card */}
       <BentoCard className="md:col-span-2 flex flex-col justify-between" accent={true} title="Mô phỏng Vai trò CSDL">
-        <div className="space-y-3 text-[13px]">
+        <div className="space-y-3 text-[clamp(13px,0.9vw,15.5px)]">
           <p className="text-indigo-100 leading-relaxed font-medium">
             Trong môi trường xem trước ModuLab, bạn có thể chuyển đổi nhanh giữa tài khoản <strong>Học sinh</strong> và <strong>Giáo viên</strong> để trải nghiệm phân quyền RLS (NT-1 trong TRD).
           </p>
@@ -143,8 +143,8 @@ export const AuthAccountView: React.FC<AuthAccountViewProps> = ({
                 }`}
               >
                 <div>
-                  <div className="text-[13px]">{u.name}</div>
-                  <div className="text-[11.5px] opacity-75">{u.role === 'gv' ? 'Giáo viên bộ môn' : `HS • ${u.teamCode}`}</div>
+                  <div className="text-[clamp(13px,0.9vw,15.5px)]">{u.name}</div>
+                  <div className="text-[12.5px] opacity-75">{u.role === 'gv' ? 'Giáo viên bộ môn' : `HS • ${u.teamCode}`}</div>
                 </div>
                 <ArrowRightLeft className={`w-4 h-4 ${u.id === currentUser.id ? 'text-indigo-600' : 'text-indigo-300'}`} />
               </button>
@@ -152,7 +152,7 @@ export const AuthAccountView: React.FC<AuthAccountViewProps> = ({
           </div>
         </div>
 
-        <div className="mt-4 pt-3 border-t border-indigo-500/50 text-[11.5px] text-indigo-200 font-medium">
+        <div className="mt-4 pt-3 border-t border-indigo-500/50 text-[12.5px] text-indigo-200 font-medium">
           🔒 Supabase Row Level Security (RLS) tự động chặn học sinh truy cập nội dung Nháp hoặc sửa điểm chính thức.
         </div>
       </BentoCard>

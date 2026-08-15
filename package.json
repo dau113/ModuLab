@@ -1,13 +1,12 @@
 {
   "name": "react-example",
   "private": true,
-  "version": "1.21.0",
+  "version": "1.23.0",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",
-    "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
     "server": "node --experimental-sqlite server/index.mjs",
     "db:seed": "node --experimental-sqlite --experimental-strip-types server/seed.mjs",

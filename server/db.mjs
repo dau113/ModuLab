@@ -177,6 +177,18 @@ export const submitReport = (userId, moduleId, summary) => tx(() => {
   return getReport(userId, moduleId);
 });
 
+/** Mở lại báo cáo để học sinh làm một lượt đo mới; bản đã nộp vẫn giữ trong sổ điểm */
+export const reopenReport = (userId, moduleId) => tx(() => {
+  const report = getReport(userId, moduleId);
+  run('DELETE FROM report_rows WHERE report_id = ?', report.id);
+  run(`UPDATE lab_reports
+       SET status = 'dang_lam', r_avg = NULL, delta_r = NULL, rel_err = NULL,
+           submitted_at = NULL, updated_at = datetime('now')
+       WHERE id = ?`, report.id);
+  logActivity(userId, 'lam_bao_cao_moi', moduleId);
+  return getReport(userId, moduleId);
+});
+
 export const saveCircuit = (payload) => tx(() => {
   const info = run(`INSERT INTO circuit_designs (user_id, module_id, name, payload, is_valid)
                     VALUES (?, ?, ?, ?, ?)`,

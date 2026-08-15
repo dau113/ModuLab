@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../../theme';
 import { useSettings, ACCENTS } from '../../settings';
-import { Home, Sun, Moon, ClipboardList, Rocket } from 'lucide-react';
+import { Home, Sun, Moon, Rocket } from 'lucide-react';
 
 interface TopNavProps {
   currentUser: User;
@@ -27,7 +27,7 @@ interface TopNavProps {
 
 /** Cụm cài đặt: ngôn ngữ · màu chủ đạo · sáng tối */
 export const SettingsBar: React.FC = () => {
-  const { lang, setLang, accent, setAccent, t } = useSettings();
+  const { lang, accent, setAccent, t } = useSettings();
   const { theme, setTheme } = useTheme();
 
   return (
@@ -51,18 +51,6 @@ export const SettingsBar: React.FC = () => {
       </div>
 
       <div className="h-6 w-px bg-slate-200" />
-
-      {/* Ngôn ngữ */}
-      <div className="flex items-center rounded-lg border border-slate-200 overflow-hidden">
-        {(['vi', 'en'] as const).map((l) => (
-          <button key={l} onClick={() => setLang(l)}
-            className={`h-7 px-2.5 text-[12px] font-bold transition-colors ${
-              lang === l ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-50'
-            }`}>
-            {l.toUpperCase()}
-          </button>
-        ))}
-      </div>
 
       {/* Sáng / tối */}
       <button
@@ -88,7 +76,7 @@ export const TopNav: React.FC<TopNavProps> = ({ currentUser, onSwitchUser, avail
         </button>
 
         <button onClick={onGoHome}
-          className="ml-1 h-8 px-2.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-600 text-[12px] font-bold flex items-center gap-1.5 transition-colors">
+          className="ml-1 h-8 px-2.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-600 text-[13px] font-bold flex items-center gap-1.5 transition-colors">
           <Home className="w-3.5 h-3.5" />
           <span className="hidden md:inline">Trang chủ</span>
         </button>
@@ -100,9 +88,9 @@ export const TopNav: React.FC<TopNavProps> = ({ currentUser, onSwitchUser, avail
         {/* User / Team & Role Switcher */}
         <div className="flex items-center gap-3 border-l border-slate-200 pl-4">
           <div className="text-right hidden sm:block">
-            <div className="text-[13px] font-bold text-slate-800 flex items-center justify-end gap-1.5">
+            <div className="text-[clamp(13px,0.9vw,15.5px)] font-bold text-slate-800 flex items-center justify-end gap-1.5">
               <span>{currentUser.name}</span>
-              <span className={`px-1.5 py-0.5 rounded text-[11.5px] font-extrabold uppercase ${
+              <span className={`px-1.5 py-0.5 rounded text-[12.5px] font-extrabold uppercase ${
                 currentUser.role === 'gv' 
                   ? 'bg-amber-100 text-amber-800 border border-amber-300' 
                   : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
@@ -110,25 +98,25 @@ export const TopNav: React.FC<TopNavProps> = ({ currentUser, onSwitchUser, avail
                 {currentUser.role === 'gv' ? 'Giáo viên' : 'Học sinh'}
               </span>
             </div>
-            <div className="text-[11.5px] text-slate-500 font-medium">
+            <div className="text-[12.5px] text-slate-500 font-medium">
               {currentUser.role === 'hs' ? `Lớp: ${currentUser.classCode} • ${currentUser.teamCode}` : `Lớp: ${currentUser.classCode} • Bảng quản lý`}
             </div>
           </div>
 
           <div className="relative group">
-            <div className="w-9 h-9 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center text-indigo-700 font-bold text-[13px] cursor-pointer shadow-sm hover:ring-2 hover:ring-indigo-400 transition-all">
+            <div className="w-9 h-9 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center text-indigo-700 font-bold text-[clamp(13px,0.9vw,15.5px)] cursor-pointer shadow-sm hover:ring-2 hover:ring-indigo-400 transition-all">
               {currentUser.name.split(' ').slice(-1)[0][0]}
             </div>
             {/* Dropdown to switch accounts */}
             <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-200 p-2 hidden group-hover:block z-50">
-              <div className="text-[11.5px] font-bold text-slate-400 uppercase tracking-widest px-2 py-1">
+              <div className="text-[12.5px] font-bold text-slate-400 uppercase tracking-widest px-2 py-1">
                 Chuyển đổi tài khoản mô phỏng
               </div>
               {availableUsers.map((u) => (
                 <button
                   key={u.id}
                   onClick={() => onSwitchUser(u.id)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-[13px] flex items-center justify-between font-medium transition-colors ${
+                  className={`w-full text-left px-3 py-2 rounded-lg text-[clamp(13px,0.9vw,15.5px)] flex items-center justify-between font-medium transition-colors ${
                     u.id === currentUser.id 
                       ? 'bg-indigo-50 text-indigo-700 font-bold' 
                       : 'text-slate-600 hover:bg-slate-50'
@@ -136,7 +124,7 @@ export const TopNav: React.FC<TopNavProps> = ({ currentUser, onSwitchUser, avail
                 >
                   <div>
                     <div>{u.name}</div>
-                    <div className="text-[11.5px] text-slate-400">{u.role === 'gv' ? 'Giáo viên Vật lí' : `HS - ${u.teamCode}`}</div>
+                    <div className="text-[12.5px] text-slate-400">{u.role === 'gv' ? 'Giáo viên Vật lí' : `HS - ${u.teamCode}`}</div>
                   </div>
                   {u.id === currentUser.id && <CheckCircle2 className="w-4 h-4 text-indigo-600" />}
                 </button>
@@ -181,7 +169,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: <BookOpen className="w-4 h-4" />,
       children: [
         { id: 'theory', label: t('nav.theory.lesson'), icon: <BookOpen className="w-3.5 h-3.5" /> },
-        { id: 'prep', label: t('nav.theory.prep'), icon: <ClipboardList className="w-3.5 h-3.5" /> },
         { id: 'tools', label: t('nav.theory.tools'), icon: <Wrench className="w-3.5 h-3.5" /> },
       ],
     },
@@ -192,15 +179,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <aside className="w-64 bg-white border-r border-slate-200 p-4 flex flex-col gap-6 shrink-0 z-10">
       <div>
         <div className="flex items-center justify-between mb-4 px-2">
-          <p className="text-[11.5px] font-bold text-slate-400 uppercase tracking-widest">{t('nav.progress')}</p>
-          <span className="text-[11.5px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+          <p className="text-[12.5px] font-bold text-slate-400 uppercase tracking-widest">{t('nav.progress')}</p>
+          <span className="text-[12.5px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
             Module 01
           </span>
         </div>
 
         <div className="mb-4 px-2 py-2.5 bg-slate-50 rounded-xl border border-slate-200/80">
-          <p className="text-[11.5px] font-bold text-indigo-600 uppercase mb-0.5">{t('nav.current')}</p>
-          <p className="text-[13px] font-bold text-slate-800 line-clamp-2 leading-snug">{labTitle}</p>
+          <p className="text-[12.5px] font-bold text-indigo-600 uppercase mb-0.5">{t('nav.current')}</p>
+          <p className="text-[clamp(13px,0.9vw,15.5px)] font-bold text-slate-800 line-clamp-2 leading-snug">{labTitle}</p>
         </div>
 
         <nav className="flex flex-col gap-1">
@@ -223,7 +210,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 >
                   <div className="flex items-center gap-2.5">
                     <span className={`${isActive ? 'text-white' : 'text-slate-400'}`}>{s.icon}</span>
-                    <span className="text-[13px]">{s.label}</span>
+                    <span className="text-[clamp(13px,0.9vw,15.5px)]">{s.label}</span>
                   </div>
                   {s.children && (
                     <ChevronDown className={`w-3.5 h-3.5 transition-transform ${
@@ -248,7 +235,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           }`}
                         >
                           <span className={`${childActive ? 'text-indigo-600' : 'text-slate-400'}`}>{c.icon}</span>
-                          <span className="text-[12.5px]">{c.label}</span>
+                          <span className="text-[clamp(12.5px,0.86vw,15px)]">{c.label}</span>
                         </div>
                       );
                     })}
@@ -266,18 +253,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
 export const Footer: React.FC = () => {
   return (
-    <footer className="h-10 bg-white border-t border-slate-200 px-6 flex items-center justify-between text-[11.5px] font-medium text-slate-400 uppercase tracking-widest shrink-0">
+    <footer className="h-10 bg-white border-t border-slate-200 px-6 flex items-center justify-between text-[12.5px] font-medium text-slate-400 uppercase tracking-widest shrink-0">
       <div className="flex items-center gap-4">
         <span className="flex items-center gap-1.5 font-bold text-slate-600">
           <div className="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></div> 
           ModuLab Engine Online
         </span>
-        <span>Chương trình GDPT 2018 (Thông tư 32/2018)</span>
       </div>
       <div className="flex gap-4 items-center font-bold text-slate-500">
-        <span>Bảo chứng bởi GV Vật lí THPT</span>
-        <span>•</span>
-        <span>Phiên bản v1.21</span>
+        <span>Phiên bản v1.23</span>
       </div>
     </footer>
   );
@@ -307,7 +291,7 @@ export const BentoCard: React.FC<BentoCardProps> = ({
           {title && (
             <div className="flex justify-between items-start mb-3">
               <div>
-                <h3 className="text-[13px] font-bold opacity-80 uppercase tracking-widest mb-0.5">{title}</h3>
+                <h3 className="text-[clamp(13px,0.9vw,15.5px)] font-bold opacity-80 uppercase tracking-widest mb-0.5">{title}</h3>
                 {subtitle && <p className="text-sm font-semibold opacity-90">{subtitle}</p>}
               </div>
               {action && <div>{action}</div>}
@@ -325,7 +309,7 @@ export const BentoCard: React.FC<BentoCardProps> = ({
       {(title || action) && (
         <div className="flex justify-between items-start mb-4 gap-2">
           <div>
-            {title && <h3 className="text-[13px] font-bold text-slate-400 uppercase tracking-widest mb-1">{title}</h3>}
+            {title && <h3 className="text-[clamp(13px,0.9vw,15.5px)] font-bold text-slate-400 uppercase tracking-widest mb-1">{title}</h3>}
             {subtitle && <p className="text-base font-bold text-slate-800 leading-snug">{subtitle}</p>}
           </div>
           {action && <div className="shrink-0">{action}</div>}
@@ -362,7 +346,7 @@ export const WarningBadge: React.FC<WarningBadgeProps> = ({
   };
 
   return (
-    <div className={`flex items-center gap-2.5 px-3.5 py-2 rounded-xl border text-[13px] leading-relaxed ${styles[type]} ${className}`}>
+    <div className={`flex items-center gap-2.5 px-3.5 py-2 rounded-xl border text-[clamp(13px,0.9vw,15.5px)] leading-relaxed ${styles[type]} ${className}`}>
       {icons[type]}
       <span className="flex-1">{text}</span>
     </div>

@@ -4,8 +4,8 @@
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  MousePointer2, Cable, Eraser, RotateCcw, Sigma, Wrench, CircuitBoard,
-  CheckCircle2, AlertTriangle, AlertCircle, ArrowRight, Plus, ChevronDown, Power, Save,
+  MousePointer2, Cable, Eraser, RotateCcw, Wrench, CircuitBoard,
+  CheckCircle2, AlertTriangle, AlertCircle, Plus, Power, Save,
   ZoomIn, ZoomOut, Maximize2, Gauge, Spline, Search, X,
 } from 'lucide-react';
 import { PART_CATALOG, PART_ORDER, PartArt, PartDefs, PartThumb, DMM_FUNCS, DMM_HOTSPOTS, PS_HOTSPOTS, DMM_SCALE } from './parts';
@@ -23,8 +23,6 @@ interface CircuitSimulatorProps {
 
 /* Giá trị thật của điện trở cần đo — học sinh không nhìn thấy, chỉ suy ra từ phép đo */
 const RX_TRUE = 105;
-const RX_NOMINAL = 100;
-const ERROR_LIMIT = 0.1;
 
 /** Mã quy ước cho bảng lắp ráp — mỗi lỗ cắm là một điểm nối độc lập */
 const BOARD_ID = 'BOARD';
@@ -37,23 +35,17 @@ const SNAP = 8;
 /* Bàn lắp bắt đầu trống — học sinh tự chọn linh kiện từ khay */
 const INITIAL_PARTS: PlacedPart[] = [];
 
-/** Các cặp màu dây tương phản để phân biệt nhánh dương và nhánh âm */
-export const WIRE_PAIRS = [
-  { id: 'classic', name: 'Đỏ – Xanh dương', hot: '#DC2626', cold: '#2563EB' },
-  { id: 'citrus', name: 'Cam – Lơ', hot: '#EA580C', cold: '#0891B2' },
-  { id: 'berry', name: 'Hồng – Lục', hot: '#DB2777', cold: '#16A34A' },
-  { id: 'sun', name: 'Vàng – Tím', hot: '#EAB308', cold: '#7C3AED' },
-  { id: 'mono', name: 'Trắng – Đen', hot: '#F1F5F9', cold: '#111827' },
-] as const;
-
-interface Row { u: string; i: string }
-const EMPTY_ROWS: Row[] = Array.from({ length: 5 }, () => ({ u: '', i: '' }));
+/** Hai màu dây: đỏ cho nhánh dương, xanh cho nhánh âm */
+export const WIRE_COLORS = { hot: '#DC2626', cold: '#2563EB' } as const;
 
 const fmt = (n: number, d: number) => (Number.isFinite(n) ? n.toFixed(d) : '—');
 
-/** Nhiễu đo lường lặp lại được theo vị trí núm biến trở */
-const jitter = (seed: number, amp: number) => {
-  const s = Math.sin(seed * 127.1) * 43758.5453;
+/**
+ * Nhiễu đo lường nhỏ, lặp lại được. Hạt giống lấy từ chính giá trị đo được
+ * nên chỉ đổi khi mạch thật sự đổi — xoay núm biến trở chưa nối dây thì số đứng yên.
+ */
+const jitter = (value: number, offset: number, amp: number) => {
+  const s = Math.sin((value * 1000 + offset) * 127.1) * 43758.5453;
   return 1 + (s - Math.floor(s) - 0.5) * 2 * amp;
 };
 
@@ -63,20 +55,14 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
   const [wires, setWires] = useState<Wire[]>([]);
   const [tool, setTool] = useState<'select' | 'wire' | 'erase'>('wire');
   const [query, setQuery] = useState('');
-  const [pairId, setPairId] = useState<string>('classic');
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [hint, setHint] = useState<string>(
+    'Bấm lần lượt vào hai chốt (hoặc lỗ cắm trên bảng) để tạo dây nối. Nhiều đầu dây cắm chung một lỗ thì được nối với nhau.',
+  );
   const [wireSide, setWireSide] = useState<'hot' | 'cold'>('hot');
-  const pair = WIRE_PAIRS.find((p) => p.id === pairId) ?? WIRE_PAIRS[0];
-  const wireColor = pair[wireSide];
+  const wireColor = WIRE_COLORS[wireSide];
   const [pending, setPending] = useState<TermRef | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
-  const [openGuide, setOpenGuide] = useState<number[]>([3]);
-  const toggleGuide = (n: number) =>
-    setOpenGuide((prev) => (prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n]));
-  const [rows, setRows] = useState<Row[]>(EMPTY_ROWS);
-  
-  const [savedAt, setSavedAt] = useState<string | null>(null);
-  const [hint, setHint] = useState<string>('Bấm lần lượt vào hai chốt (hoặc lỗ cắm trên bảng) để tạo dây nối. Nhiều đầu dây cắm chung một lỗ thì được nối với nhau.');
-
   const [view, setView] = useState({ z: 1, tx: 0, ty: 0 });
 
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -95,7 +81,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
   /* Điện trở đo được của từng đồng hồ đang ở thang Ω hoặc thang thông mạch */
   const ohmReadings = useMemo(() => {
     const out: Record<string, number | null> = {};
-    parts.filter((p) => p.kind === 'multimeter' && (p.func === 'ohm' || p.func === 'cont'))
+    parts.filter((p) => p.kind === 'multimeter' && p.func === 'ohm')
       .forEach((p) => { out[p.id] = measureResistance(parts, wires, RX_TRUE, p.id); });
     return out;
   }, [parts, wires]);
@@ -116,14 +102,14 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
 
     const b = branchOf(p.id);
     let raw: number | null;
-    if (f === 'A') raw = Math.abs(b?.I ?? 0) * jitter(knob + 0.71, 0.004);
-    else if (f === 'mA') raw = Math.abs(b?.I ?? 0) * jitter(knob + 0.71, 0.004) * 1000;
-    else if (f === 'V') raw = Math.abs(b?.V ?? 0) * jitter(knob + 0.13, 0.004);
-    else if (f === 'mV') raw = Math.abs(b?.V ?? 0) * jitter(knob + 0.13, 0.004) * 1000;
+    if (f === 'A') { const i = Math.abs(b?.I ?? 0); raw = i * jitter(i, 0.71, 0.004); }
+    else if (f === 'mA') { const i = Math.abs(b?.I ?? 0); raw = i * jitter(i, 0.71, 0.004) * 1000; }
+    else if (f === 'V') { const v = Math.abs(b?.V ?? 0); raw = v * jitter(v, 0.13, 0.004); }
+    else if (f === 'mV') { const v = Math.abs(b?.V ?? 0); raw = v * jitter(v, 0.13, 0.004) * 1000; }
     else raw = ohmReadings[p.id] ?? null;
 
     if (raw == null) return { value: null, text: 'OL', unit: spec.unit, live: { ...base, reading: 'OL', unit: spec.unit, bar: 1 } };
-    if (p.ac && f !== 'ohm' && f !== 'cont') raw *= 0.0015; // mạch một chiều: thang AC gần như bằng 0
+    if (p.ac && f !== 'ohm') raw *= 0.0015; // mạch một chiều: thang AC gần như bằng 0
 
     let value = raw - (p.rel ?? 0);
 
@@ -143,17 +129,16 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
 
     let shown = value;
     let unit = spec.unit;
-    if ((f === 'ohm' || f === 'cont') && range >= 6000) { shown /= 1000; range /= 1000; unit = 'kΩ'; }
+    if (f === 'ohm' && range >= 6000) { shown /= 1000; range /= 1000; unit = 'kΩ'; }
 
     const ol = Math.abs(shown) > range;
     const dec = Math.max(0, 4 - Math.floor(Math.log10(range)) - 1);
     let text = ol ? 'OL' : shown.toFixed(dec);
     if (p.hold && p.held) text = p.held;
 
-    const beep = f === 'cont' && !ol && Math.abs(value) < 30;
     return {
       value, text, unit,
-      live: { ...base, reading: text, unit, bar: Math.min(1, Math.abs(shown) / range), beep },
+      live: { ...base, reading: text, unit, bar: Math.min(1, Math.abs(shown) / range) },
     };
   };
 
@@ -168,7 +153,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
     }
     const raw = want === 'V' ? report.voltmeterReading : report.ammeterReading;
     if (raw == null) return null;
-    return raw * jitter(knob + (want === 'V' ? 0.13 : 0.71), 0.004);
+    return raw * jitter(raw, want === 'V' ? 0.13 : 0.71, 0.004);
   };
 
   const liveU = readerValue('V') ?? 0;
@@ -539,8 +524,8 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
       });
     };
 
-    const hot = pair.hot;
-    const cold = pair.cold;
+    const hot = WIRE_COLORS.hot;
+    const cold = WIRE_COLORS.cold;
     const T = (c: string, t: string): TermRef => ({ c, t });
 
     // Nhánh dương: nguồn (+) → khóa K → cổng đo dòng của ampe kế → đầu A của Rx
@@ -580,42 +565,6 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
     if (k) togglePart(k.id);
   };
 
-  /* ---------------- Bảng số liệu ---------------- */
-  const recordRow = () => {
-    if (!report.safeToPower) {
-      setHint('Chưa ghi được số liệu: mạch chưa đạt điều kiện an toàn.');
-      return;
-    }
-    const acMeter = parts.find((p) => p.kind === 'multimeter' && p.ac);
-    if (acMeter) {
-      setHint('Đồng hồ đang ở thang xoay chiều — bấm SELECT để về DC trước khi ghi số liệu.');
-      return;
-    }
-    if (liveI <= 0 || liveU <= 0) {
-      setHint('Số đọc đang bằng 0 hoặc báo OL — kiểm tra lại vị trí núm xoay của hai đồng hồ.');
-      return;
-    }
-    const idx = rows.findIndex((r) => !r.u || !r.i);
-    if (idx === -1) {
-      setHint('Bảng đã đủ 5 lần đo. Xem kết quả xử lý sai số ở ô bên dưới.');
-      return;
-    }
-    setRows((prev) => prev.map((r, i) => (i === idx ? { u: fmt(liveU, 2), i: fmt(liveI, 3) } : r)));
-    setHint(`Đã ghi lần đo ${idx + 1}. Xoay biến trở sang vị trí khác rồi ghi tiếp.`);
-  };
-
-  const rowResults = rows.map((r) => {
-    const u = parseFloat(r.u), i = parseFloat(r.i);
-    if (!Number.isFinite(u) || !Number.isFinite(i) || i === 0) return null;
-    const R = u / i;
-    return { R, ok: Math.abs(R - RX_NOMINAL) / RX_NOMINAL <= ERROR_LIMIT };
-  });
-  const valid = rowResults.filter(Boolean) as { R: number; ok: boolean }[];
-  const avgR = valid.length ? valid.reduce((s, v) => s + v.R, 0) / valid.length : NaN;
-  const deltaR = Math.abs(avgR - RX_NOMINAL);
-  const relErr = deltaR / RX_NOMINAL;
-  const complete = valid.length === rows.length;
-  const passed = complete && relErr <= ERROR_LIMIT;
 
   /* ---------------- Bảng lắp ráp ---------------- */
   /* Lọc khay linh kiện theo từ khoá, không phân biệt dấu tiếng Việt */
@@ -643,113 +592,56 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
   const kClosed = !!parts.find((p) => p.kind === 'switch')?.closed;
 
   return (
-    <div className="ml-scroll h-full min-h-0 overflow-y-auto lg:overflow-hidden grid grid-cols-1 lg:grid-cols-[272px_minmax(0,1fr)_300px] xl:grid-cols-[286px_minmax(0,1fr)_312px] gap-3 pb-3 pr-1">
+    <div className="ml-scroll h-full min-h-0 overflow-y-auto lg:overflow-hidden grid grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[330px_minmax(0,1fr)] gap-3 pb-3 pr-1">
 
-      {/* ============ CỘT TRÁI — HƯỚNG DẪN & KHAY LINH KIỆN ============ */}
+      {/* ============ CỘT TRÁI — KIỂM TRA MẠCH & KHAY LINH KIỆN ============ */}
       <div className="ml-scroll flex flex-col gap-3 lg:min-h-0 lg:overflow-y-auto lg:pr-2">
         <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden shrink-0">
-          <header className="px-4 py-2.5 border-b border-slate-200 bg-slate-50/80">
-            <h2 className="text-[12.5px] font-extrabold tracking-widest text-slate-700 uppercase">Hướng dẫn thí nghiệm</h2>
+          <header className="px-4 py-2.5 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between gap-2">
+            <h2 className="text-[clamp(12.5px,0.86vw,15px)] font-extrabold tracking-widest text-slate-700 uppercase">Hệ thống kiểm tra</h2>
+            <span className={`text-[11.5px] font-extrabold px-2 py-0.5 rounded-full text-center ${
+              report.level === 'ok' ? 'bg-emerald-100 text-emerald-700'
+                : report.level === 'warn' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
+            }`}>{report.title}</span>
           </header>
-
-          {([[1, 'Công thức liên quan'], [2, 'Dụng cụ thí nghiệm'], [3, 'Lắp mạch điện']] as const).map(([n, label]) => (
-            <div key={n} className="border-b border-slate-100 last:border-0">
-              <button
-                onClick={() => toggleGuide(n)}
-                className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-left transition-colors ${
-                  openGuide.includes(n) ? 'bg-indigo-50/70' : 'hover:bg-slate-50'
-                }`}
-              >
-                <span className={`w-5 h-5 rounded-full grid place-items-center text-[11.5px] font-extrabold ${
-                  openGuide.includes(n) ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-600'
-                }`}>{n}</span>
-                <span className={`text-[13px] font-bold flex-1 ${openGuide.includes(n) ? 'text-indigo-700' : 'text-slate-700'}`}>{label}</span>
-                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${openGuide.includes(n) ? 'rotate-180' : ''}`} />
-              </button>
-
-              {openGuide.includes(n) && (
-                <div className="px-4 pb-4 pt-1 text-[12.5px] text-slate-600 leading-relaxed">
-                  {n === 1 && (
-                    <div className="space-y-2">
-                      <FormulaRow expr="R = U / I" note="Định luật Ôm — điện trở bằng hiệu điện thế chia cường độ dòng điện." />
-                      <FormulaRow expr="R̄ = (R₁ + … + R₅) / 5" note="Lấy trung bình 5 lần đo để giảm sai số ngẫu nhiên." />
-                      <FormulaRow expr="ΔR = | R̄ − R₀ |" note="Sai số tuyệt đối so với giá trị ghi trên vỏ điện trở." />
-                      <FormulaRow expr="δ = ΔR / R₀ × 100%" note={`Sai số tương đối; bài thực hành yêu cầu δ ≤ ${ERROR_LIMIT * 100}%.`} />
-                    </div>
-                  )}
-
-                  {n === 2 && (
-                    <ul className="ml-scroll space-y-1.5 max-h-[240px] overflow-y-auto pr-1.5">
-                      {parts.map((p) => (
-                        <li key={p.id} className="flex items-center gap-2.5 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5">
-                          <PartThumb kind={p.kind} size={p.kind === 'multimeter' ? 18 : 40}
-                            live={{ closed: true, knob: 0.4, needle: 0.5, func: p.func ?? 'V', unit: 'V', auto: true, reading: '12.0' }} />
-                          <div className="min-w-0">
-                            <div className="font-bold text-slate-700 truncate">{PART_CATALOG[p.kind].short}</div>
-                            <div className="text-[11.5px] text-slate-500 truncate">{PART_CATALOG[p.kind].group}</div>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-
-                  {n === 3 && (
-                    <div className="space-y-2">
-                      <SchematicDiagram />
-                      <ol className="space-y-1.5">
-                        {[
-                          'Nối cực (+) của nguồn tới một chốt của khóa K.',
-                          'Nối chốt còn lại của khóa K vào cổng đỏ của đồng hồ đang để thang A.',
-                          'Nối cổng COM của đồng hồ đó sang đầu A của điện trở Rx.',
-                          'Nối đầu B của Rx qua biến trở rồi trở về cực (−) của nguồn.',
-                          'Mắc đồng hồ thang V song song đúng hai đầu Rx.',
-                          'Có thể cắm dây vào lỗ trên bảng để làm điểm nối trung gian cho gọn.',
-                        ].map((s, i) => (
-                          <li key={i} className="flex gap-2">
-                            <span className="text-indigo-600 font-extrabold shrink-0">{i + 1}.</span>
-                            <span>{s}</span>
-                          </li>
-                        ))}
-                      </ol>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
+          <div className="ml-scroll p-3 space-y-2 max-h-[260px] overflow-y-auto">
+            {report.messages.map((m, i) => (
+              <div key={i} className={`flex gap-2 rounded-xl px-3 py-2 text-[clamp(12.5px,0.86vw,15px)] leading-relaxed border ${
+                m.level === 'ok' ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                  : m.level === 'warn' ? 'bg-amber-50 border-amber-200 text-amber-900'
+                    : 'bg-rose-50 border-rose-200 text-rose-800'
+              }`}>
+                {m.level === 'ok' ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                  : m.level === 'warn' ? <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    : <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />}
+                <span>{m.text}</span>
+              </div>
+            ))}
+            {isPassed && (
+              <p className="text-[12.5px] text-slate-400 pt-1">
+                Bản lắp này đã được xác nhận đạt — bước Báo cáo thực hành đã mở khoá.
+              </p>
+            )}
+          </div>
         </section>
 
         <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden shrink-0">
           <header className="px-4 py-2.5 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between">
-            <h2 className="text-[12.5px] font-extrabold tracking-widest text-slate-700 uppercase">{t('sim.tray')}</h2>
-            <span className="text-[11.5px] text-slate-400 font-semibold">{visibleParts.length}/{PART_ORDER.length}</span>
+            <h2 className="text-[clamp(12.5px,0.86vw,15px)] font-extrabold tracking-widest text-slate-700 uppercase">{t('sim.tray')}</h2>
+            <span className="text-[12.5px] text-slate-400 font-semibold">{visibleParts.length}/{PART_ORDER.length}</span>
           </header>
 
           <div className="p-3">
-            <div className="mb-3">
-              <span className="text-[11.5px] font-bold text-slate-500 uppercase">Cặp màu dây</span>
-              <div className="flex flex-wrap gap-1.5 mt-1.5">
-                {WIRE_PAIRS.map((wp) => (
-                  <button key={wp.id} onClick={() => setPairId(wp.id)} title={wp.name}
-                    className={`h-7 px-1.5 rounded-lg border flex items-center gap-1 transition-all ${
-                      pairId === wp.id ? 'border-slate-800 ring-2 ring-slate-300' : 'border-slate-200 hover:border-slate-400'
-                    }`}>
-                    <span className="w-3.5 h-3.5 rounded-full border border-slate-300" style={{ background: wp.hot }} />
-                    <span className="w-3.5 h-3.5 rounded-full border border-slate-300" style={{ background: wp.cold }} />
-                  </button>
-                ))}
-              </div>
-              <div className="flex gap-1.5 mt-2">
-                {(['hot', 'cold'] as const).map((side) => (
-                  <button key={side} onClick={() => setWireSide(side)}
-                    className={`flex-1 h-7 rounded-lg border text-[11.5px] font-extrabold flex items-center justify-center gap-1.5 transition-all ${
-                      wireSide === side ? 'border-slate-800 ring-2 ring-slate-300' : 'border-slate-200 hover:border-slate-400'
-                    }`}>
-                    <span className="w-3 h-3 rounded-full border border-slate-300" style={{ background: pair[side] }} />
-                    {side === 'hot' ? 'Nhánh dương (+)' : 'Nhánh âm (−)'}
-                  </button>
-                ))}
-              </div>
+            <div className="flex gap-2 mb-3">
+              {(['hot', 'cold'] as const).map((side) => (
+                <button key={side} onClick={() => setWireSide(side)}
+                  className={`flex-1 h-9 rounded-lg border text-[clamp(13px,0.9vw,15.5px)] font-bold flex items-center justify-center gap-2 transition-colors ${
+                    wireSide === side ? 'border-slate-700 bg-slate-50' : 'border-slate-200 hover:border-slate-400'
+                  }`}>
+                  <span className="w-3.5 h-3.5 rounded-full" style={{ background: WIRE_COLORS[side] }} />
+                  {side === 'hot' ? 'Dây đỏ (+)' : 'Dây xanh (−)'}
+                </button>
+              ))}
             </div>
 
             {/* Ô tìm kiếm linh kiện */}
@@ -759,7 +651,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={t('sim.search')}
-                className="w-full h-9 pl-8 pr-8 rounded-xl bg-slate-50 border border-slate-200 text-[12.5px] outline-none focus:border-indigo-400 focus:bg-white transition-colors"
+                className="w-full h-9 pl-8 pr-8 rounded-xl bg-slate-50 border border-slate-200 text-[clamp(12.5px,0.86vw,15px)] outline-none focus:border-indigo-400 focus:bg-white transition-colors"
               />
               {query && (
                 <button onClick={() => setQuery('')}
@@ -771,7 +663,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
 
             <div className="ml-scroll grid grid-cols-2 gap-2 max-h-[300px] overflow-y-auto pr-1.5">
               {visibleParts.length === 0 && (
-                <p className="col-span-2 text-center text-[12.5px] text-slate-400 py-6">{t('sim.noResult')}</p>
+                <p className="col-span-2 text-center text-[clamp(12.5px,0.86vw,15px)] text-slate-400 py-6">{t('sim.noResult')}</p>
               )}
               {visibleParts.map((k) => (
                 <button
@@ -784,8 +676,8 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
                     <PartThumb kind={k} size={k === 'multimeter' ? 26 : 60}
                       live={{ closed: true, knob: 0.4, needle: 0.55, func: 'V', unit: 'V', auto: true, reading: '12.0' }} />
                   </div>
-                  <span className="text-[11px] font-bold text-slate-600 text-center leading-tight">{PART_CATALOG[k].short}</span>
-                  <span className="text-[10.5px] text-indigo-600 font-bold opacity-0 group-hover:opacity-100 flex items-center gap-0.5">
+                  <span className="text-[12px] font-bold text-slate-600 text-center leading-tight">{PART_CATALOG[k].short}</span>
+                  <span className="text-[11.5px] text-indigo-600 font-bold opacity-0 group-hover:opacity-100 flex items-center gap-0.5">
                     <Plus className="w-2.5 h-2.5" /> Thêm
                   </span>
                 </button>
@@ -798,7 +690,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
           <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden shrink-0">
             <header className="px-4 py-2.5 border-b border-slate-200 bg-slate-50/80 flex items-center gap-2">
               <Gauge className="w-3.5 h-3.5 text-indigo-600" />
-              <h2 className="text-[12.5px] font-extrabold tracking-widest text-slate-700 uppercase">Đồng hồ vạn năng</h2>
+              <h2 className="text-[clamp(12.5px,0.86vw,15px)] font-extrabold tracking-widest text-slate-700 uppercase">Đồng hồ vạn năng</h2>
             </header>
             <div className="p-3 space-y-3">
               {parts.filter((p) => p.kind === 'multimeter').map((p, mi) => {
@@ -810,16 +702,16 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
                 return (
                   <div key={p.id} className="border border-slate-200 rounded-xl p-2.5 bg-slate-50/60">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-[12.5px] font-extrabold text-slate-700">Đồng hồ {mi + 1}</span>
-                      <span className="font-mono font-extrabold text-[13px] text-slate-900">
-                        {v.text || '– – –'} <span className="text-[11.5px] text-slate-500">{v.unit}</span>
+                      <span className="text-[clamp(12.5px,0.86vw,15px)] font-extrabold text-slate-700">Đồng hồ {mi + 1}</span>
+                      <span className="font-mono font-extrabold text-[clamp(13px,0.9vw,15.5px)] text-slate-900">
+                        {v.text || '– – –'} <span className="text-[12.5px] text-slate-500">{v.unit}</span>
                       </span>
                     </div>
 
                     <div className="grid grid-cols-4 gap-1">
                       {DMM_FUNCS.map((fn) => (
                         <button key={fn.id} title={fn.name} onClick={() => setDmmFunc(p.id, fn.id)}
-                          className={`h-6 rounded-md text-[11px] font-extrabold border transition-colors ${
+                          className={`h-6 rounded-md text-[12px] font-extrabold border transition-colors ${
                             (p.func ?? 'V') === fn.id
                               ? 'bg-indigo-600 border-indigo-600 text-white'
                               : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
@@ -849,11 +741,11 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
           <header className="px-4 py-2.5 border-b border-slate-200 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <CircuitBoard className="w-4 h-4 text-indigo-600" />
-              <h2 className="text-[12.5px] font-extrabold tracking-widest text-slate-700 uppercase">Bảng lắp ráp mạch điện</h2>
+              <h2 className="text-[clamp(12.5px,0.86vw,15px)] font-extrabold tracking-widest text-slate-700 uppercase">Bảng lắp ráp mạch điện</h2>
             </div>
             <div className="flex items-center gap-1.5">
               <button onClick={toggleK}
-                className={`h-7 px-2.5 rounded-lg text-[12.5px] font-bold flex items-center gap-1.5 border transition-colors ${
+                className={`h-7 px-2.5 rounded-lg text-[clamp(12.5px,0.86vw,15px)] font-bold flex items-center gap-1.5 border transition-colors ${
                   kClosed ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
                     : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
                 }`}>
@@ -861,15 +753,15 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
                 {kClosed ? 'Khóa K: đóng' : 'Khóa K: mở'}
               </button>
               <button onClick={autoWire}
-                className="h-7 px-2.5 rounded-lg text-[12.5px] font-bold bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center gap-1.5">
+                className="h-7 px-2.5 rounded-lg text-[clamp(12.5px,0.86vw,15px)] font-bold bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center gap-1.5">
                 <Wrench className="w-3.5 h-3.5" /> Nối mẫu
               </button>
               <button onClick={() => { setWires((p) => p.map((w) => ({ ...w, points: [] }))); setHint('Đã duỗi thẳng lại toàn bộ dây nối.'); }}
-                className="h-7 px-2.5 rounded-lg text-[12.5px] font-bold bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center gap-1.5">
+                className="h-7 px-2.5 rounded-lg text-[clamp(12.5px,0.86vw,15px)] font-bold bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center gap-1.5">
                 <Spline className="w-3.5 h-3.5" /> Duỗi dây
               </button>
               <button onClick={() => { setWires([]); setPending(null); setHint('Đã tháo toàn bộ dây nối. Lắp lại mạch từ đầu.'); }}
-                className="h-7 px-2.5 rounded-lg text-[12.5px] font-bold bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center gap-1.5">
+                className="h-7 px-2.5 rounded-lg text-[clamp(12.5px,0.86vw,15px)] font-bold bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center gap-1.5">
                 <RotateCcw className="w-3.5 h-3.5" /> Tháo dây
               </button>
             </div>
@@ -898,7 +790,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
                 className="w-8 h-8 grid place-items-center rounded-lg text-slate-500 hover:bg-slate-100">
                 <ZoomOut className="w-4 h-4" />
               </button>
-              <span className="w-11 text-center text-[12.5px] font-extrabold text-slate-600 tabular-nums">
+              <span className="w-11 text-center text-[clamp(12.5px,0.86vw,15px)] font-extrabold text-slate-600 tabular-nums">
                 {Math.round(view.z * 100)}%
               </span>
               <button title="Phóng to" onClick={() => zoomAt(view.z * 1.2)}
@@ -1102,152 +994,21 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
           </div>
 
           <footer className="px-4 py-2 border-t border-slate-200 bg-slate-50/70 flex items-center gap-3">
-            <span className="text-[12.5px] text-slate-500 flex-1 truncate">{hint}</span>
+            <span className="text-[clamp(12.5px,0.86vw,15px)] text-slate-500 flex-1 truncate">{hint}</span>
             <button onClick={() => {
                 const stamp = new Date().toLocaleTimeString('vi-VN');
-                const payload = { name: `Bản lắp ${stamp}`, data: { parts, wires, rows }, isValid: report.safeToPower };
+                const payload = { name: `Bản lắp ${stamp}`, data: { parts, wires }, isValid: report.safeToPower };
                 if (!onSaveCircuit) { setSavedAt(stamp); return; }
                 onSaveCircuit(payload)
                   .then(() => { setSavedAt(stamp); setHint('Đã lưu bản lắp vào cơ sở dữ liệu.'); })
                   .catch(() => setHint('Không lưu được bản lắp — kiểm tra lại máy chủ dữ liệu.'));
               }}
-              className="h-8 px-3 rounded-xl text-[12.5px] font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center gap-1.5 shrink-0">
+              className="h-8 px-3 rounded-xl text-[clamp(12.5px,0.86vw,15px)] font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center gap-1.5 shrink-0">
               <Save className="w-3.5 h-3.5 text-emerald-600" />
               {savedAt ? `Đã lưu ${savedAt}` : 'Lưu bản lắp'}
             </button>
           </footer>
         </div>
-      </div>
-
-      {/* ============ CỘT PHẢI — THU THẬP & TÍNH TOÁN ============ */}
-      <div className="ml-scroll flex flex-col gap-3 lg:min-h-0 lg:overflow-y-auto lg:pr-2">
-        <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden shrink-0">
-          <header className="px-4 pt-2.5 border-b border-slate-200">
-            <h2 className="text-[12.5px] font-extrabold tracking-widest text-slate-700 uppercase">Thu thập &amp; tính toán</h2>
-            <div className="mt-2 flex">
-              <span className="px-3 py-1.5 text-[12.5px] font-bold text-indigo-700 border-b-2 border-indigo-600">Số liệu thực nghiệm</span>
-            </div>
-          </header>
-
-          <div className="p-3">
-            <div className="grid grid-cols-2 gap-2 mb-3">
-              <LiveReadout label="Vôn kế đọc được" value={report.safeToPower ? `${fmt(liveU, 2)} V` : '— V'} tone="blue" />
-              <LiveReadout label="Ampe kế đọc được" value={report.safeToPower ? `${fmt(liveI, 3)} A` : '— A'} tone="emerald" />
-            </div>
-
-            <table className="w-full text-[12.5px] border-collapse">
-              <thead>
-                <tr className="bg-slate-50 text-slate-500">
-                  {['Lần đo', 'U (V)', 'I (A)', 'R (Ω)', 'Đánh giá'].map((h) => (
-                    <th key={h} className="border border-slate-200 px-1.5 py-1.5 font-bold text-[11.5px]">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r, i) => {
-                  const res = rowResults[i];
-                  return (
-                    <tr key={i}>
-                      <td className="border border-slate-200 text-center font-bold text-slate-500 py-1">{i + 1}</td>
-                      <td className="border border-slate-200 p-0">
-                        <input value={r.u} inputMode="decimal"
-                          onChange={(e) => setRows((p) => p.map((x, j) => (j === i ? { ...x, u: e.target.value } : x)))}
-                          className="w-full px-1.5 py-1.5 text-center outline-none focus:bg-indigo-50 font-semibold text-slate-700" />
-                      </td>
-                      <td className="border border-slate-200 p-0">
-                        <input value={r.i} inputMode="decimal"
-                          onChange={(e) => setRows((p) => p.map((x, j) => (j === i ? { ...x, i: e.target.value } : x)))}
-                          className="w-full px-1.5 py-1.5 text-center outline-none focus:bg-indigo-50 font-semibold text-slate-700" />
-                      </td>
-                      <td className="border border-slate-200 text-center font-bold text-slate-700">{res ? fmt(res.R, 1) : ''}</td>
-                      <td className={`border border-slate-200 text-center text-[11px] font-extrabold ${
-                        !res ? 'text-slate-300' : res.ok ? 'text-emerald-600' : 'text-rose-600'
-                      }`}>
-                        {!res ? '—' : res.ok ? 'HỢP LÝ' : 'SAI LỆCH'}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-
-            <div className="flex gap-2 mt-3">
-              <button onClick={recordRow}
-                className="flex-1 h-9 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[12.5px] font-extrabold flex items-center justify-center gap-1.5">
-                <Plus className="w-3.5 h-3.5" /> Ghi số liệu
-              </button>
-              <button onClick={() => setRows(EMPTY_ROWS)}
-                className="h-9 px-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 text-[12.5px] font-bold hover:bg-slate-100">
-                Xoá bảng
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden shrink-0">
-          <header className="px-4 py-2.5 border-b border-slate-200 bg-slate-50/80 flex items-center gap-2">
-            <Sigma className="w-3.5 h-3.5 text-indigo-600" />
-            <h2 className="text-[12.5px] font-extrabold tracking-widest text-slate-700 uppercase">Tính sai số &amp; kết quả</h2>
-          </header>
-          <div className="p-3">
-            {!complete ? (
-              <p className="text-[12.5px] text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-3 py-3 text-center">
-                Còn {rows.length - valid.length} lần đo nữa là đủ dữ liệu để tính sai số.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                <ResultRow label="Điện trở trung bình R̄" value={`${fmt(avgR, 1)} Ω`} />
-                <ResultRow label="Giá trị ghi trên vỏ R₀" value={`${RX_NOMINAL} Ω`} />
-                <ResultRow label="Sai số tuyệt đối ΔR" value={`${fmt(deltaR, 1)} Ω`} />
-                <ResultRow label="Sai số tương đối δ" value={`${fmt(relErr * 100, 1)} %`} strong />
-                <div className={`rounded-xl px-3 py-2.5 text-[12.5px] font-bold border ${
-                  passed ? 'bg-emerald-50 border-emerald-300 text-emerald-800' : 'bg-rose-50 border-rose-300 text-rose-800'
-                }`}>
-                  {passed
-                    ? `Kết quả đạt: δ = ${fmt(relErr * 100, 1)}% ≤ ${ERROR_LIMIT * 100}%, phép đo được chấp nhận.`
-                    : `Chưa đạt: δ = ${fmt(relErr * 100, 1)}% vượt ngưỡng ${ERROR_LIMIT * 100}%. Kiểm tra tiếp xúc chốt cắm rồi đo lại.`}
-                </div>
-                <button
-                  disabled={!passed}
-                  onClick={onPassCircuit}
-                  className={`w-full h-9 rounded-xl text-[12.5px] font-extrabold flex items-center justify-center gap-1.5 ${
-                    passed ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
-                  }`}>
-                  Chuyển số liệu sang Báo cáo <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            )}
-          </div>
-        </section>
-
-        <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden shrink-0">
-          <header className="px-4 py-2.5 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between gap-2">
-            <h2 className="text-[12.5px] font-extrabold tracking-widest text-slate-700 uppercase">Hệ thống kiểm tra</h2>
-            <span className={`text-[10.5px] font-extrabold px-2 py-0.5 rounded-full text-center ${
-              report.level === 'ok' ? 'bg-emerald-100 text-emerald-700'
-                : report.level === 'warn' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
-            }`}>{report.title}</span>
-          </header>
-          <div className="ml-scroll p-3 space-y-2 max-h-[260px] overflow-y-auto">
-            {report.messages.map((m, i) => (
-              <div key={i} className={`flex gap-2 rounded-xl px-3 py-2 text-[12.5px] leading-relaxed border ${
-                m.level === 'ok' ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                  : m.level === 'warn' ? 'bg-amber-50 border-amber-200 text-amber-900'
-                    : 'bg-rose-50 border-rose-200 text-rose-800'
-              }`}>
-                {m.level === 'ok' ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                  : m.level === 'warn' ? <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                    : <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />}
-                <span>{m.text}</span>
-              </div>
-            ))}
-            {isPassed && (
-              <p className="text-[11.5px] text-slate-400 pt-1">
-                Bản lắp này đã được xác nhận đạt — bước Báo cáo thực hành đã mở khoá.
-              </p>
-            )}
-          </div>
-        </section>
       </div>
     </div>
   );
@@ -1259,32 +1020,9 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
 
 const DmmChip: React.FC<{ label: string; active: boolean; onClick: () => void }> = ({ label, active, onClick }) => (
   <button onClick={onClick}
-    className={`h-6 px-2 rounded-md text-[11px] font-extrabold border transition-colors ${
+    className={`h-6 px-2 rounded-md text-[12px] font-extrabold border transition-colors ${
       active ? 'bg-cyan-600 border-cyan-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
     }`}>{label}</button>
-);
-
-const FormulaRow: React.FC<{ expr: string; note: string }> = ({ expr, note }) => (
-  <div className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2">
-    <div className="font-mono font-bold text-slate-800 text-[13px]">{expr}</div>
-    <div className="text-[12px] text-slate-500 mt-0.5">{note}</div>
-  </div>
-);
-
-const ResultRow: React.FC<{ label: string; value: string; strong?: boolean }> = ({ label, value, strong }) => (
-  <div className="flex items-center justify-between text-[12.5px] px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg">
-    <span className="text-slate-500">{label}</span>
-    <span className={strong ? 'font-extrabold text-indigo-700' : 'font-bold text-slate-800'}>{value}</span>
-  </div>
-);
-
-const LiveReadout: React.FC<{ label: string; value: string; tone: 'blue' | 'emerald' }> = ({ label, value, tone }) => (
-  <div className={`rounded-xl border px-2.5 py-2 ${
-    tone === 'blue' ? 'bg-blue-50 border-blue-200' : 'bg-emerald-50 border-emerald-200'
-  }`}>
-    <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{label}</div>
-    <div className={`font-mono font-extrabold text-sm ${tone === 'blue' ? 'text-blue-700' : 'text-emerald-700'}`}>{value}</div>
-  </div>
 );
 
 /** Núm xoay biến trở — kéo lên/xuống hoặc dùng thanh trượt */
@@ -1313,7 +1051,7 @@ const RheostatKnob: React.FC<{ value: number; onChange: (v: number) => void }> =
         <div className="absolute inset-0 rounded-full border-2 border-slate-900/40" />
       </div>
       <div>
-        <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Núm biến trở</div>
+        <div className="text-[12px] font-bold uppercase tracking-wide text-slate-500">Núm biến trở</div>
         <div className="font-mono font-extrabold text-slate-800 text-sm">{Math.round(value * 120)} Ω</div>
         <input type="range" min={0} max={100} value={Math.round(value * 100)}
           onChange={(e) => onChange(Number(e.target.value) / 100)}
@@ -1323,22 +1061,3 @@ const RheostatKnob: React.FC<{ value: number; onChange: (v: number) => void }> =
   );
 };
 
-/** Sơ đồ nguyên lý của bài thực hành */
-const SchematicDiagram: React.FC = () => (
-  <svg viewBox="0 0 210 120" className="w-full bg-slate-50 border border-slate-200 rounded-lg">
-    <g stroke="#334155" strokeWidth={1.6} fill="none" strokeLinecap="round">
-      <path d="M20 30 H80 M130 30 H190 M190 30 V90 M190 90 H164 M136 90 H20 M20 90 V30" />
-      <rect x={80} y={22} width={50} height={16} fill="#FFFFFF" />
-      <path d="M105 38 V62 M75 62 H135 M75 62 V72 M135 62 V72" />
-      <circle cx={105} cy={82} r={11} fill="#FFFFFF" />
-      <path d="M75 72 H94 M116 72 H135 M105 71 V38" />
-      <circle cx={150} cy={90} r={11} fill="#FFFFFF" />
-      <path d="M14 46 h12 M17 54 h6" />
-    </g>
-    <text x={105} y={35} textAnchor="middle" fontSize={9} fontWeight={700} fill="#0F172A">Rx</text>
-    <text x={105} y={86} textAnchor="middle" fontSize={9} fontWeight={700} fill="#1D4ED8">V</text>
-    <text x={150} y={94} textAnchor="middle" fontSize={9} fontWeight={700} fill="#047857">A</text>
-    <text x={30} y={54} fontSize={9} fontWeight={700} fill="#B45309">U</text>
-    <text x={105} y={112} textAnchor="middle" fontSize={7.5} fill="#64748B">Vôn kế song song Rx · Ampe kế nối tiếp</text>
-  </svg>
-);

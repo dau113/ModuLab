@@ -12,7 +12,8 @@ import {
   AlertTriangle,
   RotateCcw,
   Trash2,
-  PlusCircle
+  PlusCircle,
+  FilePlus
 } from 'lucide-react';
 
 interface LabReportViewProps {
@@ -22,6 +23,8 @@ interface LabReportViewProps {
   teamCode: string;
   onSubmitReport: (passed: boolean, summary?: { rAvg: number; deltaR: number; relErr: number }) => void;
   isSubmitted: boolean;
+  /** Mở một bản báo cáo mới, xoá sạch số liệu cũ để làm lại từ đầu */
+  onNewReport: () => void;
 }
 
 export const LabReportView: React.FC<LabReportViewProps> = ({
@@ -31,6 +34,7 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
   teamCode,
   onSubmitReport,
   isSubmitted,
+  onNewReport,
 }) => {
   const [showFormulaModal, setShowFormulaModal] = useState<boolean>(false);
   const [selectedRowForFormula, setSelectedRowForFormula] = useState<number | null>(1);
@@ -110,21 +114,21 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
         subtitle={`${module.title} • ${teamCode || 'Nhóm 3 - Bàn 5'}`}
         action={
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg text-[13px] font-bold border border-blue-200 flex items-center gap-1">
+            <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg text-[clamp(13px,0.9vw,15.5px)] font-bold border border-blue-200 flex items-center gap-1">
               <Users className="w-3.5 h-3.5" />
               <span>Đang đồng bộ realtime (4 thành viên)</span>
             </span>
           </div>
         }
       >
-        <p className="text-[13px] text-slate-500 mt-1 mb-4">
+        <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-500 mt-1 mb-4">
           Nhập số liệu đo từ thí nghiệm thật vào bảng bên dưới. Hệ thống sẽ tự động chuyển đổi đơn vị và tính toán giá trị điện trở R = U / I.
         </p>
 
         {/* Table Data */}
         <div className="overflow-x-auto rounded-xl border border-slate-200">
-          <table className="w-full text-left text-[13px] font-sans">
-            <thead className="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider text-[12.5px] border-b border-slate-200">
+          <table className="w-full text-left text-[clamp(13px,0.9vw,15.5px)] font-sans">
+            <thead className="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider text-[clamp(12.5px,0.86vw,15px)] border-b border-slate-200">
               <tr>
                 <th className="p-3 w-16">Lần đo</th>
                 <th className="p-3">Hiệu điện thế (U)</th>
@@ -201,7 +205,7 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
                         setSelectedRowForFormula(row.id);
                         setShowFormulaModal(true);
                       }}
-                      className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-[12.5px] font-bold text-slate-700 flex items-center gap-1 ml-auto transition-colors"
+                      className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-[clamp(12.5px,0.86vw,15px)] font-bold text-slate-700 flex items-center gap-1 ml-auto transition-colors"
                     >
                       <Calculator className="w-3.5 h-3.5 text-indigo-600" />
                       <span>Xem cách tính</span>
@@ -226,13 +230,13 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
         </div>
 
         <div className="mt-3 flex items-center justify-between gap-3">
-          <p className="text-[12.5px] text-slate-500">
+          <p className="text-[clamp(12.5px,0.86vw,15px)] text-slate-500">
             Bảng đang có <strong className="text-slate-700">{rows.length}</strong> lần đo — càng nhiều lần đo thì sai số ngẫu nhiên càng nhỏ.
           </p>
           <button
             disabled={isSubmitted}
             onClick={handleAddRow}
-            className="px-3.5 h-9 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[13px] font-bold flex items-center gap-1.5 transition-colors disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed"
+            className="px-3.5 h-9 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[clamp(13px,0.9vw,15.5px)] font-bold flex items-center gap-1.5 transition-colors disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed"
           >
             <PlusCircle className="w-4 h-4" />
             <span>Thêm lần đo</span>
@@ -244,7 +248,7 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
       <BentoCard className="md:col-span-2 flex flex-col justify-between" title="KẾT QUẢ & THẨM ĐỊNH" subtitle="Chấm điểm sai số">
         <div className="space-y-4 font-sans">
           {/* Average metrics */}
-          <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3 text-[13px]">
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3 text-[clamp(13px,0.9vw,15.5px)]">
             <div className="flex justify-between items-center">
               <span className="text-slate-500 font-medium">R trung bình (R-avg):</span>
               <span className="font-mono font-extrabold text-base text-slate-900">{avgR > 0 ? `${avgR} Ω` : '0 Ω'}</span>
@@ -269,7 +273,7 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
               ? 'bg-emerald-50 border-emerald-500 text-emerald-950 shadow-sm' 
               : 'bg-amber-50 border-amber-400 text-amber-950'
           }`}>
-            <div className="flex items-center gap-2 font-bold text-[13px] mb-1">
+            <div className="flex items-center gap-2 font-bold text-[clamp(13px,0.9vw,15.5px)] mb-1">
               {avgR === 0 && <HelpCircle className="w-4 h-4" />}
               {avgR > 0 && isPassed && <CheckCircle2 className="w-5 h-5 text-emerald-600" />}
               {avgR > 0 && !isPassed && <AlertTriangle className="w-5 h-5 text-amber-600" />}
@@ -277,7 +281,7 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
                 {avgR === 0 ? 'Chưa có số liệu' : isPassed ? 'ĐẠT YÊU CẦU THỰC HÀNH' : 'CHƯA ĐẠT (SAI SỐ LỚN)'}
               </span>
             </div>
-            <p className="text-[13px] leading-relaxed mt-1">
+            <p className="text-[clamp(13px,0.9vw,15.5px)] leading-relaxed mt-1">
               {avgR === 0 
                 ? 'Hãy nhập ít nhất 1 lần đo hiệu điện thế và dòng điện.' 
                 : isPassed 
@@ -292,26 +296,45 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
           <button
             disabled={avgR === 0 || isExporting}
             onClick={handleExportPDF}
-            className="w-full py-2.5 px-4 bg-white hover:bg-slate-50 disabled:opacity-50 border border-slate-200 rounded-xl text-[13px] font-bold text-slate-700 flex items-center justify-center gap-2 transition-colors shadow-sm"
+            className="w-full py-2.5 px-4 bg-white hover:bg-slate-50 disabled:opacity-50 border border-slate-200 rounded-xl text-[clamp(13px,0.9vw,15.5px)] font-bold text-slate-700 flex items-center justify-center gap-2 transition-colors shadow-sm"
           >
             <Download className={`w-4 h-4 text-indigo-600 ${isExporting ? 'animate-bounce' : ''}`} />
             <span>{isExporting ? 'Đang xuất tệp PDF...' : 'Xuất Báo cáo ra tệp PDF'}</span>
           </button>
 
-          <button
-            disabled={avgR === 0}
-            onClick={() => onSubmitReport(isPassed, { rAvg: avgR, deltaR: absError, relErr: relativeError / 100 })}
-            className={`w-full py-3 px-4 rounded-xl text-[13px] font-bold flex items-center justify-center gap-2 transition-all shadow-md ${
-              isSubmitted 
-                ? 'bg-slate-800 text-white' 
-                : avgR > 0 
-                ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200' 
-                : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
-            }`}
-          >
-            <Send className="w-4 h-4" />
-            <span>{isSubmitted ? '✓ Đã gửi vào Sổ điểm GV' : 'Nộp báo cáo chính thức'}</span>
-          </button>
+          {!isSubmitted && (
+            <button
+              disabled={avgR === 0}
+              onClick={() => onSubmitReport(isPassed, { rAvg: avgR, deltaR: absError, relErr: relativeError / 100 })}
+              className={`w-full py-3 px-4 rounded-xl text-[clamp(14px,0.98vw,16.5px)] font-bold flex items-center justify-center gap-2 transition-colors ${
+                avgR > 0
+                  ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                  : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+              }`}
+            >
+              <Send className="w-4 h-4" />
+              <span>Nộp báo cáo chính thức</span>
+            </button>
+          )}
+
+          {isSubmitted && (
+            <div className="space-y-2">
+              <div className="w-full py-2.5 px-4 rounded-xl bg-emerald-50 border border-emerald-200 text-[clamp(14px,0.98vw,16.5px)] font-bold text-emerald-800 flex items-center justify-center gap-2">
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Đã gửi vào sổ điểm giáo viên</span>
+              </div>
+              <button
+                onClick={onNewReport}
+                className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[clamp(14px,0.98vw,16.5px)] font-bold flex items-center justify-center gap-2 transition-colors"
+              >
+                <FilePlus className="w-4 h-4" />
+                <span>Làm bài báo cáo mới</span>
+              </button>
+              <p className="text-[clamp(12.5px,0.86vw,15px)] text-slate-500 text-center leading-relaxed">
+                Bản đã nộp vẫn được giữ trong sổ điểm; bài mới sẽ là một lượt đo khác.
+              </p>
+            </div>
+          )}
         </div>
       </BentoCard>
 
@@ -326,10 +349,10 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900">Chi tiết cách tính (Không là hộp đen)</h3>
-                  <p className="text-[12.5px] text-slate-400">Minh bạch công thức và từng bước thế số</p>
+                  <p className="text-[clamp(12.5px,0.86vw,15px)] text-slate-400">Minh bạch công thức và từng bước thế số</p>
                 </div>
               </div>
-              <span className="text-[13px] bg-slate-100 px-2.5 py-1 rounded-lg font-bold text-slate-700">
+              <span className="text-[clamp(13px,0.9vw,15.5px)] bg-slate-100 px-2.5 py-1 rounded-lg font-bold text-slate-700">
                 Lần đo #0{selectedRowForFormula}
               </span>
             </div>
@@ -341,7 +364,7 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
               const uInVolts = r.uUnit === 'mV' ? r.u / 1000 : r.u;
 
               return (
-                <div className="space-y-4 text-[13px]">
+                <div className="space-y-4 text-[clamp(13px,0.9vw,15.5px)]">
                   <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
                     <strong className="text-indigo-900 block mb-1">Bước 1: Nhận diện & Quy đổi đơn vị chuẩn SI</strong>
                     <p className="text-slate-600">
@@ -374,7 +397,7 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
             <div className="mt-6 flex justify-end">
               <button
                 onClick={() => setShowFormulaModal(false)}
-                className="px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl text-[13px] hover:bg-indigo-700 transition-colors shadow-sm"
+                className="px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl text-[clamp(13px,0.9vw,15.5px)] hover:bg-indigo-700 transition-colors shadow-sm"
               >
                 Đóng lại
               </button>

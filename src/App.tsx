@@ -10,7 +10,6 @@ import type { ApiUser, Bootstrap } from './api/client';
 import { TopNav, Sidebar, Footer, WarningBadge } from './components/common';
 import { SettingsProvider, useSettings } from './settings';
 import { HomeMenu } from './components/f0-home';
-import { PrepGuideView } from './components/f3-theory/prep';
 import { AuthAccountView } from './components/f1-auth';
 import { QuizGame } from './components/f2-quiz';
 import { TheoryView } from './components/f3-theory';
@@ -99,13 +98,13 @@ function Workspace() {
         <div className="max-w-md bg-white border border-slate-200 rounded-2xl shadow-sm p-6 text-center">
           <ShieldAlert className="w-10 h-10 text-rose-500 mx-auto mb-3" />
           <h1 className="text-lg font-extrabold mb-2">Không kết nối được cơ sở dữ liệu</h1>
-          <p className="text-[13px] text-slate-600 mb-1">{loadError}</p>
-          <p className="text-[13px] text-slate-500 mb-4">
+          <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-600 mb-1">{loadError}</p>
+          <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-500 mb-4">
             Hãy mở một cửa sổ dòng lệnh khác và chạy <code className="font-mono font-bold">npm run server</code>,
             lần đầu chạy thêm <code className="font-mono font-bold">npm run db:seed</code>.
           </p>
           <button onClick={() => void loadAll()}
-            className="px-4 h-10 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[13px] font-bold">
+            className="px-4 h-10 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[clamp(13px,0.9vw,15.5px)] font-bold">
             Thử kết nối lại
           </button>
         </div>
@@ -118,7 +117,7 @@ function Workspace() {
       <div className="w-full h-screen bg-slate-100 text-slate-900 grid place-items-center font-sans">
         <div className="text-center">
           <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-[13px] font-bold text-slate-500">Đang nạp dữ liệu từ cơ sở dữ liệu…</p>
+          <p className="text-[clamp(13px,0.9vw,15.5px)] font-bold text-slate-500">Đang nạp dữ liệu từ cơ sở dữ liệu…</p>
         </div>
       </div>
     );
@@ -152,11 +151,11 @@ function Workspace() {
 
       {/* Guest mode warning banner if triggered */}
       {isGuestMode && (
-        <div className="bg-amber-400 text-slate-950 px-6 py-1.5 text-[13px] font-bold flex items-center justify-between shadow-sm z-10 animate-fadeIn">
+        <div className="bg-amber-400 text-slate-950 px-6 py-1.5 text-[clamp(13px,0.9vw,15.5px)] font-bold flex items-center justify-between shadow-sm z-10 animate-fadeIn">
           <span>⚠️ Bạn đang truy cập ở Chế độ Khách (Chưa đăng nhập) — Kết quả Game ôn tập và Báo cáo sẽ không được ghi nhận vào điểm chính thức!</span>
           <button 
             onClick={() => setIsGuestMode(false)}
-            className="underline hover:text-indigo-900 text-[12.5px] ml-4 font-extrabold"
+            className="underline hover:text-indigo-900 text-[clamp(12.5px,0.86vw,15px)] ml-4 font-extrabold"
           >
             Đăng nhập ngay
           </button>
@@ -177,13 +176,12 @@ function Workspace() {
         {/* Main Bento Grid Content Area */}
         <main className="flex-1 p-6 overflow-hidden flex flex-col">
           {/* Quick breadcrumb & role check bar */}
-          <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-200/80 shrink-0 text-[13px]">
+          <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-200/80 shrink-0 text-[clamp(13px,0.9vw,15.5px)]">
             <div className="flex items-center gap-2 text-slate-500 font-medium">
               <span>ModuLab Workspace</span>
               <span>/</span>
               <span className="font-bold text-slate-800">
                 {currentStep === 'theory' && `${t('nav.theory')} — ${t('nav.theory.lesson')}`}
-                {currentStep === 'prep' && `${t('nav.theory')} — ${t('nav.theory.prep')}`}
                 {currentStep === 'tools' && `${t('nav.theory')} — ${t('nav.theory.tools')}`}
                 {currentStep === 'quiz' && t('nav.quiz')}
                 {currentStep === 'circuit' && t('nav.circuit')}
@@ -196,7 +194,7 @@ function Workspace() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setCurrentStep('account')}
-                className={`px-3 py-1 rounded-lg text-[13px] font-bold transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1 rounded-lg text-[clamp(13px,0.9vw,15.5px)] font-bold transition-all flex items-center gap-1.5 ${
                   currentStep === 'account' 
                     ? 'bg-indigo-600 text-white shadow-sm' 
                     : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
@@ -221,10 +219,6 @@ function Workspace() {
                 }}
                 availableModules={modules}
               />
-            )}
-
-            {currentStep === 'prep' && (
-              <PrepGuideView module={currentModule} onGoToCircuit={() => setCurrentStep('circuit')} />
             )}
 
             {currentStep === 'tools' && (
@@ -264,6 +258,12 @@ function Workspace() {
 
             {currentStep === 'report' && (
               <LabReportView
+                onNewReport={() => {
+                  setReportRows([]);
+                  setIsReportSubmitted(false);
+                  setIsReportPassed(false);
+                  void api.reopenReport(currentUser.id, currentModuleId).catch(() => undefined);
+                }}
                 module={currentModule}
                 rows={reportRows}
                 onUpdateRows={handleUpdateRows}
@@ -285,7 +285,7 @@ function Workspace() {
             {currentStep === 'teacher' && (
               teacherStats
                 ? <TeacherDashboard stats={teacherStats} />
-                : <div className="h-full grid place-items-center text-[13px] text-slate-500">Đang nạp số liệu lớp…</div>
+                : <div className="h-full grid place-items-center text-[clamp(13px,0.9vw,15.5px)] text-slate-500">Đang nạp số liệu lớp…</div>
             )}
 
             {currentStep === 'account' && (

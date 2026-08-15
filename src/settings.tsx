@@ -37,7 +37,6 @@ const DICT = {
   'app.cancel': ['Huỷ', 'Cancel'],
   'app.loading': ['Đang nạp dữ liệu…', 'Loading data…'],
   'app.settings': ['Cài đặt', 'Settings'],
-  'app.language': ['Ngôn ngữ', 'Language'],
   'app.theme': ['Màu nền', 'Colour mode'],
   'app.theme.light': ['Sáng', 'Light'],
   'app.theme.dark': ['Tối', 'Dark'],
@@ -48,7 +47,6 @@ const DICT = {
   'nav.current': ['Thực hành hiện tại:', 'Current lab:'],
   'nav.theory': ['Tài liệu', 'Reference'],
   'nav.theory.lesson': ['Lý thuyết ôn tập', 'Lesson notes'],
-  'nav.theory.prep': ['Chuẩn bị thí nghiệm', 'Lab preparation'],
   'nav.theory.tools': ['Khám phá dụng cụ', 'Explore instruments'],
   'nav.quiz': ['Khởi động', 'Warm-up'],
   'nav.circuit': ['Thực hành', 'Lab practice'],
@@ -57,6 +55,10 @@ const DICT = {
 
   /* Trang chủ */
   'home.hero.title': ['Học Vật lí điện học bằng cách tự tay lắp mạch', 'Learn electricity by wiring circuits yourself'],
+  'home.hero.intro': [
+    'ModuLab là phòng thực hành Vật lí điện học ảo dành cho học sinh trung học phổ thông. Toàn bộ dụng cụ trong phòng thí nghiệm — từ biến áp nguồn, điện trở, biến trở cho tới đồng hồ vạn năng và bảng lắp ráp — đều được dựng lại đúng hình dạng thật và hoạt động theo đúng các định luật vật lí. Em tự tay chọn linh kiện, nối dây, đóng khoá và đọc số đo; nếu đấu sai thì hệ thống báo ngay chỗ sai thay vì để cháy thiết bị. Nhờ vậy em có thể thử đi thử lại bao nhiêu lần cũng được trước khi bước vào phòng thí nghiệm thật.',
+    'ModuLab is a virtual electricity lab for upper-secondary students. Every instrument — the power supply, resistors, rheostat, multimeter and assembly board — is drawn from the real equipment and behaves according to the actual laws of physics. You pick the parts, run the wires, close the key and read the meters yourself; wire it wrong and the system points at the mistake instead of letting anything burn. That means you can try as many times as you like before stepping into the real lab.',
+  ],
   'home.hero.sub': [
     'Lắp mạch, đo đạc và viết báo cáo ngay trên máy — an toàn tuyệt đối, sai bao nhiêu lần cũng được.',
     'Wire, measure and report right on your screen — perfectly safe, and you can fail as often as you like.',
@@ -97,14 +99,6 @@ const DICT = {
   'quiz.again': ['Chơi lại', 'Play again'],
   'quiz.explain': ['Giải thích', 'Explanation'],
 
-  /* Chuẩn bị thí nghiệm */
-  'prep.title': ['Chuẩn bị trước khi vào phòng thực hành', 'Before you enter the lab'],
-  'prep.checklist': ['Danh sách dụng cụ cần chuẩn bị', 'Equipment checklist'],
-  'prep.steps': ['Các bước tiến hành', 'Procedure'],
-  'prep.safety': ['Quy tắc an toàn', 'Safety rules'],
-  'prep.done': ['Đã chuẩn bị', 'Ready'],
-  'prep.progress': ['Đã chuẩn bị', 'Prepared'],
-  'prep.items': ['dụng cụ', 'items'],
 
   /* Mô phỏng */
   'sim.search': ['Tìm linh kiện…', 'Search parts…'],

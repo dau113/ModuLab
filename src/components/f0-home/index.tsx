@@ -43,13 +43,13 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({ users, onEnter }) => {
       <div className="max-w-5xl mx-auto px-6 md:px-8">
         {/* Giới thiệu */}
         <section className="py-12 md:py-16 border-b border-slate-200">
-          <p className="text-[13px] font-bold text-indigo-700 uppercase tracking-widest mb-3">
-            {lang === 'vi' ? 'Vật lí 11 · Chương trình 2018' : 'Physics 11 · 2018 curriculum'}
-          </p>
-          <h2 className="text-3xl md:text-4xl font-bold leading-snug max-w-2xl mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold leading-snug max-w-2xl mb-5">
             {t('home.hero.title')}
           </h2>
-          <p className="text-[15px] text-slate-600 max-w-xl leading-relaxed">
+          <p className="text-[clamp(15px,1.05vw,17.5px)] text-slate-700 max-w-3xl leading-relaxed mb-4">
+            {t('home.hero.intro')}
+          </p>
+          <p className="text-[clamp(14px,0.98vw,16.5px)] text-slate-500 max-w-2xl leading-relaxed">
             {t('home.hero.sub')}
           </p>
 
@@ -61,7 +61,7 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({ users, onEnter }) => {
             ].map(([n, label]) => (
               <div key={label}>
                 <dt className="text-2xl font-bold text-indigo-700 leading-none">{n}</dt>
-                <dd className="text-[13px] text-slate-500 mt-1">{label}</dd>
+                <dd className="text-[clamp(13px,0.9vw,15.5px)] text-slate-500 mt-1">{label}</dd>
               </div>
             ))}
           </dl>
@@ -69,7 +69,7 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({ users, onEnter }) => {
 
         {/* Chọn tài khoản */}
         <section className="py-10 border-b border-slate-200">
-          <h3 className="text-[13px] font-bold text-slate-500 uppercase tracking-widest mb-4">
+          <h3 className="text-[clamp(13px,0.9vw,15.5px)] font-bold text-slate-500 uppercase tracking-widest mb-4">
             {t('home.chooseRole')}
           </h3>
 
@@ -98,15 +98,15 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({ users, onEnter }) => {
 
         {/* Bốn bước */}
         <section className="py-10">
-          <h3 className="text-[13px] font-bold text-slate-500 uppercase tracking-widest mb-4">
+          <h3 className="text-[clamp(13px,0.9vw,15.5px)] font-bold text-slate-500 uppercase tracking-widest mb-4">
             {t('home.steps')}
           </h3>
           <ol className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {STEPS.map((s) => (
               <li key={s.key} className="bg-white rounded-xl border border-slate-200 p-5">
                 <s.icon className="w-5 h-5 text-indigo-600 mb-3" />
-                <h4 className="text-[15px] font-bold mb-1.5">{t(`home.${s.key}.title` as never)}</h4>
-                <p className="text-[13px] text-slate-600 leading-relaxed">{t(`home.${s.key}.desc` as never)}</p>
+                <h4 className="text-[clamp(15px,1.05vw,17.5px)] font-bold mb-1.5">{t(`home.${s.key}.title` as never)}</h4>
+                <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-600 leading-relaxed">{t(`home.${s.key}.desc` as never)}</p>
               </li>
             ))}
           </ol>
@@ -114,7 +114,7 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({ users, onEnter }) => {
       </div>
 
       <footer className="border-t border-slate-200 py-6 px-6 md:px-8">
-        <p className="max-w-5xl mx-auto text-[12px] text-slate-400">
+        <p className="max-w-5xl mx-auto text-[13px] text-slate-400">
           ModuLab · {lang === 'vi' ? 'Phòng thực hành Vật lí điện học' : 'Virtual electricity lab'}
         </p>
       </footer>
@@ -129,8 +129,8 @@ const RoleCard: React.FC<{
     <div className="flex items-center gap-2.5 mb-3 pb-3 border-b border-slate-100">
       <Icon className="w-5 h-5 text-indigo-600" />
       <div className="min-w-0">
-        <div className="text-[14px] font-bold leading-tight">{title}</div>
-        <div className="text-[12px] text-slate-500 truncate">{caption}</div>
+        <div className="text-[clamp(14px,0.98vw,16.5px)] font-bold leading-tight">{title}</div>
+        <div className="text-[13px] text-slate-500 truncate">{caption}</div>
       </div>
     </div>
     <div className="space-y-0.5">{children}</div>
@@ -140,7 +140,7 @@ const RoleCard: React.FC<{
 const AccountRow: React.FC<{ label: string; onClick: () => void }> = ({ label, onClick }) => (
   <button onClick={onClick}
     className="w-full text-left px-2.5 py-2 rounded-lg hover:bg-indigo-50 flex items-center justify-between group transition-colors">
-    <span className="text-[13px] font-medium truncate">{label}</span>
+    <span className="text-[clamp(13px,0.9vw,15.5px)] font-medium truncate">{label}</span>
     <ArrowRight className="w-4 h-4 text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity" />
   </button>
 );

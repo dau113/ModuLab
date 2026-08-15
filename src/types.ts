@@ -9,7 +9,7 @@ export interface User {
   teamCode: string;
 }
 
-export type LabStep = 'theory' | 'prep' | 'tools' | 'quiz' | 'circuit' | 'report';
+export type LabStep = 'theory' | 'tools' | 'quiz' | 'circuit' | 'report';
 
 export interface LabModule {
   id: string;

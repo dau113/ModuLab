@@ -183,11 +183,10 @@ export interface PartLive {
   peak?: 'max' | 'min' | null;
   auto?: boolean;
   light?: boolean;
-  beep?: boolean;
   bar?: number;       // 0..1 mức thanh vạch
 }
 
-export type DmmFunc = 'off' | 'V' | 'mV' | 'A' | 'mA' | 'ohm' | 'cont';
+export type DmmFunc = 'off' | 'V' | 'mV' | 'A' | 'mA' | 'ohm';
 
 export interface DmmFuncSpec {
   id: DmmFunc;
@@ -204,9 +203,8 @@ export const DMM_FUNCS: DmmFuncSpec[] = [
   { id: 'off', label: 'OFF', name: 'Tắt', angle: -135, unit: '', ranges: [], color: '#E5E7EB' },
   { id: 'V', label: 'V', name: 'Đo hiệu điện thế (V)', angle: -95, unit: 'V', ranges: [0.6, 6, 60, 600], color: '#F59E0B' },
   { id: 'mV', label: 'mV', name: 'Đo hiệu điện thế nhỏ (mV)', angle: -60, unit: 'mV', ranges: [60, 600], color: '#F59E0B' },
-  { id: 'ohm', label: 'Ω', name: 'Đo điện trở (Ω)', angle: -25, unit: 'Ω', ranges: [600, 6000, 60000, 600000], color: '#22D3EE' },
-  { id: 'cont', label: '♪', name: 'Kiểm tra thông mạch', angle: 10, unit: 'Ω', ranges: [600], color: '#22D3EE' },
-  { id: 'mA', label: 'mA', name: 'Đo dòng điện nhỏ (mA)', angle: 55, unit: 'mA', ranges: [60, 600], color: '#F59E0B' },
+  { id: 'ohm', label: 'Ω', name: 'Đo điện trở (Ω)', angle: -15, unit: 'Ω', ranges: [600, 6000, 60000, 600000], color: '#22D3EE' },
+  { id: 'mA', label: 'mA', name: 'Đo dòng điện nhỏ (mA)', angle: 45, unit: 'mA', ranges: [60, 600], color: '#F59E0B' },
   { id: 'A', label: 'A', name: 'Đo cường độ dòng điện (A)', angle: 95, unit: 'A', ranges: [0.6, 6, 10], color: '#F59E0B' },
 ];
 
@@ -743,11 +741,6 @@ const Art: Record<PartKind, (live: PartLive) => React.ReactNode> = {
             {ind(48, 'HOLD', !!live.hold)}
             {ind(65, 'REL', !!live.rel)}
             {ind(76, live.peak === 'min' ? 'MIN' : 'MAX', !!live.peak)}
-            {live.beep && (
-              <g stroke="#1F2937" strokeWidth={0.9} fill="none">
-                <path d="M92 29 v5 M95 27.5 q2.5 4 0 8 M98 26 q4.5 6.5 0 11" />
-              </g>
-            )}
             <text x={84} y={57} textAnchor="end" fontSize={22} fontWeight={700} fill="#111827"
               fontFamily="ui-monospace, monospace" letterSpacing={-0.5}>{reading}</text>
             <text x={102} y={57} textAnchor="end" fontSize={10.5} fontWeight={800} fill="#1F2937">{unit}</text>
@@ -770,11 +763,11 @@ const Art: Record<PartKind, (live: PartLive) => React.ReactNode> = {
         <circle cx={14} cy={94.4} r={6} fill="#0B1116" opacity={0.5} />
         <circle cx={14} cy={93} r={6} fill={live.hold ? '#0EA5E9' : '#22B8CF'} stroke="#0B6C80" strokeWidth={0.6} />
         <circle cx={12.2} cy={91.2} r={2} fill="#FFFFFF" opacity={0.45} />
-        <text x={14} y={104} textAnchor="middle" fontSize={4.4} fontWeight={800} fill="#CBD5E1">HOLD</text>
+        <text x={23} y={95} fontSize={4.6} fontWeight={800} fill="#CBD5E1">HOLD</text>
         <circle cx={104} cy={94.4} r={6} fill="#0B1116" opacity={0.5} />
         <circle cx={104} cy={93} r={6} fill="#F59E0B" stroke="#9A6205" strokeWidth={0.6} />
         <circle cx={102.2} cy={91.2} r={2} fill="#FFFFFF" opacity={0.45} />
-        <text x={104} y={104} textAnchor="middle" fontSize={4.4} fontWeight={800} fill="#CBD5E1">SELECT</text>
+        <text x={95} y={95} textAnchor="end" fontSize={4.6} fontWeight={800} fill="#CBD5E1">SELECT</text>
 
         {/* Núm xoay */}
         <circle cx={59} cy={133.5} r={30} fill="#0B1116" opacity={0.5} />
@@ -795,7 +788,7 @@ const Art: Record<PartKind, (live: PartLive) => React.ReactNode> = {
           const active = fn.id === f;
           return (
             <text key={fn.id} x={lx} y={ly} textAnchor="middle"
-              fontSize={fn.id === 'cont' ? 6.6 : 7.4} fontWeight={800}
+              fontSize={7.4} fontWeight={800}
               fill={active ? fn.color : '#94A3B8'}>{fn.label}</text>
           );
         })}

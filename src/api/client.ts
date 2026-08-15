@@ -4,7 +4,8 @@
  */
 import type { LabModule, ToolItem, QuizQuestion, TeacherClassStats, LabReportRow } from '../types';
 
-const BASE = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_API_URL || 'https://modulab-q2by.onrender.com/api';
+const BASE = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_API_URL || '/api';
+
 export interface ApiUser {
   id: string;
   name: string;
@@ -86,6 +87,10 @@ export const api = {
   submitReport: (userId: string, moduleId: string, summary: { rAvg?: number; deltaR?: number; relErr?: number }) =>
     call<LabReport>(`/reports/${encodeURIComponent(userId)}/${encodeURIComponent(moduleId)}/submit`,
       { method: 'POST', body: body(summary) }),
+
+  reopenReport: (userId: string, moduleId: string) =>
+    call<LabReport>(`/reports/${encodeURIComponent(userId)}/${encodeURIComponent(moduleId)}/reopen`,
+      { method: 'POST', body: body({}) }),
 
   saveCircuit: (payload: { userId: string; moduleId?: string; name?: string; data: unknown; isValid?: boolean }) =>
     call<{ id: number }>('/circuits', { method: 'POST', body: body(payload) }),

@@ -1,0 +1,17 @@
+# Cấu hình triển khai cho Render — bấm "New Blueprint" rồi trỏ vào kho mã nguồn
+services:
+  - type: web
+    name: modulab
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm run db:seed && npm run server
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: MODULAB_DB
+        value: /var/data/modulab.db
+    disk:
+      name: modulab-data
+      mountPath: /var/data
+      sizeGB: 1

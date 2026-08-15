@@ -110,7 +110,7 @@ export const QuizGame: React.FC<QuizGameProps> = ({ userRole, onFinishQuiz, extr
     return (
       <div className="ml-scroll grid grid-cols-1 lg:grid-cols-6 gap-4 h-full overflow-y-auto pr-1 pb-4">
         <BentoCard className="lg:col-span-6" accent title={t('quiz.title')} subtitle={t('quiz.pickTopic')}>
-          <p className="text-[13.5px] opacity-90 leading-relaxed">
+          <p className="text-[clamp(13.5px,0.94vw,16px)] opacity-90 leading-relaxed">
             {bi(`Ngân hàng ${QUIZ_BANK.length} câu hỏi chia ba chủ đề. Trả lời nhanh và đúng liên tiếp để cộng thêm điểm thưởng.`,
                 `A bank of ${QUIZ_BANK.length} questions across three topics. Answer fast and keep your streak for bonus points.`)}
           </p>
@@ -144,11 +144,11 @@ export const QuizGame: React.FC<QuizGameProps> = ({ userRole, onFinishQuiz, extr
             ))}
           </div>
           <button onClick={start}
-            className="mt-4 w-full h-12 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[14px] flex items-center justify-center gap-2 ">
+            className="mt-4 w-full h-12 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[clamp(14px,0.98vw,16.5px)] flex items-center justify-center gap-2 ">
             <Rocket className="w-5 h-5" /> {t('quiz.begin')}
           </button>
           {userRole === 'gv' && (
-            <p className="mt-2 text-[12px] text-slate-400 text-center">
+            <p className="mt-2 text-[13px] text-slate-400 text-center">
               {bi('Giáo viên có thể bổ sung câu hỏi ở Bảng quản lý.', 'Teachers can add questions from the dashboard.')}
             </p>
           )}
@@ -179,7 +179,7 @@ export const QuizGame: React.FC<QuizGameProps> = ({ userRole, onFinishQuiz, extr
                 : bi('Cố lên nhé!', 'Keep going!')}
           </h2>
           {medal && (
-            <p className="text-[13px] text-slate-500 mb-4">
+            <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-500 mb-4">
               {bi(`Bạn đạt huy chương ${medal} của lượt này.`, `You earned a ${medalEn} medal this round.`)}
             </p>
           )}
@@ -192,11 +192,11 @@ export const QuizGame: React.FC<QuizGameProps> = ({ userRole, onFinishQuiz, extr
 
           <div className="flex gap-2">
             <button onClick={() => setPhase('setup')}
-              className="flex-1 h-11 rounded-2xl border border-slate-200 text-slate-600 font-bold text-[13px] hover:bg-slate-50">
+              className="flex-1 h-11 rounded-2xl border border-slate-200 text-slate-600 font-bold text-[clamp(13px,0.9vw,15.5px)] hover:bg-slate-50">
               {bi('Đổi chủ đề', 'Change topic')}
             </button>
             <button onClick={start}
-              className="flex-1 h-11 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[13px] flex items-center justify-center gap-2">
+              className="flex-1 h-11 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[clamp(13px,0.9vw,15.5px)] flex items-center justify-center gap-2">
               <RotateCcw className="w-4 h-4" /> {t('quiz.again')}
             </button>
           </div>
@@ -214,7 +214,7 @@ export const QuizGame: React.FC<QuizGameProps> = ({ userRole, onFinishQuiz, extr
     <div className="h-full flex flex-col gap-3 min-h-0">
       {/* Thanh trạng thái */}
       <div className="flex items-center gap-3 shrink-0">
-        <div className={`px-3 h-9 rounded-lg ${style.chip} text-white text-[12px] font-bold flex items-center gap-1.5`}>
+        <div className={`px-3 h-9 rounded-lg ${style.chip} text-white text-[13px] font-bold flex items-center gap-1.5`}>
           {React.createElement(TOPIC_ICON[tp] ?? Sigma, { className: 'w-3.5 h-3.5' })}
           {lang === 'en'
             ? QUIZ_TOPICS.find((x) => x.id === tp)?.nameEn
@@ -226,17 +226,17 @@ export const QuizGame: React.FC<QuizGameProps> = ({ userRole, onFinishQuiz, extr
             style={{ width: `${((idx + (answered ? 1 : 0)) / deck.length) * 100}%` }} />
         </div>
 
-        <span className="text-[12.5px] font-bold text-slate-500 tabular-nums">
+        <span className="text-[clamp(12.5px,0.86vw,15px)] font-bold text-slate-500 tabular-nums">
           {t('quiz.question')} {idx + 1}/{deck.length}
         </span>
 
         {streak >= 2 && (
-          <span className="ml-pop px-2.5 h-9 rounded-xl bg-amber-100 border border-amber-300 text-amber-700 text-[12.5px] font-extrabold flex items-center gap-1">
+          <span className="ml-pop px-2.5 h-9 rounded-xl bg-amber-100 border border-amber-300 text-amber-700 text-[clamp(12.5px,0.86vw,15px)] font-extrabold flex items-center gap-1">
             <Flame className="w-3.5 h-3.5" /> ×{streak}
           </span>
         )}
 
-        <span className="px-3 h-9 rounded-xl bg-indigo-600 text-white text-[13px] font-extrabold flex items-center gap-1.5 tabular-nums shadow-md">
+        <span className="px-3 h-9 rounded-xl bg-indigo-600 text-white text-[clamp(13px,0.9vw,15.5px)] font-extrabold flex items-center gap-1.5 tabular-nums shadow-md">
           <Trophy className="w-3.5 h-3.5" /> {score}
         </span>
       </div>
@@ -254,12 +254,12 @@ export const QuizGame: React.FC<QuizGameProps> = ({ userRole, onFinishQuiz, extr
               timeLeft <= 5 ? 'bg-rose-500' : timeLeft <= 12 ? 'bg-amber-500' : 'bg-emerald-500'
             }`} style={{ width: `${Math.max(0, timePct)}%` }} />
           </div>
-          <span className={`text-[13px] font-extrabold tabular-nums w-8 text-right ${
+          <span className={`text-[clamp(13px,0.9vw,15.5px)] font-extrabold tabular-nums w-8 text-right ${
             timeLeft <= 5 && !answered ? 'text-rose-600' : 'text-slate-500'
           }`}>{Math.max(0, timeLeft)}s</span>
         </div>
 
-        <h2 key={current?.id} className="ml-rise text-[17px] md:text-xl font-extrabold leading-snug mb-5 shrink-0">
+        <h2 key={current?.id} className="ml-rise text-[clamp(17px,1.2vw,20px)] md:text-xl font-extrabold leading-snug mb-5 shrink-0">
           {current?.question}
         </h2>
 
@@ -277,14 +277,14 @@ export const QuizGame: React.FC<QuizGameProps> = ({ userRole, onFinishQuiz, extr
                         : 'border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/60'
                 }`}
                 style={{ animationDelay: `${i * 55}ms` }}>
-                <span className={`w-7 h-7 shrink-0 rounded-xl grid place-items-center text-[13px] font-extrabold ${
+                <span className={`w-7 h-7 shrink-0 rounded-xl grid place-items-center text-[clamp(13px,0.9vw,15.5px)] font-extrabold ${
                   reveal ? 'bg-emerald-500 text-white'
                     : wrong ? 'bg-rose-500 text-white'
                       : 'bg-slate-100 text-slate-500'
                 }`}>
                   {reveal ? <CheckCircle2 className="w-4 h-4" /> : wrong ? <XCircle className="w-4 h-4" /> : LETTERS[i]}
                 </span>
-                <span className="text-[13.5px] leading-snug pt-0.5">{o.text}</span>
+                <span className="text-[clamp(13.5px,0.94vw,16px)] leading-snug pt-0.5">{o.text}</span>
               </button>
             );
           })}
@@ -299,14 +299,14 @@ export const QuizGame: React.FC<QuizGameProps> = ({ userRole, onFinishQuiz, extr
               {isRight
                 ? <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                 : <Lightbulb className="w-5 h-5 text-amber-600" />}
-              <span className={`text-[14px] font-extrabold ${isRight ? 'text-emerald-800' : 'text-amber-800'}`}>
+              <span className={`text-[clamp(14px,0.98vw,16.5px)] font-extrabold ${isRight ? 'text-emerald-800' : 'text-amber-800'}`}>
                 {picked === '__timeout__' ? t('quiz.timeUp') : isRight ? t('quiz.correct') : t('quiz.wrong')}
               </span>
-              <span className="ml-auto text-[12px] font-bold text-slate-500">{t('quiz.explain')}</span>
+              <span className="ml-auto text-[13px] font-bold text-slate-500">{t('quiz.explain')}</span>
             </div>
-            <p className="text-[13px] text-slate-700 leading-relaxed">{current?.explanation}</p>
+            <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-700 leading-relaxed">{current?.explanation}</p>
             <button onClick={next}
-              className="mt-3 w-full h-11 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[13.5px] flex items-center justify-center gap-2">
+              className="mt-3 w-full h-11 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[clamp(13.5px,0.94vw,16px)] flex items-center justify-center gap-2">
               {idx + 1 >= deck.length ? t('quiz.finish') : t('quiz.next')}
               <ArrowRight className="w-4 h-4" />
             </button>
@@ -327,14 +327,14 @@ const TopicButton: React.FC<{
       active ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200 hover:border-indigo-300'
     }`}>
     <Icon className={`w-5 h-5 mb-2.5 ${active ? 'text-indigo-600' : 'text-slate-400'}`} />
-    <div className="text-[14px] font-bold leading-tight">{title}</div>
-    <div className="text-[12px] text-slate-500 mt-0.5">{count} câu</div>
+    <div className="text-[clamp(14px,0.98vw,16.5px)] font-bold leading-tight">{title}</div>
+    <div className="text-[13px] text-slate-500 mt-0.5">{count} câu</div>
   </button>
 );
 
 const Stat: React.FC<{ label: string; value: string; tone: string }> = ({ label, value, tone }) => (
   <div className="rounded-2xl bg-slate-50 border border-slate-200 py-3">
     <div className={`text-2xl font-extrabold ${tone}`}>{value}</div>
-    <div className="text-[11.5px] text-slate-500 font-bold uppercase tracking-wide mt-0.5">{label}</div>
+    <div className="text-[12.5px] text-slate-500 font-bold uppercase tracking-wide mt-0.5">{label}</div>
   </div>
 );

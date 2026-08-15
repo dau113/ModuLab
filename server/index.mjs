@@ -5,13 +5,62 @@
  *   Mặc định nghe ở cổng 8787, đổi bằng biến môi trường PORT.
  */
 import { createServer } from 'node:http';
+import { createReadStream, existsSync, statSync } from 'node:fs';
+import { extname, join, normalize, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   listUsers, listModules, listTools, listQuestions, createQuestion, saveAttempt,
-  getReport, saveReportRows, submitReport, saveCircuit, listCircuits, getCircuit,
+  getReport, saveReportRows, submitReport, reopenReport, saveCircuit, listCircuits, getCircuit,
   teacherStats, isEmpty, get, logActivity,
 } from './db.mjs';
 
 const PORT = Number(process.env.PORT || 8787);
+const HOST = process.env.HOST || '0.0.0.0';
+
+/* Thư mục giao diện đã dựng — có thì phục vụ luôn, không có thì chỉ chạy API */
+const HERE = dirname(fileURLToPath(import.meta.url));
+const DIST = process.env.MODULAB_DIST || join(HERE, '..', 'dist');
+const HAS_UI = existsSync(join(DIST, 'index.html'));
+
+const MIME = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.ico': 'image/x-icon',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+  '.ttf': 'font/ttf',
+  '.map': 'application/json; charset=utf-8',
+};
+
+/** Gửi một tệp tĩnh; trả về false nếu không có tệp đó */
+const sendFile = (res, filePath, { immutable = false } = {}) => {
+  if (!existsSync(filePath) || !statSync(filePath).isFile()) return false;
+  const ext = extname(filePath).toLowerCase();
+  res.writeHead(200, {
+    'Content-Type': MIME[ext] ?? 'application/octet-stream',
+    'Content-Length': statSync(filePath).size,
+    'Cache-Control': immutable ? 'public, max-age=31536000, immutable' : 'no-cache',
+  });
+  createReadStream(filePath).pipe(res);
+  return true;
+};
+
+/** Phục vụ giao diện: tệp tĩnh trước, không khớp thì trả index.html cho ứng dụng một trang */
+const serveUi = (res, pathname) => {
+  const clean = normalize(decodeURIComponent(pathname)).replace(/^(\.\.[/\\])+/, '');
+  const target = join(DIST, clean);
+  if (target.startsWith(DIST) && sendFile(res, target, { immutable: clean.startsWith('/assets/') })) return true;
+  return sendFile(res, join(DIST, 'index.html'));
+};
 
 const json = (res, status, body) => {
   const data = JSON.stringify(body);
@@ -81,6 +130,9 @@ const routes = [
   ['POST', /^\/api\/reports\/([^/]+)\/([^/]+)\/submit$/, (m, body) =>
     submitReport(decodeURIComponent(m[1]), decodeURIComponent(m[2]), body)],
 
+  ['POST', /^\/api\/reports\/([^/]+)\/([^/]+)\/reopen$/, (m) =>
+    reopenReport(decodeURIComponent(m[1]), decodeURIComponent(m[2]))],
+
   ['GET', /^\/api\/circuits\/([^/]+)$/, (m) => listCircuits(decodeURIComponent(m[1]))],
   ['GET', /^\/api\/circuit\/(\d+)$/, (m) => getCircuit(Number(m[1]))],
   ['POST', /^\/api\/circuits$/, (_m, body) => saveCircuit(body)],
@@ -101,7 +153,10 @@ const server = createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
   const route = routes.find(([method, pattern]) => method === req.method && pattern.test(url.pathname));
 
-  if (!route) return json(res, 404, { error: 'Không có điểm cuối này', path: url.pathname });
+  if (!route) {
+    if (!url.pathname.startsWith('/api/') && HAS_UI && req.method === 'GET' && serveUi(res, url.pathname)) return;
+    return json(res, 404, { error: 'Không có điểm cuối này', path: url.pathname });
+  }
 
   try {
     const body = ['POST', 'PUT'].includes(req.method) ? await readBody(req) : {};
@@ -114,7 +169,10 @@ const server = createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`ModuLab API đang chạy tại http://localhost:${PORT}`);
+server.listen(PORT, HOST, () => {
+  console.log(`ModuLab đang chạy tại http://localhost:${PORT}`);
+  console.log(HAS_UI
+    ? `  giao diện: phục vụ từ ${DIST}`
+    : '  giao diện: chưa dựng (chạy "npm run build") — hiện chỉ có API');
   if (isEmpty()) console.log('⚠ Cơ sở dữ liệu còn trống — chạy "npm run db:seed" để nạp dữ liệu.');
 });
