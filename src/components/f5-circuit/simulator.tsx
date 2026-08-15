@@ -78,7 +78,11 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
 
   const branchOf = (id: string) => sim.branches.find((b) => b.compId === id);
 
-  const knob = parts.find((p) => p.kind === 'rheostat')?.knob ?? 0.5;
+  /* Núm biến trở chỉ hiện khi bàn lắp có biến trở; nhiều cái thì chọn được từng cái */
+  const rheostats = parts.filter((p) => p.kind === 'rheostat');
+  const [activeRheostat, setActiveRheostat] = useState<string | null>(null);
+  const currentRheostat = rheostats.find((p) => p.id === activeRheostat) ?? rheostats[0] ?? null;
+  const knob = currentRheostat?.knob ?? 0.5;
 
   /* Điện trở đo được của từng đồng hồ đang ở thang Ω hoặc thang thông mạch */
   const ohmReadings = useMemo(() => {
@@ -465,7 +469,9 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
   }, [report.safeToPower]);
 
   const setKnob = (v: number) => {
-    setParts((prev) => prev.map((p) => (p.kind === 'rheostat' ? { ...p, knob: v } : p)));
+    const id = currentRheostat?.id;
+    if (!id) return;
+    setParts((prev) => prev.map((p) => (p.id === id ? { ...p, knob: v } : p)));
   };
 
   const toggleK = () => {
@@ -722,7 +728,15 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
               </button>
             </div>
 
-            <RheostatKnob value={knob} onChange={setKnob} />
+            {currentRheostat && (
+              <RheostatKnob
+                value={knob}
+                onChange={setKnob}
+                items={rheostats.map((p, i) => ({ id: p.id, label: `Biến trở ${i + 1}` }))}
+                activeId={currentRheostat.id}
+                onPick={setActiveRheostat}
+              />
+            )}
 
             <svg
               ref={svgRef}

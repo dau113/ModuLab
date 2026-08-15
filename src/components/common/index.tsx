@@ -278,7 +278,7 @@ export const Footer: React.FC = () => {
         </span>
       </div>
       <div className="flex gap-4 items-center font-bold text-slate-500">
-        <span>Phiên bản v1.26</span>
+        <span>Phiên bản v1.27</span>
       </div>
     </footer>
   );
