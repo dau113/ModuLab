@@ -5,10 +5,11 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { LabStep, LabReportRow, TeacherClassStats } from './types';
-import { api } from './api/client';
+import { api, isOffline } from './api/client';
 import type { ApiUser, Bootstrap } from './api/client';
 import { TopNav, Sidebar, Footer, WarningBadge } from './components/common';
 import { SettingsProvider, useSettings } from './settings';
+import { sfx } from './audio';
 import { HomeMenu } from './components/f0-home';
 import { AuthAccountView } from './components/f1-auth';
 import { QuizGame } from './components/f2-quiz';
@@ -27,6 +28,16 @@ function Workspace() {
   const [teacherStats, setTeacherStats] = useState<TeacherClassStats | null>(null);
 
   const [atHome, setAtHome] = useState(true);
+  const [fading, setFading] = useState(false);
+
+  /** Đổi màn hình kèm hiệu ứng chuyển: phủ mờ ra rồi mới đổi nội dung */
+  const navigate = useCallback((run: () => void) => {
+    setFading(true);
+    window.setTimeout(() => {
+      run();
+      window.setTimeout(() => setFading(false), 30);
+    }, 190);
+  }, []);
   const [currentStep, setCurrentStep] = useState<LabStep | 'teacher' | 'account'>('quiz');
   const { t, lang } = useSettings();
   const [currentModuleId, setCurrentModuleId] = useState<string>('lab-1');
@@ -49,6 +60,16 @@ function Workspace() {
   }, []);
 
   useEffect(() => { void loadAll(); }, [loadAll]);
+
+  /* Tiếng bấm chung cho mọi nút; lần chạm đầu cũng mở khoá âm thanh của trình duyệt */
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      const el = (e.target as HTMLElement | null)?.closest('button, [role="button"], select, input[type="range"]');
+      if (el && !(el as HTMLButtonElement).disabled) sfx.click();
+    };
+    document.addEventListener('click', onClick);
+    return () => document.removeEventListener('click', onClick);
+  }, []);
 
   /* Bảng số liệu của học sinh hiện tại */
   useEffect(() => {
@@ -126,16 +147,17 @@ function Workspace() {
   if (atHome) {
     return (
       <div className="ml-page ml-scale">
+        <PageFade active={fading} />
         <HomeMenu
         users={data.users}
         currentUserId={currentUser.id}
-        onEnter={(userId, guest) => {
+        onEnter={(userId, guest) => navigate(() => {
           const u = data.users.find((x) => x.id === userId);
           if (u) setCurrentUser(u);
           setIsGuestMode(!!guest);
           setCurrentStep(u?.role === 'gv' ? 'teacher' : 'quiz');
           setAtHome(false);
-        }}
+        })}
         />
       </div>
     );
@@ -143,12 +165,13 @@ function Workspace() {
 
   return (
     <div className="ml-scale w-full h-screen bg-slate-100 text-slate-900 flex flex-col font-sans select-none overflow-hidden">
+      <PageFade active={fading} />
       {/* Top Navigation Bar */}
       <TopNav
         currentUser={currentUser}
         onSwitchUser={handleSwitchUser}
         availableUsers={data.users}
-        onGoHome={() => setAtHome(true)}
+        onGoHome={() => navigate(() => setAtHome(true))}
       />
 
       {/* Guest mode warning banner if triggered */}
@@ -169,7 +192,7 @@ function Workspace() {
         {/* Sidebar: Step / Feature Navigation */}
         <Sidebar
           currentStep={currentStep === 'account' ? 'quiz' : currentStep}
-          onSelectStep={(step) => setCurrentStep(step)}
+          onSelectStep={(step) => navigate(() => setCurrentStep(step))}
           userRole={currentUser.role}
           labTitle={currentModule.title}
           isReportPassed={isReportPassed}
@@ -177,6 +200,11 @@ function Workspace() {
 
         {/* Main Bento Grid Content Area */}
         <main key={currentStep} className="ml-page flex-1 p-6 overflow-hidden flex flex-col">
+          {isOffline() && (
+            <div className="mb-3 shrink-0 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[clamp(12.5px,0.86vw,15px)] text-amber-900">
+              Đang chạy ở chế độ ngoại tuyến — bài làm được lưu trong trình duyệt của máy này.
+            </div>
+          )}
           {/* Quick breadcrumb & role check bar */}
           <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-200/80 shrink-0 text-[clamp(13px,0.9vw,15.5px)]">
             <div className="flex items-center gap-2 text-slate-500 font-medium">
@@ -308,6 +336,16 @@ function Workspace() {
   );
 }
 
+
+/** Màn phủ mờ dùng cho lúc chuyển giữa các trang */
+const PageFade: React.FC<{ active: boolean }> = ({ active }) => (
+  <div
+    aria-hidden
+    className={`fixed inset-0 z-[60] bg-slate-950 pointer-events-none transition-opacity duration-200 ${
+      active ? 'opacity-35' : 'opacity-0'
+    }`}
+  />
+);
 
 export default function App() {
   return (
