@@ -5,13 +5,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   MousePointer2, Cable, Eraser, RotateCcw, Wrench, CircuitBoard,
-  CheckCircle2, AlertTriangle, AlertCircle, Plus, Power, Save,
+  CheckCircle2, AlertTriangle, AlertCircle, Plus, Power, Save, SearchCheck,
   ZoomIn, ZoomOut, Maximize2, Gauge, Spline, Search, X,
 } from 'lucide-react';
 import { PART_CATALOG, PART_ORDER, PartArt, PartDefs, PartThumb, DMM_FUNCS, DMM_HOTSPOTS, PS_HOTSPOTS, DMM_SCALE } from './parts';
 import type { PartKind, PartLive, DmmFunc, DmmButton } from './parts';
 import { simulate, checkCircuit, effectiveElec, measureResistance } from './sim';
 import { useSettings } from '../../settings';
+import { sfx } from '../../audio';
 import type { PlacedPart, Wire, TermRef, CheckReport } from './sim';
 
 interface CircuitSimulatorProps {
@@ -55,6 +56,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
   const [wires, setWires] = useState<Wire[]>([]);
   const [tool, setTool] = useState<'select' | 'wire' | 'erase'>('wire');
   const [query, setQuery] = useState('');
+  const [checked, setChecked] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [hint, setHint] = useState<string>(
     'Bấm lần lượt vào hai chốt (hoặc lỗ cắm trên bảng) để tạo dây nối. Nhiều đầu dây cắm chung một lỗ thì được nối với nhau.',
@@ -175,7 +177,6 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
     }
     if (elec === 'ammeter') return { needle: Math.min(1, cur / 3) };
     if (elec === 'voltmeter') return { needle: Math.min(1, Math.abs(b?.V ?? 0) / 15) };
-    if (elec === 'galvanometer') return { needle: 0.5 + Math.max(-0.5, Math.min(0.5, (b?.I ?? 0) / 0.06)) };
     return { closed: p.closed, knob: p.knob, energized: cur > 1e-4 };
   };
 
@@ -458,99 +459,6 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
     setHint(`Đã thêm ${spec.name} lên bảng lắp ráp. Dùng công cụ Chọn để kéo tới vị trí mong muốn.`);
   };
 
-  /** Sắp xếp lại linh kiện thành mạch nối tiếp gọn gàng rồi đi dây theo tuyến vuông góc */
-  const autoWire = () => {
-    const src = parts.find((p) => PART_CATALOG[p.kind].elec === 'source');
-    const sw = parts.find((p) => p.kind === 'switch');
-    const rx = parts.find((p) => p.kind === 'resistor');
-    const rh = parts.find((p) => p.kind === 'rheostat');
-    if (!src || !sw || !rx) {
-      setHint('Nối mẫu cần tối thiểu: nguồn điện, khóa K và điện trở Rx trên bảng lắp ráp.');
-      return;
-    }
-
-    /* Chọn dụng cụ đo: ưu tiên đồng hồ vạn năng, nếu chưa đúng thang thì xoay giúp */
-    const dmms = parts.filter((p) => p.kind === 'multimeter');
-    let amId = dmms.find((p) => p.func === 'A' || p.func === 'mA')?.id
-      ?? parts.find((p) => p.kind === 'ammeter')?.id;
-    let vmId = dmms.find((p) => p.func === 'V' || p.func === 'mV')?.id
-      ?? parts.find((p) => p.kind === 'voltmeter')?.id;
-    const spare = dmms.filter((p) => p.id !== amId && p.id !== vmId);
-    if (!amId && spare.length) amId = spare.shift()!.id;
-    if (!vmId && spare.length) vmId = spare.shift()!.id;
-    if (!amId || !vmId) {
-      setHint('Cần hai dụng cụ đo: một để đo dòng điện (thang A) và một để đo hiệu điện thế (thang V).');
-      return;
-    }
-
-    const amPart = parts.find((p) => p.id === amId)!;
-    const vmPart = parts.find((p) => p.id === vmId)!;
-    const jack = (p: PlacedPart, role: 'in' | 'com') =>
-      p.kind === 'multimeter' ? (role === 'in' ? 'in' : 'com') : (role === 'in' ? 'pos' : 'neg');
-
-    /* Vị trí chuẩn: mạch chính chạy ngang giữa bảng, hai đồng hồ nằm phía trên */
-    const slot: Record<string, { x: number; y: number }> = {
-      [sw.id]: { x: 100, y: 300 },
-      [rx.id]: { x: 330, y: 300 },
-      [src.id]: { x: 120, y: 450 },
-      [amId]: amPart.kind === 'multimeter' ? { x: 96, y: 4 } : { x: 150, y: 70 },
-      [vmId]: vmPart.kind === 'multimeter' ? { x: 586, y: 4 } : { x: 640, y: 70 },
-    };
-    if (rh) slot[rh.id] = { x: 580, y: 300 };
-
-    const placed = parts.map((p) => (slot[p.id] ? { ...p, ...slot[p.id] } : p))
-      .map((p) => (p.id === amId && p.kind === 'multimeter' && p.func !== 'A' && p.func !== 'mA'
-        ? { ...p, func: 'A' as DmmFunc, rangeIdx: null, rel: null, peak: null, hold: false, held: undefined }
-        : p))
-      .map((p) => (p.id === vmId && p.kind === 'multimeter' && p.func !== 'V' && p.func !== 'mV'
-        ? { ...p, func: 'V' as DmmFunc, rangeIdx: null, rel: null, peak: null, hold: false, held: undefined }
-        : p));
-
-    /* Toạ độ chốt sau khi đã dời chỗ */
-    const at = (id: string, term: string) => {
-      const p = placed.find((x) => x.id === id)!;
-      const t = PART_CATALOG[p.kind].terminals.find((x) => x.id === term)!;
-      return { x: p.x + t.x, y: p.y + t.y };
-    };
-
-    const W: Wire[] = [];
-    /** Đi dây theo tuyến chữ U: lên/xuống tới đường ngang midY rồi rẽ ngang */
-    const link = (a: TermRef, b: TermRef, midY: number, color: string) => {
-      const pa = at(a.c, a.t), pb = at(b.c, b.t);
-      W.push({
-        id: `w${W.length}-${Date.now()}`,
-        from: a, to: b, color,
-        points: [{ x: pa.x, y: midY }, { x: pb.x, y: midY }],
-      });
-    };
-
-    const hot = WIRE_COLORS.hot;
-    const cold = WIRE_COLORS.cold;
-    const T = (c: string, t: string): TermRef => ({ c, t });
-
-    // Nhánh dương: nguồn (+) → khóa K → cổng đo dòng của ampe kế → đầu A của Rx
-    link(T(src.id, 'pos'), T(sw.id, 'a'), 472, hot);
-    link(T(sw.id, 'b'), T(amId, jack(amPart, 'in')), 252, hot);
-    link(T(amId, jack(amPart, 'com')), T(rx.id, 'a'), 230, hot);
-
-    // Nhánh âm: đầu B của Rx → biến trở → nguồn (−)
-    if (rh) {
-      link(T(rx.id, 'b'), T(rh.id, 'a'), 402, cold);
-      link(T(rh.id, 'b'), T(src.id, 'neg'), 532, cold);
-    } else {
-      link(T(rx.id, 'b'), T(src.id, 'neg'), 532, cold);
-    }
-
-    // Vôn kế mắc song song đúng hai đầu Rx
-    link(T(vmId, jack(vmPart, 'in')), T(rx.id, 'a'), 264, hot);
-    link(T(vmId, jack(vmPart, 'com')), T(rx.id, 'b'), 288, cold);
-
-    setParts(placed);
-    setWires(W);
-        setView({ z: 1, tx: 0, ty: 0 });
-    setHint('Đã sắp xếp và nối theo sơ đồ chuẩn: nguồn → khóa K → ampe kế → Rx → biến trở → nguồn, vôn kế song song Rx.');
-  };
-
   /* Mạch được soát liên tục sau mỗi thao tác, không cần bấm nút kiểm tra */
   useEffect(() => {
     if (report.safeToPower) onPassCircuit();
@@ -598,31 +506,46 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
       <div className="ml-scroll flex flex-col gap-3 lg:min-h-0 lg:overflow-y-auto lg:pr-2">
         <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden shrink-0">
           <header className="px-4 py-2.5 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between gap-2">
-            <h2 className="text-[clamp(12.5px,0.86vw,15px)] font-extrabold tracking-widest text-slate-700 uppercase">Hệ thống kiểm tra</h2>
-            <span className={`text-[11.5px] font-extrabold px-2 py-0.5 rounded-full text-center ${
-              report.level === 'ok' ? 'bg-emerald-100 text-emerald-700'
-                : report.level === 'warn' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
-            }`}>{report.title}</span>
+            <h2 className="text-[clamp(12.5px,0.86vw,15px)] font-extrabold tracking-widest text-slate-700 uppercase">
+              Hệ thống kiểm tra
+            </h2>
+            <button
+              onClick={() => { setChecked(true); sfx.click(); }}
+              disabled={parts.length === 0}
+              className="h-8 px-3 rounded-lg text-[clamp(12.5px,0.86vw,15px)] font-bold bg-indigo-600 hover:bg-indigo-700 text-white disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors">
+              <SearchCheck className="w-4 h-4" /> Kiểm tra
+            </button>
           </header>
-          <div className="ml-scroll p-3 space-y-2 max-h-[260px] overflow-y-auto">
-            {report.messages.map((m, i) => (
-              <div key={i} className={`flex gap-2 rounded-xl px-3 py-2 text-[clamp(12.5px,0.86vw,15px)] leading-relaxed border ${
-                m.level === 'ok' ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                  : m.level === 'warn' ? 'bg-amber-50 border-amber-200 text-amber-900'
-                    : 'bg-rose-50 border-rose-200 text-rose-800'
-              }`}>
-                {m.level === 'ok' ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                  : m.level === 'warn' ? <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                    : <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />}
-                <span>{m.text}</span>
-              </div>
-            ))}
-            {isPassed && (
-              <p className="text-[12.5px] text-slate-400 pt-1">
-                Bản lắp này đã được xác nhận đạt — bước Báo cáo thực hành đã mở khoá.
-              </p>
-            )}
-          </div>
+
+          {checked && (
+            <div className="ml-scroll p-3 space-y-2 max-h-[280px] overflow-y-auto">
+              <div className={`ml-rise rounded-xl px-3 py-2 text-[clamp(12.5px,0.86vw,15px)] font-bold text-center ${
+                report.level === 'ok' ? 'bg-emerald-100 text-emerald-800'
+                  : report.level === 'warn' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'
+              }`}>{report.title}</div>
+
+              {report.messages.map((m, i) => (
+                <div key={i}
+                  className={`ml-rise flex gap-2 rounded-xl px-3 py-2 text-[clamp(12.5px,0.86vw,15px)] leading-relaxed border ${
+                    m.level === 'ok' ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                      : m.level === 'warn' ? 'bg-amber-50 border-amber-200 text-amber-900'
+                        : 'bg-rose-50 border-rose-200 text-rose-800'
+                  }`}
+                  style={{ animationDelay: `${i * 50}ms` }}>
+                  {m.level === 'ok' ? <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                    : m.level === 'warn' ? <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                      : <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />}
+                  <span>{m.text}</span>
+                </div>
+              ))}
+
+              {isPassed && (
+                <p className="text-[12.5px] text-slate-400 pt-1">
+                  Bản lắp này đã được xác nhận đạt — bước Báo cáo thực hành đã mở khoá.
+                </p>
+              )}
+            </div>
+          )}
         </section>
 
         <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden shrink-0">
@@ -751,10 +674,6 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
                 }`}>
                 <Power className="w-3.5 h-3.5" />
                 {kClosed ? 'Khóa K: đóng' : 'Khóa K: mở'}
-              </button>
-              <button onClick={autoWire}
-                className="h-7 px-2.5 rounded-lg text-[clamp(12.5px,0.86vw,15px)] font-bold bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center gap-1.5">
-                <Wrench className="w-3.5 h-3.5" /> Nối mẫu
               </button>
               <button onClick={() => { setWires((p) => p.map((w) => ({ ...w, points: [] }))); setHint('Đã duỗi thẳng lại toàn bộ dây nối.'); }}
                 className="h-7 px-2.5 rounded-lg text-[clamp(12.5px,0.86vw,15px)] font-bold bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center gap-1.5">
@@ -1026,7 +945,13 @@ const DmmChip: React.FC<{ label: string; active: boolean; onClick: () => void }>
 );
 
 /** Núm xoay biến trở — kéo lên/xuống hoặc dùng thanh trượt */
-const RheostatKnob: React.FC<{ value: number; onChange: (v: number) => void }> = ({ value, onChange }) => {
+const RheostatKnob: React.FC<{
+  value: number;
+  onChange: (v: number) => void;
+  items: { id: string; label: string }[];
+  activeId: string;
+  onPick: (id: string) => void;
+}> = ({ value, onChange, items, activeId, onPick }) => {
   const dragging = useRef<{ y: number; v: number } | null>(null);
   const angle = -140 + value * 280;
 
@@ -1051,7 +976,19 @@ const RheostatKnob: React.FC<{ value: number; onChange: (v: number) => void }> =
         <div className="absolute inset-0 rounded-full border-2 border-slate-900/40" />
       </div>
       <div>
-        <div className="text-[12px] font-bold uppercase tracking-wide text-slate-500">Núm biến trở</div>
+        {items.length > 1 && (
+          <div className="flex gap-1 mb-1.5">
+            {items.map((it, i) => (
+              <button key={it.id} onClick={() => onPick(it.id)}
+                className={`h-6 px-2 rounded-md text-[12px] font-bold border transition-colors ${
+                  it.id === activeId ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-200 text-slate-500 hover:bg-slate-100'
+                }`}>#{i + 1}</button>
+            ))}
+          </div>
+        )}
+        <div className="text-[12px] font-bold uppercase tracking-wide text-slate-500">
+          {items.find((i) => i.id === activeId)?.label ?? 'Núm biến trở'}
+        </div>
         <div className="font-mono font-extrabold text-slate-800 text-sm">{Math.round(value * 120)} Ω</div>
         <input type="range" min={0} max={100} value={Math.round(value * 100)}
           onChange={(e) => onChange(Number(e.target.value) / 100)}

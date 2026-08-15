@@ -40,7 +40,6 @@ export const ToolExplorer: React.FC<ToolExplorerProps> = ({ tools }) => {
     'tool-coil': 'coil',
     'tool-powersupply': 'powersupply',
     'tool-battery9v': 'battery9v',
-    'tool-galvanometer': 'galvanometer',
   };
   const partOf = (toolId: string): PartKind | null => PART_OF_TOOL[toolId] ?? null;
 

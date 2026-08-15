@@ -125,7 +125,8 @@ function Workspace() {
 
   if (atHome) {
     return (
-      <HomeMenu
+      <div className="ml-page ml-scale">
+        <HomeMenu
         users={data.users}
         currentUserId={currentUser.id}
         onEnter={(userId, guest) => {
@@ -135,12 +136,13 @@ function Workspace() {
           setCurrentStep(u?.role === 'gv' ? 'teacher' : 'quiz');
           setAtHome(false);
         }}
-      />
+        />
+      </div>
     );
   }
 
   return (
-    <div className="w-full h-screen bg-slate-100 text-slate-900 flex flex-col font-sans select-none overflow-hidden">
+    <div className="ml-scale w-full h-screen bg-slate-100 text-slate-900 flex flex-col font-sans select-none overflow-hidden">
       {/* Top Navigation Bar */}
       <TopNav
         currentUser={currentUser}
@@ -174,7 +176,7 @@ function Workspace() {
         />
 
         {/* Main Bento Grid Content Area */}
-        <main className="flex-1 p-6 overflow-hidden flex flex-col">
+        <main key={currentStep} className="ml-page flex-1 p-6 overflow-hidden flex flex-col">
           {/* Quick breadcrumb & role check bar */}
           <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-200/80 shrink-0 text-[clamp(13px,0.9vw,15.5px)]">
             <div className="flex items-center gap-2 text-slate-500 font-medium">

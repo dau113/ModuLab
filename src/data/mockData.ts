@@ -79,7 +79,7 @@ Trong đoạn mạch gồm hai điện trở mắc song song:
 export const EXPLORE_TOOLS: ToolItem[] = [
   {
     id: 'tool-dmm',
-    name: 'Đồng hồ vạn năng hiện số (DMM)',
+    name: 'Đồng hồ vạn năng hiện số',
     category: 'meter',
     shortDesc: 'Dụng cụ đo đa năng: đo hiệu điện thế (U), cường độ dòng điện (I) và điện trở (R).',
     detailedDesc: 'Đồng hồ vạn năng kỹ thuật số cho phép lựa chọn nhiều chế độ đo thông qua núm xoay chọn thang đo. Trang bị màn hình LCD hiện số chính xác cao, bảo vệ chống quá tải.',
@@ -120,7 +120,7 @@ export const EXPLORE_TOOLS: ToolItem[] = [
   },
   {
     id: 'tool-ammeter',
-    name: 'Ampe kế kim (A)',
+    name: 'Ampe kế kim (0 – 3A)',
     category: 'meter',
     shortDesc: 'Dụng cụ đo cường độ dòng điện trong mạch (thang đo 0 - 3A).',
     detailedDesc: 'Ampe kế có điện trở trong R_A rất nhỏ (gần bằng 0), dùng để đo dòng điện chạy qua thiết bị mà không làm ảnh hưởng đáng kể đến tổng trở mạch.',
@@ -130,7 +130,7 @@ export const EXPLORE_TOOLS: ToolItem[] = [
   },
   {
     id: 'tool-voltmeter',
-    name: 'Vôn kế kim (V)',
+    name: 'Vôn kế kim (0 – 15V)',
     category: 'meter',
     shortDesc: 'Dụng cụ đo hiệu điện thế giữa hai điểm trong mạch (thang đo 0 - 15V).',
     detailedDesc: 'Vôn kế có điện trở trong R_V rất lớn (hàng mêga-ôm), đảm bảo không có dòng điện đáng kể phân nhánh qua đồng hồ khi mắc song song.',
@@ -140,7 +140,7 @@ export const EXPLORE_TOOLS: ToolItem[] = [
   },
   {
     id: 'tool-battery',
-    name: 'Nguồn điện một chiều (Pin 6V / 12V)',
+    name: 'Đế pin (nguồn một chiều 12V)',
     category: 'source',
     shortDesc: 'Cung cấp hiệu điện thế một chiều ổn định cho mạch thí nghiệm.',
     detailedDesc: 'Hộp pin thí nghiệm có các chốt cắm đầu ra điều chỉnh được điện áp 3V, 6V, 9V, 12V. Có cầu chì tự ngắt khi bị quá tải.',
@@ -150,7 +150,7 @@ export const EXPLORE_TOOLS: ToolItem[] = [
   },
   {
     id: 'tool-resistor',
-    name: 'Điện trở mẫu / Điện trở Rx',
+    name: 'Điện trở mẫu Rx (100Ω – 5W)',
     category: 'component',
     shortDesc: 'Linh kiện tiêu thụ điện năng, cản trở dòng điện trong mạch.',
     detailedDesc: 'Các điện trở sứ công suất 5W - 10W có chốt cắm chuẩn 4mm, được sử dụng để làm điện trở mẫu hoặc đối tượng đo R_x trong bài thực hành.',
@@ -160,7 +160,7 @@ export const EXPLORE_TOOLS: ToolItem[] = [
   },
   {
     id: 'tool-switch',
-    name: 'Khóa K (Công tắc ngắt/mở mạch)',
+    name: 'Công tắc đơn (khoá K)',
     category: 'component',
     shortDesc: 'Dùng để đóng hoặc ngắt dòng điện trong mạch thí nghiệm.',
     detailedDesc: 'Công tắc kiểu dao cắt dạng hở, giúp học sinh quan sát rõ ràng trạng thái đóng mạch hay ngắt mạch an toàn.',
@@ -190,7 +190,7 @@ export const EXPLORE_TOOLS: ToolItem[] = [
   },
   {
     id: 'tool-powersupply',
-    name: 'Bộ nguồn một chiều điều chỉnh 0 – 12V',
+    name: 'Biến áp nguồn một chiều 0 – 12V',
     category: 'source',
     shortDesc: 'Nguồn ổn áp phòng thí nghiệm, điều chỉnh được điện áp lối ra.',
     detailedDesc: 'Bộ nguồn hạ áp và chỉnh lưu điện lưới thành điện một chiều ổn định 0 – 12V, dòng tối đa 5A. Hai màn hình hiện số cho biết điện áp và cường độ dòng điện lối ra; đèn Overload báo quá tải và mạch tự ngắt bảo vệ.',
@@ -207,16 +207,6 @@ export const EXPLORE_TOOLS: ToolItem[] = [
     iconName: 'BatteryFull',
     errorReading: 'Pin dùng lâu thì suất điện động giảm và điện trở trong tăng, làm số đo lệch dần theo thời gian.',
     safetyWarning: '⚠️ Cấm chập hai cực của pin. Pin nóng lên bất thường phải ngắt mạch ngay.'
-  },
-  {
-    id: 'tool-galvanometer',
-    name: 'Gavanô kế (điện kế số 0 ở giữa)',
-    category: 'meter',
-    shortDesc: 'Phát hiện dòng điện rất nhỏ và xác định chiều của dòng điện.',
-    detailedDesc: 'Kim chỉ vị trí số 0 ở chính giữa thang đo nên lệch sang trái hay sang phải tùy chiều dòng điện. Độ nhạy cỡ micrô-ampe, dùng trong thí nghiệm cảm ứng điện từ và mạch cầu cân bằng.',
-    iconName: 'Compass',
-    errorReading: 'Chỉ đọc được độ lớn tương đối; muốn số liệu chính xác phải dùng ampe kế hoặc đồng hồ vạn năng.',
-    safetyWarning: '⚠️ Rất dễ hỏng khi quá tải. Không mắc trực tiếp vào nguồn mà không có điện trở bảo vệ nối tiếp.'
   },
   {
     id: 'tool-coil',

@@ -78,7 +78,6 @@ export function branchResistance(p: PlacedPart, rxTrue: number): number {
     case 'switch': return p.closed ? 2e-3 : 1e11;
     case 'lamp': return spec.value ?? 30;
     case 'coil': return spec.value ?? 6;
-    case 'galvanometer': return spec.value ?? 5;
     case 'ammeter': return p.kind === 'multimeter' ? (p.func === 'mA' ? 1.8 : 0.02) : 0.05;
     case 'voltmeter': return 2e6;
     case 'inert': return 1e11;

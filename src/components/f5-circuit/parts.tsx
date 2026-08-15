@@ -16,7 +16,6 @@ export type PartKind =
   | 'coil'
   | 'ammeter'
   | 'voltmeter'
-  | 'galvanometer'
   | 'multimeter';
 
 /** Vai trò điện học dùng cho bộ giải mạch */
@@ -28,7 +27,6 @@ export type ElecKind =
   | 'lamp'
   | 'ammeter'
   | 'voltmeter'
-  | 'galvanometer'
   | 'coil'
   | 'inert';
 
@@ -139,13 +137,6 @@ export const PART_CATALOG: Record<PartKind, PartSpec> = {
     desc: 'Đo hiệu điện thế. BẮT BUỘC mắc SONG SONG với đoạn mạch cần đo.',
     onBoard: true,
   },
-  galvanometer: {
-    kind: 'galvanometer', name: 'Gavanô kế', short: 'Gavanô kế', group: 'Đo lường',
-    w: 104, h: 106, elec: 'galvanometer', value: 5, unit: 'Ω',
-    terminals: [T('neg', 30, 92, 'neg', 'Chốt (−)'), T('pos', 74, 92, 'pos', 'Chốt (+)')],
-    desc: 'Điện kế số 0 ở giữa — phát hiện dòng điện rất nhỏ và xác định chiều dòng.',
-    onBoard: true,
-  },
   multimeter: {
     kind: 'multimeter', name: 'Đồng hồ vạn năng số', short: 'Đồng hồ vạn năng', group: 'Đo lường',
     w: 158, h: 268, elec: 'voltmeter',
@@ -159,7 +150,7 @@ export const PART_ORDER: PartKind[] = [
   'battery', 'battery9v', 'powersupply',
   'switch', 'switch2', 'rheostat',
   'resistor', 'lamp', 'coil',
-  'multimeter', 'ammeter', 'voltmeter', 'galvanometer',
+  'multimeter', 'ammeter', 'voltmeter',
 ];
 
 export interface PartLive {
@@ -698,15 +689,6 @@ const Art: Record<PartKind, (live: PartLive) => React.ReactNode> = {
     </g>
   ),
 
-  galvanometer: (live) => (
-    <g>
-      <Plate w={104} h={106} r={10} />
-      <DialFace symbol="G" color="#7C3AED" needle={live.needle ?? 0.5} centerZero marks={['−30', '0', '30']} unit="µA" />
-      <text x={52} y={80} textAnchor="middle" fontSize={7.6} fontWeight={800} fill="#0E7490">GAVANÔ KẾ</text>
-      <Post x={30} y={92} tone="black" />
-      <Post x={74} y={92} tone="red" />
-    </g>
-  ),
 
   multimeter: (live) => {
     const f = live.func ?? 'V';

@@ -10,6 +10,7 @@ import {
 import { BentoCard } from '../common';
 import { useSettings } from '../../settings';
 import { QUIZ_BANK, QUIZ_TOPICS, pickQuestions } from '../../data/quizBank';
+import { sfx } from '../../audio';
 import type { QuizQuestion, UserRole } from '../../types';
 
 interface QuizGameProps {
@@ -42,6 +43,7 @@ export const QuizGame: React.FC<QuizGameProps> = ({ userRole, onFinishQuiz, extr
   const [picked, setPicked] = useState<string | null>(null);
   const [score, setScore] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
+  const [burst, setBurst] = useState(0);
   const [streak, setStreak] = useState(0);
   const [bestStreak, setBestStreak] = useState(0);
   const [timeLeft, setTimeLeft] = useState(30);
@@ -60,7 +62,7 @@ export const QuizGame: React.FC<QuizGameProps> = ({ userRole, onFinishQuiz, extr
   /* Đồng hồ đếm ngược */
   useEffect(() => {
     if (phase !== 'playing' || answered) return;
-    if (timeLeft <= 0) { setPicked('__timeout__'); setStreak(0); return; }
+    if (timeLeft <= 0) { setPicked('__timeout__'); setStreak(0); sfx.timeout(); return; }
     timer.current = window.setTimeout(() => setTimeLeft((s) => s - 1), 1000);
     return () => { if (timer.current) window.clearTimeout(timer.current); };
   }, [phase, timeLeft, answered]);
@@ -80,11 +82,14 @@ export const QuizGame: React.FC<QuizGameProps> = ({ userRole, onFinishQuiz, extr
     const correct = current.options.find((o) => o.id === optId)?.isCorrect;
     setPicked(optId);
     if (correct) {
+      sfx.correct();
+      setBurst((b) => b + 1);
       const bonus = timeLeft > 20 ? 2 : timeLeft > 10 ? 1 : 0;
       setScore((s) => s + 10 + bonus + Math.min(streak, 5));
       setCorrectCount((c) => c + 1);
       setStreak((s) => { const n = s + 1; setBestStreak((b) => Math.max(b, n)); return n; });
     } else {
+      sfx.wrong();
       setStreak(0);
       setShake(true);
       window.setTimeout(() => setShake(false), 420);
@@ -94,6 +99,7 @@ export const QuizGame: React.FC<QuizGameProps> = ({ userRole, onFinishQuiz, extr
   const next = () => {
     if (idx + 1 >= deck.length) {
       setPhase('result');
+      sfx.finish(correctCount / Math.max(1, deck.length) >= 0.6);
       onFinishQuiz?.(score, deck.length);
       return;
     }
@@ -165,6 +171,7 @@ export const QuizGame: React.FC<QuizGameProps> = ({ userRole, onFinishQuiz, extr
     return (
       <div className="h-full grid place-items-center p-4">
         <div className="ml-pop relative w-full max-w-lg bg-white rounded-2xl border border-slate-200 shadow-lg p-8 text-center overflow-hidden">
+          {ratio >= 0.6 && <Fireworks seed={correctCount} bursts={3} />}
           <div className={`mx-auto w-16 h-16 rounded-2xl grid place-items-center mb-4 ${
             ratio >= 0.85 ? 'bg-amber-100 text-amber-700'
               : ratio >= 0.6 ? 'bg-slate-100 text-slate-600'
@@ -245,6 +252,7 @@ export const QuizGame: React.FC<QuizGameProps> = ({ userRole, onFinishQuiz, extr
       <div className={`bento-card relative flex-1 min-h-0 bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col overflow-hidden ${
         shake ? 'ml-shake' : ''
       }`}>
+        {isRight && <Fireworks seed={burst} />}
 
         {/* Đồng hồ đếm ngược */}
         <div className="flex items-center gap-3 mb-4 shrink-0">
@@ -338,3 +346,45 @@ const Stat: React.FC<{ label: string; value: string; tone: string }> = ({ label,
     <div className="text-[12.5px] text-slate-500 font-bold uppercase tracking-wide mt-0.5">{label}</div>
   </div>
 );
+
+/**
+ * Pháo hoa chúc mừng — mỗi chùm là các tia bay toả ra từ một điểm rồi tắt dần.
+ * Vẽ bằng CSS nên không tốn tài nguyên và tự dọn khi thẻ bị gỡ.
+ */
+const Fireworks: React.FC<{ seed: number; bursts?: number }> = ({ seed, bursts = 2 }) => {
+  const shows = useMemo(() => {
+    const COLORS = ['#f59e0b', '#ec4899', '#22c55e', '#3b82f6', '#a855f7', '#ef4444'];
+    return Array.from({ length: bursts }, (_, b) => {
+      const cx = 18 + ((seed * 37 + b * 53) % 64);
+      const cy = 16 + ((seed * 19 + b * 29) % 44);
+      const sparks = Array.from({ length: 14 }, (_, i) => {
+        const angle = (i / 14) * Math.PI * 2 + (seed % 7) * 0.2;
+        const dist = 46 + ((i * 13 + seed) % 34);
+        return {
+          dx: `${Math.cos(angle) * dist}px`,
+          dy: `${Math.sin(angle) * dist}px`,
+          color: COLORS[(i + b + seed) % COLORS.length],
+          size: 4 + (i % 3) * 2,
+        };
+      });
+      return { cx, cy, sparks, delay: b * 220 };
+    });
+  }, [seed, bursts]);
+
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      {shows.map((show, b) => (
+        <div key={`${seed}-${b}`} className="absolute" style={{ left: `${show.cx}%`, top: `${show.cy}%` }}>
+          {show.sparks.map((sp, i) => (
+            <span key={i} className="ml-spark"
+              style={{
+                width: sp.size, height: sp.size, background: sp.color,
+                animationDelay: `${show.delay}ms`,
+                ['--dx' as string]: sp.dx, ['--dy' as string]: sp.dy,
+              }} />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+};

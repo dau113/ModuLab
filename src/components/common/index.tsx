@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { User, LabStep, UserRole } from '../../types';
 import { 
   BookOpen, 
@@ -16,7 +16,8 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../../theme';
 import { useSettings, ACCENTS } from '../../settings';
-import { Home, Sun, Moon, Rocket } from 'lucide-react';
+import { Home, Sun, Moon, Rocket, Volume2, VolumeX } from 'lucide-react';
+import { music } from '../../audio';
 
 interface TopNavProps {
   currentUser: User;
@@ -29,6 +30,7 @@ interface TopNavProps {
 export const SettingsBar: React.FC = () => {
   const { lang, accent, setAccent, t } = useSettings();
   const { theme, setTheme } = useTheme();
+  const [musicOn, setMusicOn] = useState(music.isOn());
 
   return (
     <div className="flex items-center gap-3">
@@ -51,6 +53,16 @@ export const SettingsBar: React.FC = () => {
       </div>
 
       <div className="h-6 w-px bg-slate-200" />
+
+      {/* Nhạc nền */}
+      <button
+        onClick={() => setMusicOn(music.toggle())}
+        title={musicOn ? 'Tắt nhạc nền' : 'Bật nhạc nền'}
+        className={`w-8 h-7 grid place-items-center rounded-lg border transition-colors ${
+          musicOn ? 'border-indigo-300 bg-indigo-50 text-indigo-600' : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+        }`}>
+        {musicOn ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+      </button>
 
       {/* Sáng / tối */}
       <button
@@ -153,6 +165,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isReportPassed
 }) => {
   const { t } = useSettings();
+  const [expanded, setExpanded] = useState(false);
   const steps: {
     id: LabStep | 'teacher';
     label: string;
@@ -176,19 +189,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   return (
-    <aside className="w-64 bg-white border-r border-slate-200 p-4 flex flex-col gap-6 shrink-0 z-10">
+    <aside
+      onMouseEnter={() => setExpanded(true)}
+      onMouseLeave={() => setExpanded(false)}
+      className={`ml-sidebar bg-white border-r border-slate-200 p-3 flex flex-col gap-5 shrink-0 z-20 ${
+        expanded ? 'is-open' : ''
+      }`}
+    >
       <div>
-        <div className="flex items-center justify-between mb-4 px-2">
-          <p className="text-[12.5px] font-bold text-slate-400 uppercase tracking-widest">{t('nav.progress')}</p>
-          <span className="text-[12.5px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+        <div className="flex items-center justify-between mb-4 px-1 h-6">
+          <p className="ml-side-label text-[12.5px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
+            {t('nav.progress')}
+          </p>
+          <span className="ml-side-label text-[12.5px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded whitespace-nowrap">
             Module 01
           </span>
         </div>
 
-        <div className="mb-4 px-2 py-2.5 bg-slate-50 rounded-xl border border-slate-200/80">
-          <p className="text-[12.5px] font-bold text-indigo-600 uppercase mb-0.5">{t('nav.current')}</p>
-          <p className="text-[clamp(13px,0.9vw,15.5px)] font-bold text-slate-800 line-clamp-2 leading-snug">{labTitle}</p>
-        </div>
 
         <nav className="flex flex-col gap-1">
           {steps.map((s) => {
@@ -210,10 +227,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 >
                   <div className="flex items-center gap-2.5">
                     <span className={`${isActive ? 'text-white' : 'text-slate-400'}`}>{s.icon}</span>
-                    <span className="text-[clamp(13px,0.9vw,15.5px)]">{s.label}</span>
+                    <span className="ml-side-label text-[clamp(13px,0.9vw,15.5px)] whitespace-nowrap">{s.label}</span>
                   </div>
                   {s.children && (
-                    <ChevronDown className={`w-3.5 h-3.5 transition-transform ${
+                    <ChevronDown className={`ml-side-label w-3.5 h-3.5 transition-transform ${
                       isActive ? 'text-white rotate-180' : 'text-slate-300'
                     }`} />
                   )}
@@ -235,7 +252,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           }`}
                         >
                           <span className={`${childActive ? 'text-indigo-600' : 'text-slate-400'}`}>{c.icon}</span>
-                          <span className="text-[clamp(12.5px,0.86vw,15px)]">{c.label}</span>
+                          <span className="ml-side-label text-[clamp(12.5px,0.86vw,15px)] whitespace-nowrap">{c.label}</span>
                         </div>
                       );
                     })}
@@ -261,7 +278,7 @@ export const Footer: React.FC = () => {
         </span>
       </div>
       <div className="flex gap-4 items-center font-bold text-slate-500">
-        <span>Phiên bản v1.23</span>
+        <span>Phiên bản v1.24</span>
       </div>
     </footer>
   );

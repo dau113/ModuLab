@@ -357,3 +357,66 @@
     transition-duration: 0.001ms !important;
   }
 }
+
+/* ==================================================================
+   THANH BÊN TỰ THU GỌN
+   Bình thường chỉ hiện cột biểu tượng; rê chuột vào thì trượt rộng ra.
+   ================================================================== */
+.ml-sidebar {
+  width: 4.25rem;
+  transition: width 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+  overflow: hidden;
+}
+.ml-sidebar.is-open { width: 15rem; }
+
+.ml-side-label {
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity 0.18s ease, transform 0.22s ease;
+  pointer-events: none;
+}
+.ml-sidebar.is-open .ml-side-label {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+/* ==================================================================
+   CHUYỂN TRANG
+   ================================================================== */
+@keyframes ml-page-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.995); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.ml-page { animation: ml-page-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* ==================================================================
+   PHÁO HOA CHÚC MỪNG
+   ================================================================== */
+@keyframes ml-spark {
+  0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+  70%  { opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(0.3); opacity: 0; }
+}
+.ml-spark {
+  position: absolute;
+  border-radius: 9999px;
+  animation: ml-spark 1s cubic-bezier(0.15, 0.6, 0.3, 1) forwards;
+}
+
+/* ==================================================================
+   TỈ LỆ HIỂN THỊ THEO KÍCH THƯỚC MÀN HÌNH
+   Phóng đều toàn giao diện để giữ đúng tỉ lệ giữa các thành phần.
+   ================================================================== */
+.ml-scale { zoom: 1; }
+@media (max-width: 1180px) { .ml-scale { zoom: 0.86; } }
+@media (min-width: 1181px) and (max-width: 1439px) { .ml-scale { zoom: 0.94; } }
+@media (min-width: 1720px) { .ml-scale { zoom: 1.1; } }
+@media (min-width: 2200px) { .ml-scale { zoom: 1.24; } }
+
+/* Nút bấm và thẻ chọn: phản hồi nhẹ khi rê chuột và khi bấm */
+button:not(:disabled) { transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.12s ease; }
+button:not(:disabled):active { transform: scale(0.975); }
+
+/* Thẻ nội dung nhấc nhẹ khi rê chuột */
+.bento-card:hover { box-shadow: 0 6px 18px -8px rgb(15 23 42 / 0.18); }
