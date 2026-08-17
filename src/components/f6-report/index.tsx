@@ -378,12 +378,13 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
                   </div>
 
                   <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
-                    <strong className="text-indigo-900 block mb-1">Bước 2: Áp dụng công thức Định luật Ôm</strong>
-                    <p className="text-slate-600 mb-2">
-                      Công thức xác định điện trở: R = U / I
-                    </p>
-                    <div className="bg-white p-3 rounded-lg border border-slate-200 text-center font-mono text-sm font-bold text-indigo-700">
-                      R = {uInVolts} / {iInAmperes} = {r.rCalc} Ω
+                    <strong className="text-indigo-900 block mb-2">Bước 2: Áp dụng công thức Định luật Ôm</strong>
+                    <div className="bg-white p-4 rounded-lg border border-slate-200 flex items-center justify-center gap-4 flex-wrap">
+                      <Frac left="R" num="U" den="I" />
+                      <span className="text-slate-300 text-xl">=</span>
+                      <Frac left="" num={String(uInVolts)} den={String(iInAmperes)} mono />
+                      <span className="text-slate-300 text-xl">=</span>
+                      <span className="text-[26px] font-bold text-indigo-700 leading-none">{r.rCalc} Ω</span>
                     </div>
                   </div>
 
@@ -405,6 +406,26 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+/** Công thức dạng phân số thẳng đứng cho dễ đọc hơn dấu gạch chéo */
+const Frac: React.FC<{ left: string; num: string; den: string; mono?: boolean }> = ({ left, num, den, mono }) => {
+  const face = mono ? 'font-mono' : 'font-serif italic';
+  return (
+    <div className="flex items-center gap-2 text-indigo-700">
+      {left && (
+        <>
+          <span className="text-[26px] font-serif italic leading-none">{left}</span>
+          <span className="text-[22px] leading-none">=</span>
+        </>
+      )}
+      <span className="inline-flex flex-col items-center leading-none">
+        <span className={`text-[21px] px-2 ${face}`}>{num}</span>
+        <span className="w-full h-[2px] bg-indigo-700 my-1" />
+        <span className={`text-[21px] px-2 ${face}`}>{den}</span>
+      </span>
     </div>
   );
 };

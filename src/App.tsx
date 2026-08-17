@@ -9,7 +9,7 @@ import { api, isOffline } from './api/client';
 import type { ApiUser, Bootstrap } from './api/client';
 import { TopNav, Sidebar, Footer, WarningBadge } from './components/common';
 import { SettingsProvider, useSettings } from './settings';
-import { sfx } from './audio';
+import { sfx, music } from './audio';
 import { HomeMenu } from './components/f0-home';
 import { AuthAccountView } from './components/f1-auth';
 import { QuizGame } from './components/f2-quiz';
@@ -65,6 +65,7 @@ function Workspace() {
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       const el = (e.target as HTMLElement | null)?.closest('button, [role="button"], select, input[type="range"]');
+      music.resume();
       if (el && !(el as HTMLButtonElement).disabled) sfx.click();
     };
     document.addEventListener('click', onClick);

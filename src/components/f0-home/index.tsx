@@ -44,7 +44,7 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({ users, onEnter }) => {
         {/* Giới thiệu */}
         <section className="py-12 md:py-16 border-b border-slate-200">
           <h2 className="text-3xl md:text-4xl font-bold leading-snug max-w-2xl mb-5">
-            {t('home.hero.title')}
+            Giới thiệu
           </h2>
           <p className="text-[clamp(15px,1.05vw,17.5px)] text-slate-700 max-w-3xl leading-relaxed mb-4">
             {t('home.hero.intro')}

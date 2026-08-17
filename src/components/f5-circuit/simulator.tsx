@@ -36,6 +36,24 @@ const SNAP = 8;
 /* Bàn lắp bắt đầu trống — học sinh tự chọn linh kiện từ khay */
 const INITIAL_PARTS: PlacedPart[] = [];
 
+/**
+ * Giữ nguyên bàn lắp khi học sinh chuyển sang mục khác rồi quay lại.
+ * Dữ liệu nằm ngoài thành phần nên không mất khi thành phần bị gỡ khỏi cây.
+ */
+const bench: {
+  parts: PlacedPart[];
+  wires: Wire[];
+  view: { z: number; tx: number; ty: number };
+  wireSide: 'hot' | 'cold';
+  activeRheostat: string | null;
+} = {
+  parts: INITIAL_PARTS,
+  wires: [],
+  view: { z: 1, tx: 0, ty: 0 },
+  wireSide: 'hot',
+  activeRheostat: null,
+};
+
 /** Hai màu dây: đỏ cho nhánh dương, xanh cho nhánh âm */
 export const WIRE_COLORS = { hot: '#DC2626', cold: '#2563EB' } as const;
 
@@ -52,8 +70,8 @@ const jitter = (value: number, offset: number, amp: number) => {
 
 export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircuit, isPassed, onSaveCircuit }) => {
   const { t } = useSettings();
-  const [parts, setParts] = useState<PlacedPart[]>(INITIAL_PARTS);
-  const [wires, setWires] = useState<Wire[]>([]);
+  const [parts, setParts] = useState<PlacedPart[]>(bench.parts);
+  const [wires, setWires] = useState<Wire[]>(bench.wires);
   const [tool, setTool] = useState<'select' | 'wire' | 'erase'>('wire');
   const [query, setQuery] = useState('');
   const [checked, setChecked] = useState(false);
@@ -61,11 +79,11 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
   const [hint, setHint] = useState<string>(
     'Bấm lần lượt vào hai chốt (hoặc lỗ cắm trên bảng) để tạo dây nối. Nhiều đầu dây cắm chung một lỗ thì được nối với nhau.',
   );
-  const [wireSide, setWireSide] = useState<'hot' | 'cold'>('hot');
+  const [wireSide, setWireSide] = useState<'hot' | 'cold'>(bench.wireSide);
   const wireColor = WIRE_COLORS[wireSide];
   const [pending, setPending] = useState<TermRef | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
-  const [view, setView] = useState({ z: 1, tx: 0, ty: 0 });
+  const [view, setView] = useState(bench.view);
 
   const svgRef = useRef<SVGSVGElement | null>(null);
   const drag = useRef<{ id: string; dx: number; dy: number; sx: number; sy: number; moved: boolean } | null>(null);
@@ -78,11 +96,31 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
 
   const branchOf = (id: string) => sim.branches.find((b) => b.compId === id);
 
+  /* Bóng đèn kêu tách rồi ù nhẹ mỗi khi chuyển giữa sáng và tắt */
+  const lampLit = parts.some((p) => p.kind === 'lamp'
+    && Math.abs(sim.branches.find((b) => b.compId === p.id)?.I ?? 0) > 1e-4);
+  const prevLamp = useRef(false);
+  useEffect(() => {
+    if (lampLit !== prevLamp.current) {
+      prevLamp.current = lampLit;
+      sfx.lamp(lampLit);
+    }
+  }, [lampLit]);
+
   /* Núm biến trở chỉ hiện khi bàn lắp có biến trở; nhiều cái thì chọn được từng cái */
   const rheostats = parts.filter((p) => p.kind === 'rheostat');
-  const [activeRheostat, setActiveRheostat] = useState<string | null>(null);
+  const [activeRheostat, setActiveRheostat] = useState<string | null>(bench.activeRheostat);
   const currentRheostat = rheostats.find((p) => p.id === activeRheostat) ?? rheostats[0] ?? null;
   const knob = currentRheostat?.knob ?? 0.5;
+
+  /* Ghi lại bàn lắp sau mỗi thay đổi để lần sau quay lại vẫn còn nguyên */
+  useEffect(() => {
+    bench.parts = parts;
+    bench.wires = wires;
+    bench.view = view;
+    bench.wireSide = wireSide;
+    bench.activeRheostat = activeRheostat;
+  }, [parts, wires, view, wireSide, activeRheostat]);
 
   /* Điện trở đo được của từng đồng hồ đang ở thang Ω hoặc thang thông mạch */
   const ohmReadings = useMemo(() => {
@@ -304,6 +342,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
   };
 
   const removePart = (id: string) => {
+    sfx.unplug();
     setParts((prev) => prev.filter((p) => p.id !== id));
     setWires((prev) => prev.filter((w) => w.from.c !== id && w.to.c !== id));
       };
@@ -311,7 +350,10 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
   const togglePart = (id: string) => {
     setParts((prev) => prev.map((p) => {
       if (p.id !== id) return p;
-      if (p.kind === 'switch' || p.kind === 'switch2') return { ...p, closed: !p.closed };
+      if (p.kind === 'switch' || p.kind === 'switch2') {
+        sfx.switchToggle(!p.closed);
+        return { ...p, closed: !p.closed };
+      }
       return p;
     }));
   };
@@ -326,6 +368,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
       if (p.id !== id) return p;
       switch (btn) {
         case 'dial': {
+          sfx.knob();
           const i = DMM_FUNCS.findIndex((x) => x.id === (p.func ?? 'V'));
           const next = DMM_FUNCS[(i + 1) % DMM_FUNCS.length].id;
           delete peaks.current[id];
@@ -362,9 +405,11 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
       if (p.id !== id) return p;
       if (btn === 'power') {
         const on = !(p.powerOn !== false);
+        sfx.power(on);
         setHint(on ? 'Đã bật bộ nguồn.' : 'Đã tắt bộ nguồn — mạch ngừng cấp điện.');
         return { ...p, powerOn: on };
       }
+      sfx.knob();
       const next = ((p.volt ?? 12) + 2) % 14;
       setHint(`Bộ nguồn đặt ở ${next}V một chiều.`);
       return { ...p, volt: next };
@@ -443,6 +488,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
       return;
     }
     if (sameRef(pending, ref)) { setPending(null); return; }
+    sfx.plug();
     setWires((prev) => [...prev, { id: `w${Date.now()}`, from: pending, to: ref, color: wireColor }]);
     setPending(null);
         setHint('Đã nối thêm một dây. Hệ thống soát lại sơ đồ ngay sau mỗi thao tác.');
@@ -453,6 +499,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
     const seq = parts.filter((p) => p.kind === kind).length + 1;
     const id = `${kind.toUpperCase().slice(0, 4)}-${seq}`;
     const slot = parts.filter((p) => PART_CATALOG[p.kind].onBoard).length;
+    sfx.plug();
     setParts((prev) => [...prev, {
       id, kind,
       x: BOARD.x + 40 + ((slot * 160) % Math.max(160, BOARD.w - 220)),
@@ -516,10 +563,12 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
               Hệ thống kiểm tra
             </h2>
             <button
-              onClick={() => { setChecked(true); sfx.click(); }}
+              onClick={() => setChecked((v) => !v)}
               disabled={parts.length === 0}
-              className="h-8 px-3 rounded-lg text-[clamp(12.5px,0.86vw,15px)] font-bold bg-indigo-600 hover:bg-indigo-700 text-white disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors">
-              <SearchCheck className="w-4 h-4" /> Kiểm tra
+              className={`h-8 px-3 rounded-lg text-[clamp(12.5px,0.86vw,15px)] font-bold flex items-center gap-1.5 transition-colors disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed ${
+                checked ? 'bg-slate-700 hover:bg-slate-800 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+              }`}>
+              <SearchCheck className="w-4 h-4" /> {checked ? 'Ẩn kết quả' : 'Kiểm tra'}
             </button>
           </header>
 

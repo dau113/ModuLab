@@ -16,8 +16,8 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../../theme';
 import { useSettings, ACCENTS } from '../../settings';
-import { Home, Sun, Moon, Rocket, Volume2, VolumeX } from 'lucide-react';
-import { music } from '../../audio';
+import { Home, Sun, Moon, Rocket, Volume2, VolumeX, Music } from 'lucide-react';
+import { music, isSfxEnabled, toggleSfx } from '../../audio';
 
 interface TopNavProps {
   currentUser: User;
@@ -31,6 +31,7 @@ export const SettingsBar: React.FC = () => {
   const { lang, accent, setAccent, t } = useSettings();
   const { theme, setTheme } = useTheme();
   const [musicOn, setMusicOn] = useState(music.isOn());
+  const [sfxOn, setSfxOn] = useState(isSfxEnabled());
 
   return (
     <div className="flex items-center gap-3">
@@ -59,9 +60,19 @@ export const SettingsBar: React.FC = () => {
         onClick={() => setMusicOn(music.toggle())}
         title={musicOn ? 'Tắt nhạc nền' : 'Bật nhạc nền'}
         className={`w-8 h-7 grid place-items-center rounded-lg border transition-colors ${
-          musicOn ? 'border-indigo-300 bg-indigo-50 text-indigo-600' : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+          musicOn ? 'border-indigo-300 bg-indigo-50 text-indigo-600' : 'border-slate-200 text-slate-400 hover:bg-slate-50'
         }`}>
-        {musicOn ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+        <Music className="w-4 h-4" />
+      </button>
+
+      {/* Tiếng thao tác của linh kiện */}
+      <button
+        onClick={() => setSfxOn(toggleSfx())}
+        title={sfxOn ? 'Tắt tiếng thao tác' : 'Bật tiếng thao tác'}
+        className={`w-8 h-7 grid place-items-center rounded-lg border transition-colors ${
+          sfxOn ? 'border-indigo-300 bg-indigo-50 text-indigo-600' : 'border-slate-200 text-slate-400 hover:bg-slate-50'
+        }`}>
+        {sfxOn ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
       </button>
 
       {/* Sáng / tối */}
@@ -278,7 +289,7 @@ export const Footer: React.FC = () => {
         </span>
       </div>
       <div className="flex gap-4 items-center font-bold text-slate-500">
-        <span>Phiên bản v1.27</span>
+        <span>Phiên bản v1.28</span>
       </div>
     </footer>
   );

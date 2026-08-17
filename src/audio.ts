@@ -10,8 +10,26 @@ let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
 let musicGain: GainNode | null = null;
 let musicTimer: number | null = null;
+const MUSIC_KEY = 'modulab-music';
+const SFX_KEY = 'modulab-sfx';
+
+const readFlag = (key: string, fallback: boolean): boolean => {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const v = window.localStorage.getItem(key);
+    return v === null ? fallback : v === '1';
+  } catch {
+    return fallback;
+  }
+};
+const writeFlag = (key: string, on: boolean) => {
+  try { window.localStorage.setItem(key, on ? '1' : '0'); } catch { /* bỏ qua */ }
+};
+
+/* Cả nhạc nền lẫn hiệu ứng đều bật sẵn; trình duyệt chỉ phát sau thao tác đầu tiên */
+let musicWanted = readFlag(MUSIC_KEY, true);
 let musicOn = false;
-let sfxOn = true;
+let sfxOn = readFlag(SFX_KEY, true);
 
 const ensure = (): AudioContext | null => {
   if (typeof window === 'undefined') return null;
@@ -51,6 +69,32 @@ const note = (
   env.connect(out);
   osc.start(start);
   osc.stop(start + dur + 0.05);
+};
+
+/**
+ * Tiếng gõ ngắn: một mẩu nhiễu trắng cho qua bộ lọc thông dải,
+ * dùng làm nền cho tiếng công tắc, tiếng cắm dây, tiếng nấc của núm xoay.
+ */
+const click = (start: number, gain: number, freq: number) => {
+  if (!ctx || !master) return;
+  const len = Math.floor(ctx.sampleRate * 0.05);
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) {
+    data[i] = (Math.random() * 2 - 1) * (1 - i / len) ** 3;
+  }
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.frequency.value = freq;
+  filter.Q.value = 1.2;
+  const env = ctx.createGain();
+  env.gain.value = gain;
+  src.connect(filter);
+  filter.connect(env);
+  env.connect(master);
+  src.start(start);
 };
 
 /* ------------------------------------------------------------------ */
@@ -95,6 +139,59 @@ export const sfx = {
     if (!sfxOn || !ensure() || !master) return;
     note(880, ctx!.currentTime, 0.06, 0.05, 'sine', master!);
   },
+
+  /* ---------------- Tiếng của linh kiện ---------------- */
+
+  /** Tiếng lách cách của công tắc; đóng nghe chắc hơn mở */
+  switchToggle(closed: boolean) {
+    if (!sfxOn || !ensure() || !master || !ctx) return;
+    const t = ctx.currentTime;
+    click(t, closed ? 0.16 : 0.11, closed ? 2200 : 3000);
+    note(closed ? 320 : 260, t + 0.012, 0.05, 0.06, 'square', master);
+  },
+
+  /** Bóng đèn sáng lên: tiếng tóc tách rồi ù nhẹ của dây tóc */
+  lamp(on: boolean) {
+    if (!sfxOn || !ensure() || !master || !ctx) return;
+    const t = ctx.currentTime;
+    if (!on) { click(t, 0.06, 1800); return; }
+    click(t, 0.08, 2600);
+    note(1180, t + 0.03, 0.22, 0.05, 'triangle', master);
+    note(2360, t + 0.03, 0.16, 0.02, 'sine', master);
+  },
+
+  /** Biến áp nguồn: tiếng gạt công tắc rồi tiếng ù 50Hz khi đang bật */
+  power(on: boolean) {
+    if (!sfxOn || !ensure() || !master || !ctx) return;
+    const t = ctx.currentTime;
+    click(t, 0.2, 1500);
+    if (on) {
+      note(100, t + 0.05, 0.9, 0.05, 'sawtooth', master);
+      note(50, t + 0.05, 1.1, 0.06, 'sine', master);
+    } else {
+      note(90, t + 0.02, 0.35, 0.04, 'sine', master);
+    }
+  },
+
+  /** Núm xoay: tiếng nấc nhỏ mỗi bước */
+  knob() {
+    if (!sfxOn || !ensure() || !master || !ctx) return;
+    click(ctx.currentTime, 0.09, 3400);
+  },
+
+  /** Cắm dây vào chốt */
+  plug() {
+    if (!sfxOn || !ensure() || !master || !ctx) return;
+    const t = ctx.currentTime;
+    click(t, 0.12, 1900);
+    note(420, t + 0.015, 0.06, 0.05, 'sine', master);
+  },
+
+  /** Gỡ dây hoặc gỡ linh kiện */
+  unplug() {
+    if (!sfxOn || !ensure() || !master || !ctx) return;
+    click(ctx.currentTime, 0.1, 1200);
+  },
 };
 
 /* ------------------------------------------------------------------ */
@@ -124,10 +221,20 @@ const scheduleBar = () => {
 };
 
 export const music = {
-  isOn: () => musicOn,
+  /** Người dùng có muốn nghe nhạc hay không, kể cả khi trình duyệt chưa cho phát */
+  isOn: () => musicWanted,
+  isPlaying: () => musicOn,
+
+  /** Gọi sau thao tác đầu tiên của người dùng để mở khoá âm thanh */
+  resume() {
+    if (musicWanted && !musicOn) music.start();
+  },
+
   start() {
     if (musicOn || !ensure() || !musicGain || !ctx) return;
     musicOn = true;
+    musicWanted = true;
+    writeFlag(MUSIC_KEY, true);
     musicGain.gain.cancelScheduledValues(ctx.currentTime);
     musicGain.gain.setValueAtTime(0.0001, ctx.currentTime);
     musicGain.gain.exponentialRampToValueAtTime(0.6, ctx.currentTime + 1.5);
@@ -136,6 +243,8 @@ export const music = {
   },
   stop() {
     musicOn = false;
+    musicWanted = false;
+    writeFlag(MUSIC_KEY, false);
     if (musicTimer) { window.clearInterval(musicTimer); musicTimer = null; }
     if (ctx && musicGain) {
       musicGain.gain.cancelScheduledValues(ctx.currentTime);
@@ -144,10 +253,15 @@ export const music = {
     }
   },
   toggle() {
-    musicOn ? music.stop() : music.start();
-    return musicOn;
+    musicWanted ? music.stop() : music.start();
+    return musicWanted;
   },
 };
 
-export const setSfxEnabled = (on: boolean) => { sfxOn = on; };
+export const setSfxEnabled = (on: boolean) => {
+  sfxOn = on;
+  writeFlag(SFX_KEY, on);
+  if (on) { ensure(); sfx.click(); }
+};
 export const isSfxEnabled = () => sfxOn;
+export const toggleSfx = () => { setSfxEnabled(!sfxOn); return sfxOn; };

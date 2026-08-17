@@ -90,9 +90,9 @@ export const PART_CATALOG: Record<PartKind, PartSpec> = {
   },
   switch2: {
     kind: 'switch2', name: 'Công tắc 2 chiều', short: 'Công tắc 2 chiều', group: 'Điều khiển',
-    w: 118, h: 58, elec: 'switch',
-    terminals: [T('a', 20, 44, 'none', 'Chốt A'), T('c', 59, 44, 'none', 'Chốt chung'), T('b', 98, 44, 'none', 'Chốt B')],
-    desc: 'Chuyển dòng điện sang một trong hai nhánh — dùng cho mạch đèn cầu thang.',
+    w: 118, h: 72, elec: 'switch',
+    terminals: [T('a', 20, 58, 'pos', 'Nhánh A'), T('c', 59, 58, 'neg', 'Chốt chung (−)'), T('b', 98, 58, 'pos', 'Nhánh B')],
+    desc: 'Chốt chung nằm giữa, cần gạt xoay sang trái hoặc phải để đưa dòng điện sang một trong hai nhánh — dùng cho mạch đèn cầu thang.',
     onBoard: true,
   },
   rheostat: {
@@ -582,17 +582,29 @@ const Art: Record<PartKind, (live: PartLive) => React.ReactNode> = {
     const closed = !!live.closed;
     return (
       <g>
-        <Plate w={118} h={58} />
-        <rect x={14} y={12} width={90} height={16} rx={4} fill="#EAF6FA" stroke="#9FC9D6" />
-        <text x={59} y={24} textAnchor="middle" fontSize={7} fontWeight={700} fill="#0F766E">2 CHIỀU</text>
-        <circle cx={59} cy={38} r={4} fill="url(#mlMetal)" stroke="#7B8896" />
-        <g className="ml-lever" style={{ transformOrigin: '59px 38px', transform: `rotate(${closed ? -22 : 22}deg)` }}>
-          <rect x={57} y={35} width={44} height={6} rx={3} fill="url(#mlMetal)" stroke="#788696" />
-          <circle cx={99} cy={38} r={4.5} fill="#E8402F" />
+        <Plate w={118} h={72} />
+        <rect x={14} y={9} width={90} height={14} rx={4} fill="#EAF6FA" stroke="#9FC9D6" />
+        <text x={59} y={19.5} textAnchor="middle" fontSize={7} fontWeight={700} fill="#0F766E">2 CHIỀU</text>
+
+        {/* Hai tiếp điểm cố định hai bên, trục quay ở giữa */}
+        <circle cx={22} cy={36} r={4} fill="url(#mlMetal)" stroke="#7B8896" />
+        <circle cx={96} cy={36} r={4} fill="url(#mlMetal)" stroke="#7B8896" />
+        <text x={22} y={30} textAnchor="middle" fontSize={6} fontWeight={800}
+          fill={closed ? '#94A3B8' : '#0E7490'}>A</text>
+        <text x={96} y={30} textAnchor="middle" fontSize={6} fontWeight={800}
+          fill={closed ? '#0E7490' : '#94A3B8'}>B</text>
+
+        {/* Cần gạt quay hẳn sang nhánh đang chọn */}
+        <g className="ml-lever" style={{ transformOrigin: '59px 36px', transform: `rotate(${closed ? 0 : 180}deg)` }}>
+          <rect x={57} y={33} width={40} height={6} rx={3} fill="url(#mlMetal)" stroke="#788696" />
+          <circle cx={95} cy={36} r={4.6} fill="#E8402F" stroke="#8E1508" strokeWidth={0.6} />
         </g>
-        <Post x={20} y={44} tone="black" />
-        <Post x={59} y={44} tone="black" />
-        <Post x={98} y={44} tone="red" />
+        <circle cx={59} cy={36} r={5.4} fill="url(#mlMetal)" stroke="#6E7C8A" strokeWidth={0.8} />
+        <circle cx={57.4} cy={34.4} r={1.7} fill="#FFFFFF" opacity={0.6} />
+
+        <Post x={20} y={58} tone="red" />
+        <Post x={59} y={58} tone="black" />
+        <Post x={98} y={58} tone="red" />
       </g>
     );
   },

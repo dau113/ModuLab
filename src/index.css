@@ -420,3 +420,7 @@ button:not(:disabled):active { transform: scale(0.975); }
 
 /* Thẻ nội dung nhấc nhẹ khi rê chuột */
 .bento-card:hover { box-shadow: 0 6px 18px -8px rgb(15 23 42 / 0.18); }
+
+/* Dòng điện chạy dọc dây trong sơ đồ mạch ở phần lý thuyết */
+@keyframes ml-current-flow { to { stroke-dashoffset: -32; } }
+.ml-current { animation: ml-current-flow 0.55s linear infinite; }

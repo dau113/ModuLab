@@ -115,12 +115,35 @@ export const QuizGame: React.FC<QuizGameProps> = ({ userRole, onFinishQuiz, extr
   if (phase === 'setup') {
     return (
       <div className="ml-scroll grid grid-cols-1 lg:grid-cols-6 gap-4 h-full overflow-y-auto pr-1 pb-4">
-        <BentoCard className="lg:col-span-6" accent title={t('quiz.title')} subtitle={t('quiz.pickTopic')}>
-          <p className="text-[clamp(13.5px,0.94vw,16px)] opacity-90 leading-relaxed">
-            {bi(`Ngân hàng ${QUIZ_BANK.length} câu hỏi chia ba chủ đề. Trả lời nhanh và đúng liên tiếp để cộng thêm điểm thưởng.`,
-                `A bank of ${QUIZ_BANK.length} questions across three topics. Answer fast and keep your streak for bonus points.`)}
+        <section className="lg:col-span-6 rounded-2xl bg-indigo-600 text-white px-5 py-4 flex flex-wrap items-center gap-x-6 gap-y-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="w-11 h-11 rounded-xl bg-white/15 grid place-items-center shrink-0">
+              <Rocket className="w-5 h-5" />
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-[clamp(17px,1.2vw,20px)] font-extrabold leading-tight">{t('quiz.title')}</h2>
+              <p className="text-[clamp(13px,0.9vw,15.5px)] text-white/85 leading-snug">{t('quiz.pickTopic')}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-5 ml-auto">
+            {[
+              [String(QUIZ_BANK.length), bi('câu hỏi', 'questions')],
+              ['3', bi('chủ đề', 'topics')],
+              ['30s', bi('mỗi câu', 'per question')],
+            ].map(([n, label]) => (
+              <div key={label} className="text-center">
+                <div className="text-[clamp(17px,1.2vw,20px)] font-extrabold leading-none">{n}</div>
+                <div className="text-[12.5px] text-white/75 mt-0.5">{label}</div>
+              </div>
+            ))}
+          </div>
+
+          <p className="w-full text-[clamp(13px,0.9vw,15.5px)] text-white/85 leading-relaxed border-t border-white/15 pt-3">
+            {bi('Trả lời nhanh và đúng liên tiếp để cộng thêm điểm thưởng.',
+                'Answer fast and keep your streak for bonus points.')}
           </p>
-        </BentoCard>
+        </section>
 
         <BentoCard className="lg:col-span-4" title={bi('Chủ đề', 'Topic')}
           subtitle={bi('Chọn một chủ đề hoặc chơi tổng hợp', 'Pick one topic or mix them all')}>
