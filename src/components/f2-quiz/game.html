@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Physics Quest: Electric City</title>
+<style>
+  :root{
+    --ink:#f7f2d8;
+    --muted:#c7c2ae;
+    --panel:#15172a;
+    --panel2:#202440;
+    --line:#4c527b;
+    --good:#88e26b;
+    --bad:#ff6d76;
+    --gold:#ffd45c;
+    --mana:#6bd7ff;
+    --hp:#ff5d6c;
+    --purple:#a879ff;
+    --sky1:#1c2048;
+    --sky2:#34386d;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#090b16;color:var(--ink);font-family:"Trebuchet MS",Arial,sans-serif;min-height:100%}
+  body{overflow-x:hidden}
+  button,input{font:inherit}
+  button{cursor:pointer}
+  .game{
+    width:100%;
+    min-height:100vh;
+    background:
+      radial-gradient(circle at 70% 15%,rgba(255,244,157,.18),transparent 20%),
+      linear-gradient(var(--sky1),var(--sky2) 62%,#23243a 62%,#171827 100%);
+    position:relative;
+    overflow:hidden;
+  }
+  .pixel{image-rendering:pixelated}
+  .hidden{display:none!important}
+  .topbar{
+    display:flex;gap:14px;align-items:center;justify-content:space-between;
+    padding:14px 18px;background:rgba(9,11,22,.82);border-bottom:3px solid #3c4268;
+    position:relative;z-index:10;backdrop-filter:blur(6px)
+  }
+  .brand{font-weight:900;letter-spacing:.8px;color:var(--gold);text-shadow:2px 2px #000}
+  .stats{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+  .stat{min-width:120px}
+  .label{font-size:12px;color:var(--muted);margin-bottom:4px}
+  .bar{height:13px;background:#0b0d18;border:2px solid #646b98;box-shadow:inset 0 0 0 1px #000}
+  .fill{height:100%;width:100%;transform-origin:left center;transform:scaleX(1);transition:width .35s ease,transform .35s ease}
+  .hp{background:var(--hp)} .xp{background:var(--mana)} .mana{background:#a879ff}
+  .crit-banner{
+    position:absolute;left:50%;top:115px;transform:translateX(-50%);
+    font-size:34px;font-weight:1000;color:#fff09a;text-shadow:3px 3px #7d3119;
+    display:none;z-index:15;pointer-events:none
+  }
+  .crit-banner.show{display:block;animation:critPop .8s ease-out forwards}
+  @keyframes critPop{
+    0%{opacity:0;transform:translate(-50%,14px) scale(.7)}
+    30%{opacity:1;transform:translate(-50%,-8px) scale(1.15)}
+    100%{opacity:0;transform:translate(-50%,-34px) scale(1)}
+  }
+  .lightning{
+    position:absolute;left:24%;right:14%;top:80px;height:220px;display:none;z-index:13;pointer-events:none
+  }
+  .lightning.show{display:block;animation:flashBolt .55s ease-out forwards}
+  .lightning:before,.lightning:after{
+    content:"";position:absolute;background:#e9f7ff;box-shadow:0 0 14px #9ee7ff,0 0 28px #7b8cff;
+    transform:skewX(-18deg)
+  }
+  .lightning:before{width:15px;height:115px;left:63%;top:0}
+  .lightning:after{width:15px;height:110px;left:56%;top:88px}
+  @keyframes flashBolt{0%{opacity:0}15%{opacity:1}70%{opacity:1}100%{opacity:0}}
+  .boss-aura{
+    position:absolute;right:6%;bottom:20px;width:190px;height:190px;border-radius:50%;
+    border:4px dashed rgba(132,207,255,.5);display:none;z-index:2;pointer-events:none
+  }
+  .boss-aura.show{display:block;animation:auraSpin 4s linear infinite}
+  .boss-aura.enraged{border-color:rgba(255,105,105,.8);box-shadow:0 0 35px rgba(255,80,80,.35)}
+  .boss-aura.final{border-style:solid;border-color:#ffd45c;box-shadow:0 0 45px rgba(255,212,92,.45)}
+  @keyframes auraSpin{to{transform:rotate(360deg)}}
+  .progress-map{
+    margin:0 auto 16px;width:min(1100px,94%);display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap
+  }
+  .map-step{
+    padding:8px 12px;border:3px solid #4e567f;background:#171a30;color:#abb0ca;font-weight:900;
+    box-shadow:3px 3px #080914;transition:.25s
+  }
+  .map-step.active{border-color:#ffd45c;color:#ffd45c;transform:translateY(-2px)}
+  .map-step.done{border-color:#78d985;color:#a8efad}
+  .map-arrow{color:#66709e;font-weight:900}
+  .treasure-overlay{
+    position:absolute;inset:0;background:rgba(4,6,15,.82);z-index:35;display:flex;align-items:center;justify-content:center;padding:20px
+  }
+  .treasure-card{
+    width:min(560px,92%);background:#191c33;border:4px solid #88703a;box-shadow:9px 9px #06070d;padding:24px;text-align:center
+  }
+  .chest{
+    width:120px;height:78px;margin:10px auto 18px;background:#9d642d;border:5px solid #4d2c13;border-radius:10px;position:relative
+  }
+  .chest:before{content:"";position:absolute;left:-5px;right:-5px;top:-38px;height:42px;background:#b97a36;border:5px solid #4d2c13;border-radius:38px 38px 8px 8px}
+  .chest:after{content:"";position:absolute;left:48px;top:20px;width:22px;height:28px;background:#ffd45c;border:4px solid #72551b}
+  .reward{font-size:21px;font-weight:1000;color:#ffd45c;margin:10px 0}
+  .pill{border:2px solid #6971a1;background:#171a30;padding:6px 10px;font-weight:800;box-shadow:3px 3px #080914}
+  .stage{
+    position:relative;
+    min-height:430px;
+    border-bottom:4px solid #111321;
+    overflow:hidden;
+  }
+  .moon{
+    position:absolute;right:8%;top:45px;width:92px;height:92px;border-radius:50%;
+    background:#fff3b0;box-shadow:0 0 35px rgba(255,243,176,.25)
+  }
+  .city{position:absolute;inset:auto 0 0 0;height:220px;display:flex;align-items:flex-end;gap:10px;padding:0 20px}
+  .building{background:#171a31;border:3px solid #454d7c;position:relative;flex:1;min-width:70px}
+  .building:nth-child(1){height:120px}.building:nth-child(2){height:180px}.building:nth-child(3){height:145px}
+  .building:nth-child(4){height:205px}.building:nth-child(5){height:130px}.building:nth-child(6){height:170px}
+  .window{width:15px;height:19px;background:#ffe36d;display:inline-block;margin:12px 8px 0;box-shadow:0 0 8px rgba(255,227,109,.25)}
+  .wire{position:absolute;left:0;right:0;bottom:182px;border-top:4px solid #111321}
+  .wire:after{content:"";position:absolute;left:23%;top:-6px;width:54%;border-top:3px dashed #81dcff;opacity:.5}
+  .arena{
+    position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:space-between;
+    padding:0 7% 35px;z-index:4;pointer-events:none;
+  }
+  .actor{width:150px;height:180px;position:relative;filter:drop-shadow(0 12px 6px rgba(0,0,0,.45))}
+  .mage{transform-origin:bottom left}
+  .mage .hat-tip{position:absolute;left:36px;top:2px;width:0;height:0;border-left:28px solid transparent;border-right:22px solid transparent;border-bottom:70px solid #7f63f0;transform:rotate(-10deg);filter:drop-shadow(0 3px 0 #1d1640)}
+  .mage .hat-brim{position:absolute;left:24px;top:60px;width:90px;height:18px;background:#4f36a7;border:4px solid #241942;border-radius:14px}
+  .mage .hat-band{position:absolute;left:30px;top:65px;width:78px;height:10px;background:#ffd45c;border:2px solid #8e6927;border-radius:10px}
+  .mage .hat-gem{position:absolute;left:64px;top:60px;width:14px;height:14px;background:#74e7ff;border:3px solid #173b64;border-radius:50%;box-shadow:0 0 12px rgba(116,231,255,.85)}
+  .mage .face{position:absolute;left:49px;top:78px;width:40px;height:38px;background:#f5c89d;border:4px solid #3c2949;border-radius:12px;z-index:2}
+  .mage .eye{position:absolute;top:15px;width:6px;height:6px;background:#1a1323;border-radius:50%}
+  .mage .eye.left{left:10px}.mage .eye.right{right:10px}
+  .mage .beard{position:absolute;left:43px;top:102px;width:52px;height:34px;background:#ece4ff;border:4px solid #5a4a84;clip-path:polygon(10% 0,90% 0,100% 30%,70% 100%,30% 100%,0 30%);z-index:1}
+  .mage .collar{position:absolute;left:45px;top:116px;width:48px;height:18px;background:#d7d2ff;border:3px solid #57498f;clip-path:polygon(0 0,50% 100%,100% 0,85% 0,50% 55%,15% 0)}
+  .mage .cape{position:absolute;left:18px;top:111px;width:96px;height:68px;background:#38236f;border:4px solid #23144e;clip-path:polygon(16% 0,84% 0,100% 100%,0 100%)}
+  .mage .robe{position:absolute;left:33px;top:120px;width:74px;height:58px;background:linear-gradient(#6b4ee2,#4a34a2);border:4px solid #251a55;clip-path:polygon(20% 0,80% 0,100% 100%,0 100%);z-index:2}
+  .mage .belt{position:absolute;left:43px;top:143px;width:54px;height:10px;background:#7d5932;border:3px solid #3f2816;z-index:3}
+  .mage .buckle{position:absolute;left:64px;top:142px;width:12px;height:12px;background:#ffd45c;border:3px solid #8e6927;z-index:4}
+  .mage .sleeve{position:absolute;top:129px;width:18px;height:34px;background:#5f46c9;border:3px solid #26194f;z-index:1}
+  .mage .sleeve.left{left:23px;transform:rotate(16deg)}
+  .mage .sleeve.right{right:31px;transform:rotate(-18deg)}
+  .mage .hand{position:absolute;top:153px;width:12px;height:12px;background:#f5c89d;border:3px solid #3c2949;border-radius:5px;z-index:2}
+  .mage .hand.left{left:19px}
+  .mage .hand.right{right:24px}
+  .mage .boot{position:absolute;bottom:1px;width:20px;height:14px;background:#372057;border:3px solid #1b1131;border-radius:4px}
+  .mage .boot.left{left:43px}.mage .boot.right{right:39px}
+  .mage .staff{position:absolute;right:5px;top:69px;width:7px;height:108px;background:#916039;border:3px solid #3c261a;transform:rotate(9deg);transform-origin:bottom;z-index:4}
+  .mage .staff-top{position:absolute;right:-5px;top:48px;width:25px;height:25px;background:#74e7ff;border:4px solid #173b64;border-radius:50%;box-shadow:0 0 18px rgba(116,231,255,.95);z-index:5}
+  .mage .staff-ring{position:absolute;right:-1px;top:74px;width:16px;height:8px;background:#ffd45c;border:2px solid #8e6927;border-radius:10px;z-index:5}
+  .monster{transform-origin:bottom right}
+  .monster .tail{
+    position:absolute;right:4px;bottom:24px;width:58px;height:26px;background:linear-gradient(90deg,#6da748,#85d55e);
+    border:4px solid #233924;border-left:none;border-radius:0 20px 20px 0;transform:rotate(-10deg);z-index:0
+  }
+  .monster .tail-tip{
+    position:absolute;right:-10px;top:-8px;width:0;height:0;border-left:18px solid #85d55e;border-top:12px solid transparent;border-bottom:12px solid transparent
+  }
+  .monster .body{
+    position:absolute;left:26px;bottom:0;width:104px;height:98px;
+    background:radial-gradient(circle at 35% 28%,#a5ef83 0 18%,#7cc35a 19% 60%,#5d9444 100%);
+    border:5px solid #263c26;border-radius:48% 48% 35% 35%;z-index:2
+  }
+  .monster .belly{
+    position:absolute;left:47px;bottom:12px;width:62px;height:48px;background:#9eea7a;border:4px solid #436a38;
+    border-radius:45% 45% 38% 38%;opacity:.9;z-index:3
+  }
+  .monster .cheek{
+    position:absolute;top:56px;width:12px;height:12px;background:rgba(255,255,255,.18);border-radius:50%;z-index:5
+  }
+  .monster .c1{left:42px}.monster .c2{right:42px}
+  .monster .eye{
+    position:absolute;top:32px;width:20px;height:22px;background:#fff;border:3px solid #243028;border-radius:8px;z-index:5
+  }
+  .monster .eye:before{
+    content:"";position:absolute;left:-4px;right:-4px;top:-8px;height:8px;background:#304d2f;border-radius:10px 10px 0 0
+  }
+  .monster .eye:after{
+    content:"";display:block;width:7px;height:9px;background:#111;border-radius:50%;margin:5px auto 0
+  }
+  .monster .e1{left:48px}.monster .e2{right:48px}
+  .monster .horn{
+    position:absolute;top:10px;width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-bottom:36px solid #e7e2be;z-index:1
+  }
+  .monster .horn:after{
+    content:"";position:absolute;left:-3px;top:14px;width:6px;height:12px;background:rgba(121,95,54,.35);border-radius:4px
+  }
+  .monster .h1{left:24px;transform:rotate(-24deg)}.monster .h2{right:24px;transform:rotate(24deg)}
+  .monster .ear{
+    position:absolute;top:24px;width:22px;height:26px;background:#679d48;border:4px solid #274128;border-radius:65% 35% 50% 50%;z-index:1
+  }
+  .monster .ear.left{left:24px;transform:rotate(-28deg)}
+  .monster .ear.right{right:24px;transform:rotate(28deg) scaleX(-1)}
+  .monster .mouth{
+    position:absolute;left:54px;top:60px;width:48px;height:26px;background:#742d31;border:4px solid #2b181a;border-radius:0 0 18px 18px;overflow:hidden;z-index:6
+  }
+  .monster .tooth{
+    position:absolute;top:0;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:12px solid #fff7d6
+  }
+  .monster .t1{left:6px}.monster .t2{left:18px}.monster .t3{left:30px}
+  .monster .arm{
+    position:absolute;top:62px;width:22px;height:34px;background:#6ea84e;border:4px solid #254027;border-radius:14px;z-index:1
+  }
+  .monster .arm.left{left:18px;transform:rotate(28deg)}
+  .monster .arm.right{right:18px;transform:rotate(-28deg)}
+  .monster .claw{
+    position:absolute;bottom:-8px;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:12px solid #f4f0cf
+  }
+  .monster .arm.left .claw{left:3px}
+  .monster .arm.right .claw{right:3px}
+  .monster .foot{
+    position:absolute;bottom:-2px;width:25px;height:14px;background:#5f9444;border:4px solid #233924;border-radius:10px;z-index:1
+  }
+  .monster .foot.left{left:48px}.monster .foot.right{right:48px}
+  .monster .shadow{
+    position:absolute;left:34px;bottom:-10px;width:96px;height:16px;background:rgba(0,0,0,.25);border-radius:50%;filter:blur(3px);z-index:0
+  }
+
+  .monster.boss .tail{
+    background:linear-gradient(90deg,#8f3845,#d46874);height:30px;width:64px;right:-2px
+  }
+  .monster.boss .tail-tip{border-left-color:#d46874}
+  .monster.boss .body{
+    width:132px;height:125px;left:10px;
+    background:radial-gradient(circle at 35% 28%,#f5a0a7 0 18%,#c95a68 19% 60%,#963947 100%)
+  }
+  .monster.boss .belly{
+    left:40px;bottom:15px;width:76px;height:62px;background:#f1a2a6;border-color:#7d3440
+  }
+  .monster.boss .eye{top:34px;width:24px;height:25px}
+  .monster.boss .e1{left:38px}.monster.boss .e2{right:38px}
+  .monster.boss .horn{
+    border-left-width:14px;border-right-width:14px;border-bottom-width:44px;border-bottom-color:#f0e4cd;top:4px
+  }
+  .monster.boss .ear{top:20px;width:24px;height:30px;background:#b14e5f}
+  .monster.boss .mouth{
+    left:49px;top:74px;width:56px;height:30px;background:#5c1722;border-color:#2a1016
+  }
+  .monster.boss .tooth{border-left-width:7px;border-right-width:7px;border-top-width:14px}
+  .monster.boss .arm{
+    top:78px;width:24px;height:38px;background:#b34f5d
+  }
+  .monster.boss .foot{
+    width:28px;height:16px;background:#9b4652;bottom:-3px
+  }
+  .monster.boss.phase2 .body{filter:saturate(1.35) brightness(1.08)}
+  .monster.boss.phase2 .eye:after{background:#ffea62}
+  .monster.boss.phase3 .body{filter:saturate(1.65) brightness(1.15)}
+  .monster.boss.phase3 .eye:after{background:#fff}
+  .monster.boss.phase3{filter:drop-shadow(0 0 16px rgba(255,212,92,.7))}
+  .monster.enemy-attacking{
+    z-index:12;
+    animation:enemyRush .92s cubic-bezier(.22,.75,.25,1);
+  }
+  @keyframes enemyRush{
+    0%{transform:translate(0,0) rotate(0deg) scale(1)}
+    18%{transform:translate(18px,-10px) rotate(5deg) scale(1.04)}
+    55%{transform:translate(var(--attack-x,-620px),-18px) rotate(-7deg) scale(1.12)}
+    66%{transform:translate(var(--attack-x,-620px),-10px) rotate(5deg) scale(1.08)}
+    100%{transform:translate(0,0) rotate(0deg) scale(1)}
+  }
+  .enemy-name{
+    position:absolute;top:18px;left:50%;transform:translateX(-50%);
+    background:#111425;border:3px solid #5a628f;padding:8px 14px;font-weight:900;z-index:6;box-shadow:4px 4px #080914
+  }
+  .enemy-hp-wrap{position:absolute;top:60px;left:50%;transform:translateX(-50%);width:min(420px,70%);z-index:6}
+  .enemy-hp{height:18px;border:3px solid #626a99;background:#121421}
+  .enemy-hp>div{height:100%;background:#ff6c74;width:100%;transition:width .35s ease}
+  .fireball{
+    position:absolute;width:34px;height:34px;border-radius:50%;background:#ffb13b;border:5px solid #ff5a32;
+    box-shadow:0 0 20px #ff7d38;z-index:8;display:none;pointer-events:none
+  }
+  .fireball.fly{display:block;animation:fire 650ms ease-in forwards}
+  @keyframes fire{from{left:19%;bottom:120px;transform:scale(.75)}to{left:77%;bottom:112px;transform:scale(1.25)}}
+  .damage{position:absolute;right:11%;bottom:165px;color:#ffe469;font-weight:1000;font-size:36px;text-shadow:3px 3px #7d1e1e;display:none;z-index:9}
+  .damage.pop{display:block;animation:dmg .8s ease-out forwards}
+
+  .player-damage{
+    position:absolute;left:10%;bottom:175px;color:#ff858d;font-weight:1000;font-size:30px;
+    text-shadow:3px 3px #54151a;display:none;z-index:9;pointer-events:none
+  }
+  .player-damage.pop{display:block;animation:playerDmg .85s ease-out forwards}
+  @keyframes playerDmg{
+    0%{transform:translateY(12px) scale(.75);opacity:0}
+    25%{transform:translateY(-8px) scale(1.18);opacity:1}
+    100%{transform:translateY(-48px) scale(1);opacity:0}
+  }
+  .hp-damaged{animation:hpFlash .55s ease}
+  @keyframes hpFlash{
+    0%,100%{filter:none}
+    30%,70%{filter:brightness(1.8);transform:translateX(-3px)}
+    50%{transform:translateX(3px)}
+  }
+  @keyframes dmg{0%{transform:translateY(15px) scale(.7);opacity:0}30%{opacity:1;transform:translateY(-12px) scale(1.15)}100%{transform:translateY(-42px);opacity:0}}
+  .hit{animation:hit .4s ease}
+  @keyframes hit{25%{transform:translateX(-12px) rotate(-4deg)}50%{transform:translateX(10px) rotate(4deg)}100%{transform:none}}
+  .panel{
+    margin:18px auto 28px;width:min(1100px,94%);background:linear-gradient(#1b1f38,#14172a);
+    border:4px solid #666f9e;box-shadow:0 8px 0 #080914;padding:20px;position:relative;z-index:10
+  }
+  .question-meta{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+  .qtype{font-size:12px;color:#ffd45c;font-weight:900;letter-spacing:.7px}
+  .timer{font-size:24px;font-weight:1000;color:#fff}
+  .timer.low{color:#ff747c;animation:pulse .7s infinite}
+  @keyframes pulse{50%{opacity:.6}}
+  .question{font-size:21px;line-height:1.5;font-weight:850;margin:10px 0 18px}
+  .answers{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .answer{
+    min-height:58px;text-align:left;padding:12px 14px;background:#252a4b;color:#fff;border:3px solid #626b9b;
+    box-shadow:4px 4px #0a0c17;font-weight:800;transition:.15s
+  }
+  .answer:hover:not(:disabled){transform:translateY(-2px);background:#30375f}
+  .answer:disabled{cursor:not-allowed;opacity:.7}
+  .answer.correct{background:#245a32;border-color:#77de7d}
+  .answer.wrong{background:#6a2931;border-color:#ff7983}
+  .answer.eliminated{opacity:.22;text-decoration:line-through}
+  .tf{grid-template-columns:1fr 1fr}
+  .input-row{display:flex;gap:10px}
+  .fill-input{flex:1;min-width:0;background:#0f1221;border:3px solid #626b9b;color:#fff;padding:13px 14px;font-size:18px;outline:none}
+  .fill-input:focus{border-color:#7edfff}
+  .submit{background:#6c4ad5;color:#fff;border:3px solid #b6a1ff;padding:12px 18px;font-weight:900;box-shadow:4px 4px #1a123b}
+  .skills{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:2px dashed #444b74}
+  .skill{background:#2a2f51;color:#fff;border:2px solid #6c76aa;padding:9px 12px;font-weight:900}
+  .skill:disabled{opacity:.35;cursor:not-allowed}
+  .scroll-btn{background:#6f4c25;border-color:#d8af62}
+  .feedback{
+    margin-top:16px;padding:14px 16px;background:#101321;border-left:5px solid #6d77a9;display:none;line-height:1.55
+  }
+  .feedback.show{display:block}
+  .feedback.good{border-color:var(--good)} .feedback.bad{border-color:var(--bad)}
+  .next{
+    margin-top:14px;background:#ffd45c;color:#28200d;border:3px solid #fff0a3;padding:12px 18px;font-weight:1000;box-shadow:4px 4px #6f561b;display:none
+  }
+  .overlay{
+    position:absolute;inset:0;background:rgba(6,8,18,.92);z-index:30;display:flex;align-items:center;justify-content:center;padding:24px
+  }
+  .modal{
+    width:min(800px,95%);background:#171a30;border:4px solid #7079aa;box-shadow:10px 10px #05060c;padding:26px;text-align:center
+  }
+  .modal h1,.modal h2{margin:0 0 12px;color:#ffd45c;text-shadow:3px 3px #000}
+  .story{font-size:18px;line-height:1.65;color:#eee7cd}
+  .primary{background:#6c4ad5;color:#fff;border:3px solid #c3b4ff;padding:12px 20px;font-size:17px;font-weight:1000;box-shadow:5px 5px #1b123b;margin:8px}
+  .secondary{background:#262b4a;color:#fff;border:3px solid #6972a2;padding:12px 20px;font-weight:900;margin:8px}
+  .mapline{display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;margin:18px 0}
+  .node{padding:10px 12px;border:3px solid #5b648f;background:#242945;font-weight:900}
+  .node.active{border-color:#ffd45c;color:#ffd45c}
+  .arrow{color:#8d95bd;font-size:22px}
+  .paper-overlay{position:absolute;inset:0;background:rgba(0,0,0,.7);z-index:40;display:flex;align-items:center;justify-content:center;padding:20px}
+  .paper{
+    width:min(620px,92%);background:#e8d7a8;color:#332816;border:8px solid #8b6336;padding:28px 34px;
+    box-shadow:10px 12px #080808;position:relative;text-align:left
+  }
+  .paper:before,.paper:after{content:"";position:absolute;left:-14px;right:-14px;height:18px;background:#a77740;border:4px solid #60421f}
+  .paper:before{top:-15px}.paper:after{bottom:-15px}
+  .paper h3{margin-top:0;font-family:Georgia,serif;font-size:27px}
+  .paper ul{line-height:1.7}
+  .close-scroll{float:right;background:#5d4125;color:#fff;border:2px solid #342312;padding:6px 10px;font-weight:900}
+  .small{font-size:13px;color:var(--muted)}
+  .controls-note{font-size:12px;color:#aeb4d0;margin-top:8px}
+  @media(max-width:700px){
+    .answers{grid-template-columns:1fr}
+    .stage{min-height:360px}
+    .arena{padding:0 1% 25px}
+    .actor{transform:scale(.8);transform-origin:bottom}
+    .question{font-size:18px}
+    .stats{gap:6px}.stat{min-width:95px}
+  }
+  @media(prefers-reduced-motion:reduce){
+    *,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important}
+  }
+</style>
+</head>
+<body>
+<div class="game" id="game">
+  <div class="topbar">
+    <div class="brand">⚡ PHYSICS QUEST: ELECTRIC CITY</div>
+    <div class="stats">
+      <div class="stat" id="hpStat"><div class="label">HP <span id="hpText">100/100</span></div><div class="bar"><div id="hpFill" class="fill hp"></div></div></div>
+      <div class="stat"><div class="label">EXP <span id="xpText">0/100</span></div><div class="bar"><div id="xpFill" class="fill xp"></div></div></div>
+      <div class="stat"><div class="label">MANA <span id="manaText">0/30</span></div><div class="bar"><div id="manaFill" class="fill mana"></div></div></div>
+      <div class="pill">LV <span id="levelText">1</span></div>
+      <button class="pill" id="fullscreenBtn" type="button">⛶ Toàn màn hình</button>
+    </div>
+  </div>
+
+  <section class="stage">
+    <div class="moon"></div>
+    <div class="wire"></div>
+    <div class="city" aria-hidden="true">
+      <div class="building"><i class="window"></i><i class="window"></i></div>
+      <div class="building"><i class="window"></i><i class="window"></i><i class="window"></i></div>
+      <div class="building"><i class="window"></i><i class="window"></i></div>
+      <div class="building"><i class="window"></i><i class="window"></i><i class="window"></i></div>
+      <div class="building"><i class="window"></i><i class="window"></i></div>
+      <div class="building"><i class="window"></i><i class="window"></i></div>
+    </div>
+
+    <div class="enemy-name" id="enemyName">Volt Slime</div>
+    <div class="enemy-hp-wrap">
+      <div class="label">ENEMY HP <span id="enemyHpText">100/100</span></div>
+      <div class="enemy-hp"><div id="enemyHpFill"></div></div>
+    </div>
+
+    <div class="arena">
+      <div class="actor mage" id="mage" aria-label="Pháp sư hoàng gia">
+        <div class="hat-tip"></div>
+        <div class="hat-brim"></div>
+        <div class="hat-band"></div>
+        <div class="hat-gem"></div>
+        <div class="face">
+          <div class="eye left"></div>
+          <div class="eye right"></div>
+        </div>
+        <div class="beard"></div>
+        <div class="collar"></div>
+        <div class="cape"></div>
+        <div class="robe"></div>
+        <div class="belt"></div>
+        <div class="buckle"></div>
+        <div class="sleeve left"></div>
+        <div class="sleeve right"></div>
+        <div class="hand left"></div>
+        <div class="hand right"></div>
+        <div class="boot left"></div>
+        <div class="boot right"></div>
+        <div class="staff"></div>
+        <div class="staff-top"></div>
+        <div class="staff-ring"></div>
+      </div>
+      <div class="actor monster" id="monster" aria-label="Quái vật">
+        <div class="shadow"></div>
+        <div class="tail"><div class="tail-tip"></div></div>
+        <div class="horn h1"></div>
+        <div class="horn h2"></div>
+        <div class="ear left"></div>
+        <div class="ear right"></div>
+        <div class="arm left"><div class="claw"></div></div>
+        <div class="arm right"><div class="claw"></div></div>
+        <div class="body"></div>
+        <div class="belly"></div>
+        <div class="eye e1"></div>
+        <div class="eye e2"></div>
+        <div class="cheek c1"></div>
+        <div class="cheek c2"></div>
+        <div class="mouth">
+          <div class="tooth t1"></div>
+          <div class="tooth t2"></div>
+          <div class="tooth t3"></div>
+        </div>
+        <div class="foot left"></div>
+        <div class="foot right"></div>
+      </div>
+    </div>
+    <div class="boss-aura" id="bossAura"></div>
+    <div class="lightning" id="lightningEffect"></div>
+    <div class="crit-banner" id="critBanner">CRITICAL HIT!</div>
+    <div class="fireball" id="fireball"></div>
+    <div class="damage" id="damageText">-100</div>
+    <div class="player-damage" id="playerDamageText">-35 HP</div>
+  </section>
+
+  <div class="progress-map" id="progressMap" aria-label="Tiến trình Electric City">
+    <span class="map-step active" data-step="0">⚡ Cổng Ohm</span>
+    <span class="map-arrow">➜</span>
+    <span class="map-step" data-step="1">🔌 Hẻm Song Song</span>
+    <span class="map-arrow">➜</span>
+    <span class="map-step" data-step="2">🏰 Tháp Điện</span>
+  </div>
+
+  <section class="panel" aria-live="polite">
+    <div class="question-meta">
+      <div><div class="qtype" id="qType">TRẮC NGHIỆM A/B/C/D</div><div class="small" id="progressText">Câu 1/5 · Khu Ngoại Vi</div></div>
+      <div class="timer">⏳ <span id="timerText">60</span>s</div>
+    </div>
+    <div class="question" id="questionText"></div>
+    <div id="answerArea" class="answers"></div>
+
+    <div class="skills">
+      <button type="button" class="skill" id="fiftyBtn">✨ 50:50 <span id="fiftyCount">(1)</span></button>
+      <button type="button" class="skill scroll-btn" id="hintBtn">📜 Cuộn giấy gợi ý <span id="hintCount">(2)</span></button>
+      <button type="button" class="skill" id="healBtn">💠 Healing Ward +20 HP <span id="healCount">(1)</span></button>
+      <button type="button" class="skill" id="lightningBtn">⚡ Lightning Strike <span id="lightningCost">(30 Mana)</span></button>
+    </div>
+
+    <div id="feedback" class="feedback"></div>
+    <button type="button" id="nextBtn" class="next">Tiếp tục ➜</button>
+    <div class="controls-note">Mẹo: dùng 50:50 cho câu A/B/C/D; cuộn giấy mở gợi ý công thức. Mỗi câu có 60 giây.</div>
+  </section>
+
+  <div class="overlay" id="startOverlay">
+    <div class="modal">
+      <h1>⚡ Physics Quest</h1>
+      <h2>Electric City</h2>
+      <p class="story">
+        Công chúa <b>Ohmia</b> đã bị <b>Lord Resistance</b> bắt cóc và giam trong Tháp Điện của Electric City.
+        Bạn là <b>pháp sư hoàng gia Voltaris</b>. Muốn vượt qua các cổng năng lượng, bạn phải dùng kiến thức về
+        điện trở, định luật Ôm, mạch nối tiếp – song song, suất điện động và điện trở trong.
+      </p>
+      <div class="mapline" aria-label="Bản đồ hành trình">
+        <span class="node active">Cổng Ohm</span><span class="arrow">➜</span>
+        <span class="node">Hẻm Song Song</span><span class="arrow">➜</span>
+        <span class="node">Tháp Điện</span>
+      </div>
+      <p class="small">Demo vertical slice: 2 quái nhỏ + boss 3 phase.</p>
+      <button type="button" class="primary" id="startBtn">🔥 Bắt đầu giải cứu</button>
+      <button type="button" class="secondary" id="startFullBtn">⛶ Bắt đầu toàn màn hình</button>
+    </div>
+  </div>
+
+  <div class="paper-overlay hidden" id="paperOverlay">
+    <div class="paper">
+      <button type="button" class="close-scroll" id="closeScroll">Đóng ✕</button>
+      <h3>📜 Cuộn giấy của Đại Pháp Sư</h3>
+      <div id="hintContent"></div>
+    </div>
+  </div>
+
+  <div class="treasure-overlay hidden" id="treasureOverlay">
+    <div class="treasure-card">
+      <div class="chest" aria-hidden="true"></div>
+      <h2>🎁 Rương chiến lợi phẩm</h2>
+      <div class="reward" id="rewardText"></div>
+      <p class="small">Phần thưởng được chọn ngẫu nhiên sau khi hạ quái nhỏ.</p>
+      <button type="button" class="primary" id="claimRewardBtn">Nhận thưởng</button>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="endOverlay">
+    <div class="modal">
+      <h1 id="endTitle">👑 Giải cứu thành công!</h1>
+      <p class="story" id="endText"></p>
+      <button type="button" class="primary" id="restartBtn">↻ Chơi lại từ đầu</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const FALLBACK_BANK = [
+    {
+      zone:"Cổng Ohm", enemy:"Volt Slime", boss:false, type:"mcq",
+      q:"Một điện trở R = 4 Ω được mắc vào hiệu điện thế U = 12 V. Cường độ dòng điện qua điện trở bằng bao nhiêu?",
+      options:["A. 0,33 A","B. 3 A","C. 8 A","D. 48 A"], answer:1,
+      hint:["Nhớ định luật Ôm: I = U/R.","Thay U = 12 V và R = 4 Ω."],
+      explain:"Theo định luật Ôm: I = U/R = 12/4 = 3 A. Vì vậy đáp án đúng là B."
+    },
+    {
+      zone:"Hẻm Song Song", enemy:"Spark Bat", boss:false, type:"tf",
+      q:"Hai điện trở 6 Ω và 3 Ω mắc song song có điện trở tương đương bằng 2 Ω.",
+      options:["Đúng","Sai"], answer:0,
+      hint:["Với mạch song song: 1/Rt = 1/R1 + 1/R2.","1/Rt = 1/6 + 1/3 = 3/6."],
+      explain:"Mạch song song: 1/Rt = 1/6 + 1/3 = 1/2, nên Rt = 2 Ω. Mệnh đề là Đúng."
+    },
+    {
+      zone:"Tháp Điện · Boss Phase 1", enemy:"Lord Resistance", boss:true, type:"mcq",
+      q:"Một nguồn điện có suất điện động ℰ = 12 V, điện trở trong r = 1 Ω, mắc với điện trở ngoài R = 5 Ω. Cường độ dòng điện trong mạch kín là:",
+      options:["A. 1 A","B. 2 A","C. 2,4 A","D. 6 A"], answer:1,
+      hint:["Định luật Ôm cho toàn mạch: I = ℰ/(R + r).","Tổng điện trở của mạch là 5 + 1 = 6 Ω."],
+      explain:"I = ℰ/(R+r) = 12/(5+1) = 2 A. Đáp án B."
+    },
+    {
+      zone:"Tháp Điện · Boss Phase 2", enemy:"Lord Resistance", boss:true, type:"tf",
+      q:"Trong một đoạn mạch gồm các điện trở mắc nối tiếp, cường độ dòng điện có cùng giá trị tại mọi vị trí trong mạch.",
+      options:["Đúng","Sai"], answer:0,
+      hint:["Mạch nối tiếp chỉ có một nhánh duy nhất cho dòng điện đi qua.","Hãy nhớ quan hệ I = I₁ = I₂ = ..."],
+      explain:"Trong mạch nối tiếp, dòng điện không phân nhánh nên I = I₁ = I₂ = ... Mệnh đề là Đúng."
+    },
+    {
+      zone:"Tháp Điện · Boss Phase 3", enemy:"Lord Resistance", boss:true, type:"fill",
+      q:"Một nguồn điện có suất điện động ℰ = 9 V và điện trở trong r = 1 Ω đang cung cấp dòng điện I = 1,5 A. Hiệu điện thế mạch ngoài U bằng bao nhiêu vôn? Điền số vào ô trống.",
+      answerText:["7.5","7,5","7.50","7,50"],
+      hint:["Khi nguồn đang phát điện: U = ℰ − Ir.","Tính độ sụt áp trong nguồn: Ir = 1,5 × 1 = 1,5 V."],
+      explain:"U = ℰ − Ir = 9 − 1,5×1 = 7,5 V."
+    }
+  ];
+
+
+  /* Câu hỏi do ứng dụng ModuLab truyền vào; không có thì dùng bộ mẫu ở trên */
+  const questionBank =
+    (window.__MODULAB_QUESTIONS__ && window.__MODULAB_QUESTIONS__.length)
+      ? window.__MODULAB_QUESTIONS__
+      : FALLBACK_BANK;
+
+  /* Số câu mỗi lượt chơi: 2 quái thường rồi tới các pha đánh trùm */
+  const ROUND_SIZE = Math.max(3, Number(window.__MODULAB_ROUND__) || 5);
+
+  let questions = [];
+
+  function shuffled(arr){
+    const copy = arr.slice();
+    for(let i=copy.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      [copy[i],copy[j]]=[copy[j],copy[i]];
+    }
+    return copy;
+  }
+
+  function shuffleMcqOptions(q){
+    const clone = {...q};
+    if(q.type!=="mcq") return clone;
+
+    const packed = q.options.map((text,index)=>({
+      text: text.replace(/^[A-D]\.\s*/, ""),
+      correct: index===q.answer
+    }));
+    const mixed = shuffled(packed);
+    const labels = ["A. ","B. ","C. ","D. "];
+
+    clone.options = mixed.map((item,i)=>labels[i]+item.text);
+    clone.answer = mixed.findIndex(item=>item.correct);
+    return clone;
+  }
+
+  function buildShuffledRun(){
+    /* Giữ nguyên mạch truyện: hai quái thường trước, sau đó các pha đánh trùm.
+       Mỗi lượt bốc ngẫu nhiên ROUND_SIZE câu nên chơi lại không bị trùng đề. */
+    const picked = shuffled(questionBank).slice(0, Math.min(ROUND_SIZE, questionBank.length));
+
+    questions = picked.map((q, index) => {
+      const clone = shuffleMcqOptions(q);
+
+      if (index === 0) {
+        clone.zone = "Cổng Ohm";
+        clone.enemy = "Volt Slime";
+        clone.boss = false;
+      } else if (index === 1) {
+        clone.zone = "Hẻm Song Song";
+        clone.enemy = "Spark Bat";
+        clone.boss = false;
+      } else {
+        clone.zone = "Tháp Điện · Boss Phase " + (index - 1);
+        clone.enemy = "Lord Resistance";
+        clone.boss = true;
+      }
+      return clone;
+    });
+  }
+
+  const $ = (id) => document.getElementById(id);
+  const els = {
+    hpText:$("hpText"), hpFill:$("hpFill"), xpText:$("xpText"), xpFill:$("xpFill"), manaText:$("manaText"), manaFill:$("manaFill"), levelText:$("levelText"),
+    enemyName:$("enemyName"), enemyHpText:$("enemyHpText"), enemyHpFill:$("enemyHpFill"),
+    qType:$("qType"), progressText:$("progressText"), timerText:$("timerText"), questionText:$("questionText"),
+    answerArea:$("answerArea"), feedback:$("feedback"), nextBtn:$("nextBtn"), fiftyBtn:$("fiftyBtn"), hintBtn:$("hintBtn"),
+    healBtn:$("healBtn"), lightningBtn:$("lightningBtn"), fiftyCount:$("fiftyCount"), hintCount:$("hintCount"), healCount:$("healCount"),
+    fireball:$("fireball"), lightningEffect:$("lightningEffect"), critBanner:$("critBanner"), bossAura:$("bossAura"),
+    damageText:$("damageText"), playerDamageText:$("playerDamageText"), hpStat:$("hpStat"), monster:$("monster"), mage:$("mage"),
+    treasureOverlay:$("treasureOverlay"), rewardText:$("rewardText"),
+    startOverlay:$("startOverlay"), endOverlay:$("endOverlay"), paperOverlay:$("paperOverlay"),
+    hintContent:$("hintContent"), endTitle:$("endTitle"), endText:$("endText")
+  };
+
+  let state = {};
+  let timer = null;
+  let audioCtx = null;
+
+  function resetState(shuffleQuestions=false){
+    clearInterval(timer);
+    if(shuffleQuestions || questions.length===0) buildShuffledRun();
+    state = {
+      index:0, hp:100, maxHp:100, xp:0, level:1, expNeed:100, mana:0, manaMax:30, correct:0,
+      fifty:1, hints:2, heals:1, locked:false, enemyHp:100, enemyMaxHp:100,
+      streak:0, pendingReward:null
+    };
+    els.endOverlay.classList.add("hidden");
+    els.treasureOverlay.classList.add("hidden");
+    els.feedback.className="feedback";
+    els.nextBtn.style.display="none";
+    updateHud();
+  }
+
+  function ensureAudio(){
+    if(!audioCtx){
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if(AC) audioCtx = new AC();
+    }
+    if(audioCtx && audioCtx.state==="suspended") audioCtx.resume();
+  }
+
+  function tone(freq=440,dur=.12,type="square",vol=.035,delay=0){
+    ensureAudio();
+    if(!audioCtx) return;
+    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+    o.type=type; o.frequency.value=freq;
+    g.gain.setValueAtTime(0.0001,audioCtx.currentTime+delay);
+    g.gain.exponentialRampToValueAtTime(vol,audioCtx.currentTime+delay+.01);
+    g.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+delay+dur);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(audioCtx.currentTime+delay); o.stop(audioCtx.currentTime+delay+dur+.03);
+  }
+  function sfxCorrect(){ tone(660,.1,"square",.035); tone(880,.14,"square",.035,.1); }
+  function sfxWrong(){ tone(180,.18,"sawtooth",.04); tone(120,.22,"sawtooth",.035,.12); }
+  function sfxEnemyRush(){ tone(230,.11,"sawtooth",.025); tone(170,.14,"sawtooth",.03,.09); }
+  function sfxImpact(){ tone(90,.18,"square",.055); tone(55,.22,"sawtooth",.035,.04); }
+  function sfxCast(){ tone(300,.08,"triangle",.025); tone(520,.12,"triangle",.035,.08); tone(780,.16,"triangle",.035,.17); }
+  function sfxLevel(){ [523,659,784,1047].forEach((f,i)=>tone(f,.15,"square",.03,i*.09)); }
+
+  function setBar(fillEl,current,max){
+    const safeMax=Math.max(1,Number(max)||1);
+    const safeCurrent=Math.max(0,Math.min(safeMax,Number(current)||0));
+    const ratio=safeCurrent/safeMax;
+    fillEl.style.width=`${ratio*100}%`;
+    fillEl.style.transform=`scaleX(${ratio})`;
+  }
+
+  function updateHud(){
+    state.hp = Math.max(0, Math.min(state.maxHp, Number(state.hp) || 0));
+    els.hpText.textContent=`${state.hp}/${state.maxHp}`;
+    setBar(els.hpFill,state.hp,state.maxHp);
+    els.hpFill.setAttribute("aria-valuenow", String(state.hp));
+
+    els.xpText.textContent=`${state.xp}/${state.expNeed}`;
+    setBar(els.xpFill,state.xp,state.expNeed);
+
+    els.manaText.textContent=`${state.mana}/${state.manaMax}`;
+    setBar(els.manaFill,state.mana,state.manaMax);
+
+    els.levelText.textContent=state.level;
+    els.fiftyCount.textContent=`(${state.fifty})`;
+    els.hintCount.textContent=`(${state.hints})`;
+    els.healCount.textContent=`(${state.heals})`;
+    els.healBtn.disabled = state.heals<=0 || state.hp>=state.maxHp || state.locked;
+    els.lightningBtn.disabled = state.locked || state.mana < 30;
+  }
+
+  function updateEnemyHud(){
+    state.enemyHp=Math.max(0,Math.min(state.enemyMaxHp,Number(state.enemyHp)||0));
+    els.enemyHpText.textContent=`${state.enemyHp}/${state.enemyMaxHp}`;
+    setBar(els.enemyHpFill,state.enemyHp,state.enemyMaxHp);
+    els.enemyHpFill.setAttribute("aria-valuenow",String(state.enemyHp));
+  }
+
+  function damageEnemy(amount){
+    const damage=Math.max(0,Number(amount)||0);
+    const oldHp=state.enemyHp;
+    state.enemyHp=Math.max(0,oldHp-damage);
+    updateEnemyHud();
+    updateBossPhase();
+    return oldHp-state.enemyHp;
+  }
+
+  function showFloatingDamage(el,text){
+    el.textContent = text;
+    el.classList.remove("pop");
+    void el.offsetWidth;
+    el.classList.add("pop");
+
+    // Auto-hide after the CSS animation completes, so the number does not stick.
+    window.setTimeout(()=>{
+      el.classList.remove("pop");
+    }, 900);
+  }
+
+  function receivePlayerDamage(amount){
+    const damage = Math.max(0, Number(amount) || 0);
+    const oldHp = state.hp;
+    state.hp = Math.max(0, oldHp - damage);
+
+    // Update the HP bar immediately before running animations.
+    updateHud();
+
+    showFloatingDamage(els.playerDamageText, `-${oldHp - state.hp} HP`);
+
+    els.hpStat.classList.remove("hp-damaged");
+    void els.hpStat.offsetWidth;
+    els.hpStat.classList.add("hp-damaged");
+
+    els.mage.classList.remove("hit");
+    void els.mage.offsetWidth;
+    els.mage.classList.add("hit");
+  }
+
+  function updateProgressMap(){
+    const steps=[...document.querySelectorAll(".map-step")];
+    const current = state.index===0 ? 0 : state.index===1 ? 1 : 2;
+    steps.forEach((el,i)=>{
+      el.classList.toggle("active",i===current);
+      el.classList.toggle("done",i<current);
+    });
+  }
+
+  function updateBossPhase(){
+    const q=questions[state.index];
+    els.bossAura.className="boss-aura";
+    els.monster.classList.remove("phase2","phase3");
+    if(!q || !q.boss) return;
+
+    els.bossAura.classList.add("show");
+    if(state.enemyHp<=100){
+      els.bossAura.classList.add("final");
+      els.monster.classList.add("phase3");
+      els.enemyName.textContent="Lord Resistance · FINAL PHASE";
+    }else if(state.enemyHp<=200){
+      els.bossAura.classList.add("enraged");
+      els.monster.classList.add("phase2");
+      els.enemyName.textContent="Lord Resistance · ENRAGED";
+    }else{
+      els.enemyName.textContent="Lord Resistance";
+    }
+  }
+
+  function enemySetup(q){
+    els.enemyName.textContent=q.enemy;
+    els.monster.classList.toggle("boss", q.boss);
+    state.enemyMaxHp = q.boss ? 300 : 100;
+
+    // Small enemies always start full. Boss HP persists across its three phases.
+    if(!q.boss) state.enemyHp=100;
+    else if(state.index===2 || state.enemyHp<=0 || state.enemyHp>300) state.enemyHp=300;
+
+    updateEnemyHud();
+    updateBossPhase();
+    updateProgressMap();
+  }
+
+  function renderQuestion(){
+    clearInterval(timer);
+    state.locked=false;
+    els.fireball.classList.remove("fly");
+    els.fireball.style.display="";
+    els.damageText.classList.remove("pop");
+    els.playerDamageText.classList.remove("pop");
+    els.critBanner.classList.remove("show");
+    els.lightningEffect.classList.remove("show");
+    const q=questions[state.index];
+    enemySetup(q);
+    els.feedback.className="feedback";
+    els.feedback.innerHTML="";
+    els.nextBtn.style.display="none";
+    els.qType.textContent = q.type==="mcq" ? "TRẮC NGHIỆM A/B/C/D" : q.type==="tf" ? "ĐÚNG / SAI" : "ĐIỀN ĐÁP ÁN";
+    els.progressText.textContent=`Câu ${state.index+1}/${questions.length} · ${q.zone}`;
+    els.questionText.textContent=q.q;
+    els.answerArea.innerHTML="";
+    els.answerArea.className="answers"+(q.type==="tf"?" tf":"");
+
+    if(q.type==="mcq" || q.type==="tf"){
+      q.options.forEach((opt,i)=>{
+        const b=document.createElement("button");
+        b.type="button"; b.className="answer"; b.textContent=opt; b.dataset.index=i;
+        b.addEventListener("click",()=>answerChoice(i,b));
+        els.answerArea.appendChild(b);
+      });
+    } else {
+      els.answerArea.className="";
+      const form=document.createElement("form");
+      form.className="input-row";
+      const input=document.createElement("input");
+      input.className="fill-input"; input.type="text"; input.inputMode="decimal"; input.placeholder="Ví dụ: 7,5";
+      input.setAttribute("aria-label","Nhập đáp án số");
+      const btn=document.createElement("button");
+      btn.className="submit"; btn.type="submit"; btn.textContent="Xác nhận";
+      form.append(input,btn);
+      form.addEventListener("submit",(e)=>{
+        e.preventDefault();
+        if(state.locked) return;
+        const raw=input.value.trim().replace(/\s/g,"");
+        if(!raw){ input.focus(); return; }
+        const ok=q.answerText.includes(raw);
+        answerFill(ok,input,btn);
+      });
+      els.answerArea.appendChild(form);
+      setTimeout(()=>input.focus(),0);
+    }
+
+    els.fiftyBtn.disabled = state.fifty<=0 || q.type!=="mcq";
+    els.hintBtn.disabled = state.hints<=0;
+    updateHud();
+    startTimer();
+  }
+
+  function startTimer(){
+    let t=60;
+    els.timerText.textContent=t;
+    els.timerText.parentElement.classList.remove("low");
+    timer=setInterval(()=>{
+      t--;
+      els.timerText.textContent=t;
+      if(t<=10) els.timerText.parentElement.classList.add("low");
+      if(t<=0){
+        clearInterval(timer);
+        if(!state.locked) resolve(false,null,"Hết giờ!");
+      }
+    },1000);
+  }
+
+  function answerChoice(i,button){
+    if(state.locked) return;
+    const q=questions[state.index];
+    const ok=i===q.answer;
+    [...els.answerArea.querySelectorAll(".answer")].forEach(b=>b.disabled=true);
+    button.classList.add(ok?"correct":"wrong");
+    if(!ok){
+      const correct=els.answerArea.querySelector(`[data-index="${q.answer}"]`);
+      if(correct) correct.classList.add("correct");
+    }
+    resolve(ok,button);
+  }
+
+  function answerFill(ok,input,button){
+    input.disabled=true; button.disabled=true;
+    input.style.borderColor=ok?"#77de7d":"#ff7983";
+    resolve(ok,input);
+  }
+
+  function enemyCounterAttack(extra,q){
+    els.fiftyBtn.disabled=true;
+    els.hintBtn.disabled=true;
+    els.healBtn.disabled=true;
+    els.nextBtn.style.display="none";
+
+    els.feedback.className="feedback show bad";
+    els.feedback.innerHTML=`<b>❌ ${extra||"Chưa đúng."}</b> Quái vật đang phản công...`;
+
+    // Calculate the exact horizontal distance from the enemy to the mage,
+    // so the rush animation works on different PC/laptop window sizes.
+    const mageRect = els.mage.getBoundingClientRect();
+    const monsterRect = els.monster.getBoundingClientRect();
+    const attackX = (mageRect.right - monsterRect.left) - 26;
+    els.monster.style.setProperty("--attack-x", `${attackX}px`);
+
+    els.monster.classList.remove("enemy-attacking");
+    void els.monster.offsetWidth;
+    els.monster.classList.add("enemy-attacking");
+    sfxEnemyRush();
+
+    // Damage is applied only when the monster reaches the mage.
+    setTimeout(()=>{
+      sfxImpact();
+      receivePlayerDamage(35);
+      els.feedback.className="feedback show bad";
+      els.feedback.innerHTML=`<b>💥 ${extra||"Trả lời sai!"}</b> Quái vật đánh trúng pháp sư: <b>-35 HP</b>. HP hiện tại: <b>${state.hp}/${state.maxHp}</b>.<br><span>${q.explain}</span>`;
+
+      if(state.hp<=0){
+        setTimeout(()=>gameOver(),520);
+      } else {
+        els.nextBtn.style.display="inline-block";
+        els.nextBtn.textContent=state.index===questions.length-1?"Giải cứu công chúa 👑":"Tiếp tục ➜";
+      }
+    },510);
+
+    setTimeout(()=>{
+      els.monster.classList.remove("enemy-attacking");
+      els.monster.style.removeProperty("--attack-x");
+    },930);
+  }
+
+  function resolve(ok,source,extra=""){
+    state.locked=true;
+    clearInterval(timer);
+    els.timerText.parentElement.classList.remove("low");
+    const q=questions[state.index];
+
+    if(ok){
+      sfxCorrect();
+      state.correct++;
+
+      const gain=q.boss?40:50;
+      state.xp += gain;
+      state.mana=Math.min(state.manaMax,state.mana+10);
+      state.streak++;
+      let leveled=false;
+      if(state.xp>=state.expNeed){
+        state.xp-=state.expNeed;
+        state.level++;
+        state.maxHp+=20;
+        state.hp=state.maxHp;
+        state.expNeed+=40;
+        leveled=true;
+        sfxLevel();
+      }
+
+      updateHud();
+      els.fiftyBtn.disabled=true;
+      els.hintBtn.disabled=true;
+      els.healBtn.disabled=true;
+
+      els.feedback.className="feedback show good";
+      els.feedback.innerHTML=`<b>✅ Chính xác!</b> Pháp sư đang tung phép... +${gain} EXP.${leveled?" <b>LEVEL UP!</b> HP đã được hồi đầy.":""}<br><span>${q.explain}</span>`;
+
+      const isCrit=Math.random()<0.15;
+      const spellDamage=isCrit?150:100;
+      if(isCrit){
+        els.critBanner.classList.remove("show");
+        void els.critBanner.offsetWidth;
+        els.critBanner.classList.add("show");
+      }
+
+      castSpell(spellDamage,(dealt)=>{
+        els.feedback.innerHTML=`<b>${isCrit?"💥 CRITICAL HIT!":"🔥 Đòn đánh trúng mục tiêu!"}</b> Quái vật mất <b>${dealt} HP</b>. HP quái còn <b>${state.enemyHp}/${state.enemyMaxHp}</b>.<br><span>${q.explain}</span>${leveled?"<br><b>LEVEL UP!</b> HP của pháp sư đã được hồi đầy.":""}`;
+        if(!q.boss && state.enemyHp<=0){
+          setTimeout(()=>openTreasure(),450);
+        }else{
+          els.nextBtn.style.display="inline-block";
+          els.nextBtn.textContent=state.index===questions.length-1?"Giải cứu công chúa 👑":"Tiếp tục ➜";
+        }
+      });
+      return;
+    } else {
+      state.streak=0;
+      sfxWrong();
+      enemyCounterAttack(extra,q);
+      return;
+    }
+  }
+
+  function castSpell(damage,onImpact){
+    sfxCast();
+    els.nextBtn.style.display="none";
+
+    // Reset projectile before every cast.
+    els.fireball.classList.remove("fly");
+    els.fireball.style.display="";
+    void els.fireball.offsetWidth;
+    els.fireball.classList.add("fly");
+
+    setTimeout(()=>{
+      const dealt=damageEnemy(damage);
+
+      els.monster.classList.remove("hit");
+      void els.monster.offsetWidth;
+      els.monster.classList.add("hit");
+
+      showFloatingDamage(els.damageText, `-${dealt} HP`);
+
+      // Projectile disappears exactly on impact.
+      els.fireball.classList.remove("fly");
+      els.fireball.style.display="none";
+
+      if(typeof onImpact==="function") onImpact(dealt);
+    },650);
+
+    setTimeout(()=>{
+      els.fireball.classList.remove("fly");
+      els.fireball.style.display="";
+    },780);
+  }
+
+  function nextQuestion(){
+    if(!state.locked) return;
+    state.index++;
+    if(state.index>=questions.length){ victory(); return; }
+    renderQuestion();
+  }
+
+  /** Gửi kết quả về ứng dụng ModuLab để ghi vào sổ điểm */
+  function reportResult(won){
+    try {
+      window.parent.postMessage({
+        source: "modulab-quest", type: "finish",
+        won: won, correct: state.correct, total: questions.length, level: state.level
+      }, "*");
+    } catch (e) { /* chạy độc lập thì bỏ qua */ }
+  }
+
+  function gameOver(){
+    reportResult(false);
+    els.endTitle.textContent="💀 Pháp sư đã gục ngã";
+    els.endText.innerHTML="Năng lượng của Voltaris đã cạn. Khi chơi lại, hệ thống sẽ <b>xáo trộn thứ tự câu hỏi và vị trí đáp án A/B/C/D</b> để tránh ghi nhớ máy móc.";
+    els.endOverlay.classList.remove("hidden");
+  }
+
+  function victory(){
+    reportResult(true);
+    els.endTitle.textContent="👑 Giải cứu thành công!";
+    els.endText.innerHTML=`Lord Resistance đã bị đánh bại. Công chúa Ohmia được giải cứu khỏi Tháp Điện.<br><br>
+      <b>Kết quả:</b> Level ${state.level} · HP ${state.hp}/${state.maxHp} · EXP ${state.xp}/${state.expNeed}.<br>
+      Ngân hàng câu hỏi ModuLab có ${questionBank.length} câu, mỗi lượt bốc ngẫu nhiên ${questions.length} câu.`;
+    els.endOverlay.classList.remove("hidden");
+  }
+
+  function openTreasure(){
+    const rewards=[
+      {type:"heal",label:"❤️ Hồi 25 HP"},
+      {type:"hint",label:"📜 +1 Cuộn giấy gợi ý"},
+      {type:"fifty",label:"✨ +1 lượt 50:50"},
+      {type:"xp",label:"⭐ +25 EXP"},
+      {type:"mana",label:"⚡ +15 Mana"}
+    ];
+    state.pendingReward=rewards[Math.floor(Math.random()*rewards.length)];
+    els.rewardText.textContent=state.pendingReward.label;
+    els.treasureOverlay.classList.remove("hidden");
+  }
+
+  function claimReward(){
+    const r=state.pendingReward;
+    if(!r) return;
+
+    if(r.type==="heal") state.hp=Math.min(state.maxHp,state.hp+25);
+    if(r.type==="hint") state.hints++;
+    if(r.type==="fifty") state.fifty++;
+    if(r.type==="xp"){
+      state.xp+=25;
+      if(state.xp>=state.expNeed){
+        state.xp-=state.expNeed;
+        state.level++;
+        state.maxHp+=20;
+        state.hp=state.maxHp;
+        state.expNeed+=40;
+        sfxLevel();
+      }
+    }
+    if(r.type==="mana") state.mana=Math.min(state.manaMax,state.mana+15);
+
+    state.pendingReward=null;
+    els.treasureOverlay.classList.add("hidden");
+    updateHud();
+    els.nextBtn.style.display="inline-block";
+    els.nextBtn.textContent="Tiếp tục ➜";
+  }
+
+  function useFifty(){
+    if(state.locked || state.fifty<=0) return;
+    const q=questions[state.index];
+    if(q.type!=="mcq") return;
+    const wrong=[0,1,2,3].filter(i=>i!==q.answer);
+    wrong.sort(()=>Math.random()-.5);
+    wrong.slice(0,2).forEach(i=>{
+      const b=els.answerArea.querySelector(`[data-index="${i}"]`);
+      if(b){ b.disabled=true; b.classList.add("eliminated"); }
+    });
+    state.fifty--; updateHud(); els.fiftyBtn.disabled=true;
+  }
+
+  function useHint(){
+    if(state.locked || state.hints<=0) return;
+    const q=questions[state.index];
+    state.hints--; updateHud();
+    els.hintContent.innerHTML=`<ul>${q.hint.map(x=>`<li>${x}</li>`).join("")}</ul><p><b>Hãy tự chọn đáp án trước khi xem lời giải.</b></p>`;
+    els.paperOverlay.classList.remove("hidden");
+    if(state.hints<=0) els.hintBtn.disabled=true;
+  }
+
+  function useHeal(){
+    if(state.locked || state.heals<=0 || state.hp>=state.maxHp) return;
+    state.heals--; state.hp=Math.min(state.maxHp,state.hp+20); updateHud();
+    tone(520,.15,"sine",.025); tone(760,.2,"sine",.025,.08);
+  }
+
+  function useLightning(){
+    if(state.locked || state.mana<30) return;
+    state.mana-=30;
+    updateHud();
+
+    els.lightningEffect.classList.remove("show");
+    void els.lightningEffect.offsetWidth;
+    els.lightningEffect.classList.add("show");
+    tone(980,.08,"square",.03);
+    tone(520,.16,"sawtooth",.04,.07);
+    tone(170,.22,"square",.05,.16);
+
+    setTimeout(()=>{
+      const dealt=damageEnemy(150);
+      showFloatingDamage(els.damageText, `-${dealt} HP`);
+      els.monster.classList.remove("hit");
+      void els.monster.offsetWidth;
+      els.monster.classList.add("hit");
+
+      els.feedback.className="feedback show good";
+      els.feedback.innerHTML=`<b>⚡ Lightning Strike!</b> Gây <b>${dealt} HP</b> sát thương phép. HP quái còn <b>${state.enemyHp}/${state.enemyMaxHp}</b>.`;
+
+      if(state.enemyHp<=0 && !questions[state.index].boss){
+        setTimeout(()=>openTreasure(),350);
+      }
+    },260);
+  }
+
+  async function goFullscreen(){
+    try{
+      const el=document.documentElement;
+      if(!document.fullscreenElement && el.requestFullscreen) await el.requestFullscreen();
+    }catch(e){}
+  }
+
+  function start(full){
+    ensureAudio(); resetState(true); els.startOverlay.classList.add("hidden"); renderQuestion();
+    if(full) goFullscreen();
+  }
+
+  $("startBtn").addEventListener("click",()=>start(false));
+  $("startFullBtn").addEventListener("click",()=>start(true));
+  $("fullscreenBtn").addEventListener("click",goFullscreen);
+  els.nextBtn.addEventListener("click",nextQuestion);
+  els.fiftyBtn.addEventListener("click",useFifty);
+  els.hintBtn.addEventListener("click",useHint);
+  els.healBtn.addEventListener("click",useHeal);
+  els.lightningBtn.addEventListener("click",useLightning);
+  $("claimRewardBtn").addEventListener("click",claimReward);
+  $("closeScroll").addEventListener("click",()=>els.paperOverlay.classList.add("hidden"));
+  els.paperOverlay.addEventListener("click",(e)=>{ if(e.target===els.paperOverlay) els.paperOverlay.classList.add("hidden"); });
+  $("restartBtn").addEventListener("click",()=>{ resetState(true); els.endOverlay.classList.add("hidden"); renderQuestion(); });
+  resetState();
+})();
+</script>
+</body>
+</html>
