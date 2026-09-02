@@ -13,6 +13,7 @@ import { sfx, music } from './audio';
 import { HomeMenu } from './components/f0-home';
 import { AuthAccountView } from './components/f1-auth';
 import { QuizGame } from './components/f2-quiz';
+import { PhysicsQuest } from './components/f2-quiz/quest';
 import { TheoryView } from './components/f3-theory';
 import { ToolExplorer } from './components/f4-tools';
 import { CircuitSimulator } from './components/f5-circuit';
@@ -215,6 +216,7 @@ function Workspace() {
                 {currentStep === 'theory' && `${t('nav.theory')} — ${t('nav.theory.lesson')}`}
                 {currentStep === 'tools' && `${t('nav.theory')} — ${t('nav.theory.tools')}`}
                 {currentStep === 'quiz' && t('nav.quiz')}
+                {currentStep === 'quest' && t('nav.quest')}
                 {currentStep === 'circuit' && t('nav.circuit')}
                 {currentStep === 'report' && t('nav.report')}
                 {currentStep === 'teacher' && t('nav.teacher')}
@@ -258,6 +260,21 @@ function Workspace() {
 
             {currentStep === 'quiz' && (
               <QuizGame
+                userRole={currentUser.role}
+                extraQuestions={data.questions}
+                onFinishQuiz={(score, total) => {
+                  void api.saveAttempt({
+                    userId: currentUser.id,
+                    moduleId: currentModuleId,
+                    score,
+                    total,
+                  }).catch(() => undefined);
+                }}
+              />
+            )}
+
+            {currentStep === 'quest' && (
+              <PhysicsQuest
                 userRole={currentUser.role}
                 extraQuestions={data.questions}
                 onFinishQuiz={(score, total) => {

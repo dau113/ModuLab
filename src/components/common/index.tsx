@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../../theme';
 import { useSettings, ACCENTS } from '../../settings';
-import { Home, Sun, Moon, Rocket, Volume2, VolumeX, Music } from 'lucide-react';
+import { Home, Sun, Moon, Rocket, Swords, Volume2, VolumeX, Music } from 'lucide-react';
 import { music, isSfxEnabled, toggleSfx } from '../../audio';
 
 interface TopNavProps {
@@ -185,6 +185,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     children?: { id: LabStep; label: string; icon: React.ReactNode }[];
   }[] = [
     { id: 'quiz', label: t('nav.quiz'), icon: <Rocket className="w-4 h-4" /> },
+    { id: 'quest', label: t('nav.quest'), icon: <Swords className="w-4 h-4" /> },
     { id: 'circuit', label: t('nav.circuit'), icon: <Cpu className="w-4 h-4" /> },
     { id: 'report', label: t('nav.report'), icon: <FileText className="w-4 h-4" /> },
     {

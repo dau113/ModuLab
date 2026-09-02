@@ -49,6 +49,7 @@ const DICT = {
   'nav.theory.lesson': ['Lý thuyết ôn tập', 'Lesson notes'],
   'nav.theory.tools': ['Khám phá dụng cụ', 'Explore instruments'],
   'nav.quiz': ['Khởi động', 'Warm-up'],
+  'nav.quest': ['Trò chơi', 'Adventure'],
   'nav.circuit': ['Thực hành', 'Lab practice'],
   'nav.report': ['Báo cáo thực hành', 'Lab report'],
   'nav.teacher': ['Bảng quản lý', 'Class dashboard'],
