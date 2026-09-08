@@ -30,10 +30,63 @@
     min-height:100vh;
     background:
       radial-gradient(circle at 70% 15%,rgba(255,244,157,.18),transparent 20%),
-      linear-gradient(var(--sky1),var(--sky2) 62%,#23243a 62%,#171827 100%);
+      linear-gradient(var(--sky1),var(--sky2) 62%,var(--g1,#23243a) 62%,var(--g2,#171827) 100%);
     position:relative;
     overflow:hidden;
   }
+
+  /* ================= CẢNH NỀN THEO TỪNG CHƯƠNG =================
+     Mỗi chương đổi màu trời, màu đất, dáng cảnh vật và màu quái vật. */
+  .game[data-chapter="2"]{ --sky1:#07302c; --sky2:#0f5a4a; --g1:#123026; --g2:#0a1c17 }
+  .game[data-chapter="3"]{ --sky1:#2b0a1e; --sky2:#5c1330; --g1:#2e1220; --g2:#1a0a12 }
+
+  /* Cảnh vật phía sau: nhà phố hoá thành rừng cây rồi thành tháp đá */
+  .game[data-chapter="2"] .building{ background:#0e2a22; border-color:#2f7a5f; border-radius:50% 50% 0 0 }
+  .game[data-chapter="2"] .building .window{ background:#7ff0c0; box-shadow:0 0 8px #4fd3a5 }
+  .game[data-chapter="3"] .building{ background:#2a0f1c; border-color:#8a2c4a; border-radius:0 }
+  .game[data-chapter="3"] .building .window{ background:#ffb36b; box-shadow:0 0 10px #ff7a3d }
+
+  /* Mặt trăng chuyển sang ánh lục rồi sang quầng lửa đỏ */
+  .game[data-chapter="2"] .moon{ background:#c9ffe9; box-shadow:0 0 35px rgba(140,255,215,.3) }
+  .game[data-chapter="3"] .moon{ background:#ff9a5c; box-shadow:0 0 45px rgba(255,120,60,.4) }
+
+  /* Quái vật chương 2: dơi tím */
+  .game[data-chapter="2"] .monster .body{
+    background:radial-gradient(circle at 35% 28%,#d7b0ff 0 18%,#9a63e0 19% 60%,#6a3aa8 100%);
+    border-color:#2b1740; border-radius:52% 52% 40% 40%
+  }
+  .game[data-chapter="2"] .monster .belly{ background:#c9a4f5; border-color:#4a2a70 }
+  .game[data-chapter="2"] .monster .horn, .game[data-chapter="2"] .monster .horn:after{ background:#e4c6ff; border-color:#3a2158 }
+  .game[data-chapter="2"] .monster .ear{ background:#9a63e0; border-color:#3a2158 }
+  .game[data-chapter="2"] .monster .tail{ background:#9a63e0 }
+  .game[data-chapter="2"] .monster .tail-tip{ border-left-color:#d7b0ff }
+
+  /* Quái vật chương 3: trùm đỏ */
+  .game[data-chapter="3"] .monster .body{
+    background:radial-gradient(circle at 35% 28%,#ffb3a1 0 18%,#e04a3a 19% 60%,#8f2118 100%);
+    border-color:#3d1410; border-radius:44% 44% 30% 30%
+  }
+  .game[data-chapter="3"] .monster .belly{ background:#ffcabb; border-color:#6d2a20 }
+  .game[data-chapter="3"] .monster .horn, .game[data-chapter="3"] .monster .horn:after{ background:#ffd9a1; border-color:#5a2116 }
+  .game[data-chapter="3"] .monster .ear{ background:#e04a3a; border-color:#5a2116 }
+  .game[data-chapter="3"] .monster .tail{ background:#e04a3a }
+  .game[data-chapter="3"] .monster .tail-tip{ border-left-color:#ffb3a1 }
+
+  /* Bảng báo khi bước sang chương mới */
+  .chapter-banner{
+    position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);
+    z-index:30;text-align:center;pointer-events:none;display:none
+  }
+  .chapter-banner.show{ display:block; animation:chapterIn 2.2s ease-out forwards }
+  .chapter-banner .ch-no{ font-size:15px;letter-spacing:4px;color:var(--gold);text-shadow:2px 2px #000 }
+  .chapter-banner .ch-name{ font-size:34px;font-weight:1000;color:#fff;text-shadow:3px 3px #000 }
+  @keyframes chapterIn{
+    0%{opacity:0;transform:translate(-50%,-30%) scale(.8)}
+    18%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+    78%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+    100%{opacity:0;transform:translate(-50%,-62%) scale(1)}
+  }
+
   .pixel{image-rendering:pixelated}
   .hidden{display:none!important}
   .topbar{
@@ -371,7 +424,7 @@
 </style>
 </head>
 <body>
-<div class="game" id="game">
+<div class="game game-ground" id="game" data-chapter="1">
   <div class="topbar">
     <div class="brand">⚡ PHYSICS QUEST: ELECTRIC CITY</div>
     <div class="stats">
@@ -393,6 +446,11 @@
       <div class="building"><i class="window"></i><i class="window"></i><i class="window"></i></div>
       <div class="building"><i class="window"></i><i class="window"></i></div>
       <div class="building"><i class="window"></i><i class="window"></i></div>
+    </div>
+
+    <div class="chapter-banner" id="chapterBanner">
+      <div class="ch-no" id="chapterNo">CHƯƠNG 1</div>
+      <div class="ch-name" id="chapterName">Cổng Ohm</div>
     </div>
 
     <div class="enemy-name" id="enemyName">Volt Slime</div>
@@ -581,6 +639,13 @@
       ? window.__MODULAB_QUESTIONS__
       : FALLBACK_BANK;
 
+  /* Ba chương của hành trình: mỗi chương một vùng đất, một loài quái và một bảng màu */
+  const CHAPTERS = [
+    { no: 1, zone: "Cổng Ohm",     enemy: "Volt Slime",      boss: false },
+    { no: 2, zone: "Hẻm Song Song", enemy: "Spark Bat",       boss: false },
+    { no: 3, zone: "Tháp Điện",     enemy: "Lord Resistance", boss: true  },
+  ];
+
   /* Số câu mỗi lượt chơi: 2 quái thường rồi tới các pha đánh trùm */
   const ROUND_SIZE = Math.max(3, Number(window.__MODULAB_ROUND__) || 5);
 
@@ -612,26 +677,21 @@
   }
 
   function buildShuffledRun(){
-    /* Giữ nguyên mạch truyện: hai quái thường trước, sau đó các pha đánh trùm.
-       Mỗi lượt bốc ngẫu nhiên ROUND_SIZE câu nên chơi lại không bị trùng đề. */
+    /* Bốc ngẫu nhiên ROUND_SIZE câu rồi chia đều cho ba chương.
+       Chương cuối luôn là trùm, nên đánh xong chương hai là bước vào Tháp Điện. */
     const picked = shuffled(questionBank).slice(0, Math.min(ROUND_SIZE, questionBank.length));
+    const perChapter = Math.max(1, Math.ceil(picked.length / CHAPTERS.length));
 
     questions = picked.map((q, index) => {
       const clone = shuffleMcqOptions(q);
+      const ch = CHAPTERS[Math.min(CHAPTERS.length - 1, Math.floor(index / perChapter))];
+      const phase = index - CHAPTERS.indexOf(ch) * perChapter + 1;
 
-      if (index === 0) {
-        clone.zone = "Cổng Ohm";
-        clone.enemy = "Volt Slime";
-        clone.boss = false;
-      } else if (index === 1) {
-        clone.zone = "Hẻm Song Song";
-        clone.enemy = "Spark Bat";
-        clone.boss = false;
-      } else {
-        clone.zone = "Tháp Điện · Boss Phase " + (index - 1);
-        clone.enemy = "Lord Resistance";
-        clone.boss = true;
-      }
+      clone.chapter = ch.no;
+      clone.enemy = ch.enemy;
+      clone.boss = ch.boss;
+      clone.zone = ch.boss ? `${ch.zone} · Pha ${phase}` : ch.zone;
+      clone.zoneName = ch.zone;
       return clone;
     });
   }
@@ -660,7 +720,7 @@
     state = {
       index:0, hp:100, maxHp:100, xp:0, level:1, expNeed:100, mana:0, manaMax:30, correct:0,
       fifty:1, hints:2, heals:1, locked:false, enemyHp:100, enemyMaxHp:100,
-      streak:0, pendingReward:null
+      streak:0, pendingReward:null, chapter:undefined
     };
     els.endOverlay.classList.add("hidden");
     els.treasureOverlay.classList.add("hidden");
@@ -688,6 +748,12 @@
     o.connect(g); g.connect(audioCtx.destination);
     o.start(audioCtx.currentTime+delay); o.stop(audioCtx.currentTime+delay+dur+.03);
   }
+  /** Giai điệu ngắn báo bước sang chương mới */
+  function sfxChapter(){
+    const t = 0;
+    [392, 523.25, 659.25, 783.99].forEach((f, i) => tone(f, .22, "triangle", .05, t + i * .12));
+  }
+
   function sfxCorrect(){ tone(660,.1,"square",.035); tone(880,.14,"square",.035,.1); }
   function sfxWrong(){ tone(180,.18,"sawtooth",.04); tone(120,.22,"sawtooth",.035,.12); }
   function sfxEnemyRush(){ tone(230,.11,"sawtooth",.025); tone(170,.14,"sawtooth",.03,.09); }
@@ -813,6 +879,29 @@
     updateProgressMap();
   }
 
+  /** Đổi bản đồ và quái vật khi bước sang chương mới */
+  function applyChapter(q){
+    const ch = q.chapter || 1;
+    const root = $("game");
+    if(!root) return;
+    if(state.chapter === ch) return;
+
+    const first = state.chapter === undefined;
+    state.chapter = ch;
+    root.setAttribute("data-chapter", String(ch));
+
+    // Sang chương mới (không phải lúc mới vào) thì hiện bảng báo và reo tiếng
+    if(!first){
+      const banner = $("chapterBanner");
+      $("chapterNo").textContent = `CHƯƠNG ${ch}`;
+      $("chapterName").textContent = q.zoneName || q.zone;
+      banner.classList.remove("show");
+      void banner.offsetWidth;
+      banner.classList.add("show");
+      sfxChapter();
+    }
+  }
+
   function renderQuestion(){
     clearInterval(timer);
     state.locked=false;
@@ -828,6 +917,7 @@
     els.feedback.innerHTML="";
     els.nextBtn.style.display="none";
     els.qType.textContent = q.type==="mcq" ? "TRẮC NGHIỆM A/B/C/D" : q.type==="tf" ? "ĐÚNG / SAI" : "ĐIỀN ĐÁP ÁN";
+    applyChapter(q);
     els.progressText.textContent=`Câu ${state.index+1}/${questions.length} · ${q.zone}`;
     els.questionText.textContent=q.q;
     els.answerArea.innerHTML="";

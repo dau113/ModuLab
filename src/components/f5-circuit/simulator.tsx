@@ -11,6 +11,7 @@ import {
 import { PART_CATALOG, PART_ORDER, PartArt, PartDefs, PartThumb, DMM_FUNCS, DMM_HOTSPOTS, PS_HOTSPOTS, DMM_SCALE } from './parts';
 import type { PartKind, PartLive, DmmFunc, DmmButton } from './parts';
 import { simulate, checkCircuit, effectiveElec, measureResistance } from './sim';
+import { BOARD_ID, BOARD_RECT, BOARD_HOLES, BOARD_TRACKS, trackOf } from './board';
 import { useSettings } from '../../settings';
 import { sfx } from '../../audio';
 import type { PlacedPart, Wire, TermRef, CheckReport } from './sim';
@@ -26,11 +27,11 @@ interface CircuitSimulatorProps {
 const RX_TRUE = 105;
 
 /** Mã quy ước cho bảng lắp ráp — mỗi lỗ cắm là một điểm nối độc lập */
-const BOARD_ID = 'BOARD';
+
 
 const CANVAS_W = 840;
 const CANVAS_H = 560;
-const BOARD = { x: 34, y: 206, w: 772, h: 338 };
+const BOARD = BOARD_RECT;
 const SNAP = 8;
 
 /* Bàn lắp bắt đầu trống — học sinh tự chọn linh kiện từ khay */
@@ -341,6 +342,21 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
     return `${PART_CATALOG[p.kind].short} · ${t?.label ?? r.t}`;
   };
 
+  /* Bấm Delete để gỡ linh kiện đang chọn — cách chắc chắn nhất khi lỡ đặt nhầm */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = document.activeElement as HTMLElement | null;
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return;
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selected) {
+        e.preventDefault();
+        removePart(selected);
+        setSelected(null);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selected]);
+
   const removePart = (id: string) => {
     sfx.unplug();
     setParts((prev) => prev.filter((p) => p.id !== id));
@@ -434,6 +450,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
     const { x, y } = toSvg(e);
     drag.current = { id: p.id, dx: x - p.x, dy: y - p.y, sx: x, sy: y, moved: false };
     setSelected(p.id);
+    setHint(`Đang chọn ${PART_CATALOG[p.kind].short}. Kéo để di chuyển, bấm dấu ✕ đỏ hoặc phím Delete để gỡ ra.`);
   };
 
   const handleMove = (e: React.PointerEvent) => {
@@ -458,11 +475,12 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
     d.moved = true;
     setParts((prev) => prev.map((p) => {
       if (p.id !== d.id) return p;
-      return {
-        ...p,
-        x: Math.round((x - d.dx) / SNAP) * SNAP,
-        y: Math.round((y - d.dy) / SNAP) * SNAP,
-      };
+      const nx = Math.round((x - d.dx) / SNAP) * SNAP;
+      const ny = Math.round((y - d.dy) / SNAP) * SNAP;
+      /* Giữ nguyên vị trí cũ nếu chỗ mới đã có linh kiện khác chiếm */
+      const blocked = prev.some((q) => q.id !== p.id
+        && overlaps({ x: nx, y: ny, kind: p.kind }, q));
+      return blocked ? p : { ...p, x: nx, y: ny };
     }));
   };
 
@@ -478,8 +496,14 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
     if (tool === 'select') return;
     e.stopPropagation();
     if (tool === 'erase') {
-      setWires((prev) => prev.filter((w) => !(sameRef(w.from, ref) || sameRef(w.to, ref))));
-            return;
+      const attached = wires.filter((w) => sameRef(w.from, ref) || sameRef(w.to, ref));
+      if (attached.length) {
+        setWires((prev) => prev.filter((w) => !(sameRef(w.from, ref) || sameRef(w.to, ref))));
+      } else if (ref.c !== BOARD_ID) {
+        /* Chốt trống: coi như người dùng muốn gỡ hẳn linh kiện đó */
+        removePart(ref.c);
+      }
+      return;
     }
     if (tool !== 'wire') return;
     if (!pending) {
@@ -494,20 +518,74 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
         setHint('Đã nối thêm một dây. Hệ thống soát lại sơ đồ ngay sau mỗi thao tác.');
   };
 
+  /* Khoảng hở tối thiểu giữa hai linh kiện đặt cạnh nhau */
+  const GAP = 10;
+
+  /** Hai linh kiện có phần thân đè lên nhau hay không */
+  const overlaps = (
+    a: { x: number; y: number; kind: PartKind },
+    b: { x: number; y: number; kind: PartKind },
+  ) => {
+    const A = PART_CATALOG[a.kind], B = PART_CATALOG[b.kind];
+    return a.x < b.x + B.w + GAP && a.x + A.w + GAP > b.x
+      && a.y < b.y + B.h + GAP && a.y + A.h + GAP > b.y;
+  };
+
+  /** Vị trí này có bị linh kiện nào khác chiếm chỗ không */
+  const isFree = (kind: PartKind, x: number, y: number, ignoreId?: string) =>
+    !parts.some((q) => q.id !== ignoreId && overlaps({ x, y, kind }, q));
+
+  /**
+   * Tìm chỗ trống gần vị trí mong muốn nhất: dò theo lưới từ trong ra ngoài.
+   * Trả về chính vị trí đó nếu vốn đã trống.
+   */
+  const findFreeSpot = (kind: PartKind, x0: number, y0: number, ignoreId?: string) => {
+    if (isFree(kind, x0, y0, ignoreId)) return { x: x0, y: y0 };
+    const spec = PART_CATALOG[kind];
+    const stepX = spec.w + GAP + 6;
+    const stepY = spec.h + GAP + 6;
+    for (let ring = 1; ring <= 8; ring++) {
+      for (let dy = -ring; dy <= ring; dy++) {
+        for (let dx = -ring; dx <= ring; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring) continue;
+          const x = Math.max(6, x0 + dx * stepX);
+          const y = Math.max(6, y0 + dy * stepY);
+          if (isFree(kind, x, y, ignoreId)) return { x, y };
+        }
+      }
+    }
+    return { x: x0, y: y0 };
+  };
+
+  /** Số cái của một loại đang nằm trên bàn, và số cái bộ dụng cụ có */
+  const usedOf = (kind: PartKind) => parts.filter((p) => p.kind === kind).length;
+  const stockOf = (kind: PartKind) => PART_CATALOG[kind].stock ?? 1;
+
   const addPart = (kind: PartKind) => {
     const spec = PART_CATALOG[kind];
-    const seq = parts.filter((p) => p.kind === kind).length + 1;
+    const seq = usedOf(kind) + 1;
+
+    /* Bộ dụng cụ chỉ có chừng đó cái, lấy hết rồi thì thôi */
+    if (seq > stockOf(kind)) {
+      setHint(`Bộ dụng cụ chỉ có ${stockOf(kind)} ${spec.short.toLowerCase()}. Gỡ cái đang dùng ra nếu muốn đặt lại.`);
+      return;
+    }
     const id = `${kind.toUpperCase().slice(0, 4)}-${seq}`;
     const slot = parts.filter((p) => PART_CATALOG[p.kind].onBoard).length;
+    const wantX = BOARD.x + 40 + ((slot * 160) % Math.max(160, BOARD.w - 220));
+    const wantY = spec.onBoard
+      ? BOARD.y + 60 + (Math.floor((slot * 160) / Math.max(160, BOARD.w - 220)) % 2) * 130
+      : 8;
+    /* Chỗ đó đang có linh kiện khác thì tự dời sang ô trống gần nhất */
+    const spot = findFreeSpot(kind, wantX, wantY);
+
     sfx.plug();
     setParts((prev) => [...prev, {
-      id, kind,
-      x: BOARD.x + 40 + ((slot * 160) % Math.max(160, BOARD.w - 220)),
-      y: spec.onBoard ? BOARD.y + 60 + (Math.floor((slot * 160) / Math.max(160, BOARD.w - 220)) % 2) * 130 : 8,
+      id, kind, x: spot.x, y: spot.y,
       closed: false, knob: 0.35, func: 'V', rangeIdx: null, rel: null, peak: null,
       volt: 12, powerOn: true,
     }]);
-    setHint(`Đã thêm ${spec.name} lên bảng lắp ráp. Dùng công cụ Chọn để kéo tới vị trí mong muốn.`);
+    setHint(`Đã lấy ${spec.name} ra khỏi khay. Chọn công cụ tẩy rồi bấm vào linh kiện để trả lại khay.`);
   };
 
   /* Mạch được soát liên tục sau mỗi thao tác, không cần bấm nút kiểm tra */
@@ -540,15 +618,15 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
     });
   }, [query]);
 
-  const holes: { id: string; x: number; y: number }[] = [];
-  for (let c = 0; c < 11; c++) {
-    for (let r = 0; r < 5; r++) {
-      holes.push({ id: `h${c}-${r}`, x: 92 + c * 66, y: 250 + r * 62 });
-    }
-  }
+  const holes = BOARD_HOLES;
   const holeAt = (id: string) => holes.find((h) => h.id === id);
   const holeUsed = (id: string) =>
     wires.some((w) => (w.from.c === BOARD_ID && w.from.t === id) || (w.to.c === BOARD_ID && w.to.t === id));
+  /** Lỗ nằm chung vạch trắng với một lỗ đang cắm dây thì cũng coi là đang có điện */
+  const trackUsed = (id: string) =>
+    wires.some((w) =>
+      (w.from.c === BOARD_ID && trackOf(w.from.t) === trackOf(id))
+      || (w.to.c === BOARD_ID && trackOf(w.to.t) === trackOf(id)));
 
   const kClosed = !!parts.find((p) => p.kind === 'switch')?.closed;
 
@@ -643,23 +721,38 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
               {visibleParts.length === 0 && (
                 <p className="col-span-2 text-center text-[clamp(12.5px,0.86vw,15px)] text-slate-400 py-6">{t('sim.noResult')}</p>
               )}
-              {visibleParts.map((k) => (
+              {visibleParts.map((k) => {
+                const left = stockOf(k) - usedOf(k);
+                const out = left <= 0;
+                return (
                 <button
                   key={k}
                   onClick={() => addPart(k)}
-                  title={PART_CATALOG[k].desc}
-                  className="group bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded-xl p-2 flex flex-col items-center gap-1 transition-colors"
+                  disabled={out}
+                  title={out ? `Đã lấy hết ${PART_CATALOG[k].short.toLowerCase()} khỏi khay` : PART_CATALOG[k].desc}
+                  className={`group relative rounded-xl p-2 flex flex-col items-center gap-1 border transition-colors ${
+                    out
+                      ? 'bg-slate-100 border-slate-200 opacity-45 cursor-not-allowed'
+                      : 'bg-slate-50 hover:bg-indigo-50 border-slate-200 hover:border-indigo-300'
+                  }`}
                 >
+                  {/* Số cái còn lại trong khay */}
+                  <span className={`absolute top-1 right-1 min-w-[18px] h-[18px] px-1 rounded-full text-[11px] font-extrabold grid place-items-center ${
+                    out ? 'bg-slate-300 text-slate-600' : 'bg-indigo-600 text-white'
+                  }`}>{left}</span>
+
                   <div className="h-12 grid place-items-center">
                     <PartThumb kind={k} size={k === 'multimeter' ? 26 : 60}
                       live={{ closed: true, knob: 0.4, needle: 0.55, func: 'V', unit: 'V', auto: true, reading: '12.0' }} />
                   </div>
                   <span className="text-[12px] font-bold text-slate-600 text-center leading-tight">{PART_CATALOG[k].short}</span>
-                  <span className="text-[11.5px] text-indigo-600 font-bold opacity-0 group-hover:opacity-100 flex items-center gap-0.5">
-                    <Plus className="w-2.5 h-2.5" /> Thêm
+                  <span className={`text-[11.5px] font-bold flex items-center gap-0.5 ${
+                    out ? 'text-slate-400' : 'text-indigo-600 opacity-0 group-hover:opacity-100'
+                  }`}>
+                    {out ? 'Hết' : <><Plus className="w-2.5 h-2.5" /> Thêm</>}
                   </span>
                 </button>
-              ))}
+              );})}
             </div>
           </div>
         </section>
@@ -814,6 +907,23 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
                 <rect x={BOARD.x + 11} y={BOARD.y + 11} width={BOARD.w - 22} height={BOARD.h - 22} rx={7} fill="url(#mlBoard)" />
                 <rect x={BOARD.x + 11} y={BOARD.y + 11} width={BOARD.w - 22} height={10} rx={5}
                   fill="#000000" opacity={0.22} />
+
+                {/* Vạch trắng in trên mặt bảng: mỗi vạch là một thanh kim loại
+                    nối thông hai lỗ cắm ở hai đầu, giống bảng lắp ráp thật */}
+                {BOARD_TRACKS.map((t) => {
+                  const live = trackUsed(`${t.id}`) || holes.some((h) => h.track === t.id && trackUsed(h.id));
+                  return (
+                    <g key={t.id}>
+                      <line x1={t.a.x} y1={t.a.y + 1.5} x2={t.b.x} y2={t.b.y + 1.5}
+                        stroke="#0A1533" strokeWidth={11} strokeLinecap="round" opacity={0.45} />
+                      <line x1={t.a.x} y1={t.a.y} x2={t.b.x} y2={t.b.y}
+                        stroke={live ? '#FDE68A' : '#E8EEFB'} strokeWidth={9} strokeLinecap="round" />
+                      <line x1={t.a.x} y1={t.a.y - 1.2} x2={t.b.x} y2={t.b.y - 1.2}
+                        stroke="#FFFFFF" strokeWidth={3} strokeLinecap="round" opacity={0.55} />
+                    </g>
+                  );
+                })}
+
                 {holes.map((h) => {
                   const used = holeUsed(h.id);
                   const active = !!pending && pending.c === BOARD_ID && pending.t === h.id;
@@ -876,6 +986,18 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
                     {selected === p.id && !faulty && (
                       <rect x={-6} y={-6} width={spec.w + 12} height={spec.h + 12} rx={12}
                         fill="none" stroke="#6366F1" strokeWidth={2} strokeDasharray="5 4" />
+                    )}
+
+                    {/* Nút gỡ linh kiện, hiện khi đang chọn — khỏi phải đổi sang công cụ tẩy */}
+                    {selected === p.id && (
+                      <g className="cursor-pointer"
+                        onPointerDown={(e) => { e.stopPropagation(); removePart(p.id); setSelected(null); }}
+                        onClick={(e) => e.stopPropagation()}>
+                        <title>Gỡ {spec.short} khỏi bàn lắp</title>
+                        <circle cx={spec.w + 2} cy={-2} r={13} fill="#E11D48" stroke="#FFFFFF" strokeWidth={2.5} />
+                        <path d={`M ${spec.w - 4} -8 L ${spec.w + 8} 4 M ${spec.w + 8} -8 L ${spec.w - 4} 4`}
+                          stroke="#FFFFFF" strokeWidth={2.6} strokeLinecap="round" />
+                      </g>
                     )}
                     <PartArt kind={p.kind} live={liveOf(p)} />
                     {p.kind === 'powersupply' && PS_HOTSPOTS.map((h) => (

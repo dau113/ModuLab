@@ -2,6 +2,7 @@
  * Bộ giải mạch một chiều (phân tích nút) + bộ luật kiểm tra cách đấu nối.
  * Mọi kết quả đo đều tính ra từ tô-pô thật của mạch, không phụ thuộc vị trí đặt linh kiện.
  */
+import { BOARD_ID, trackOf } from './board';
 import { PART_CATALOG } from './parts';
 import type { PartKind, ElecKind, DmmFunc } from './parts';
 
@@ -57,7 +58,12 @@ export interface SimResult {
   nodeCount: number;
 }
 
-export const termKey = (c: string, t: string) => `${c}|${t}`;
+/**
+ * Mã điểm nối. Riêng bảng lắp ráp: hai lỗ nằm chung một vạch trắng có thanh
+ * kim loại nối thông bên trong nên quy về cùng một mã.
+ */
+export const termKey = (c: string, t: string) =>
+  (c === BOARD_ID ? `${c}|${trackOf(t)}` : `${c}|${t}`);
 
 /** Suất điện động thực tế của một nguồn (bộ nguồn có núm chỉnh riêng) */
 export function sourceEmf(p: PlacedPart): number {
@@ -264,7 +270,10 @@ export function checkCircuit(parts: PlacedPart[], wires: Wire[], rxTrue: number)
 
   const by = (e: ElecKind) => sim.branches.filter((b) => b.elec === e);
   const sources = by('source');
-  const resistors = sim.branches.filter((b) => b.kind === 'resistor');
+  /* Vật dẫn cần đo: điện trở mẫu, hoặc biến trở khi học sinh dùng biến trở làm Rx */
+  const LOAD_KINDS: PartKind[] = ['resistor', 'rheostat'];
+  const isLoad = (k: PartKind) => LOAD_KINDS.includes(k);
+  const resistors = sim.branches.filter((b) => isLoad(b.kind));
   const isVoltMode = (id: string) => {
     const p = parts.find((x) => x.id === id);
     if (!p) return false;
@@ -287,7 +296,7 @@ export function checkCircuit(parts: PlacedPart[], wires: Wire[], rxTrue: number)
     return a !== undefined && a === b;
   };
   const shortedSource = parts.find((p) => PART_CATALOG[p.kind].elec === 'source' && shorted(p));
-  const shortedRx = parts.find((p) => p.kind === 'resistor' && shorted(p));
+  const shortedRx = parts.find((p) => isLoad(p.kind) && shorted(p));
 
   if (shortedSource) {
     return {
@@ -310,7 +319,9 @@ export function checkCircuit(parts: PlacedPart[], wires: Wire[], rxTrue: number)
   }
 
   if (!sources.length) msgs.push({ level: 'err', text: 'Chưa có nguồn điện nào được nối vào mạch.' });
-  if (!hasPart('resistor')) msgs.push({ level: 'err', text: 'Chưa đặt điện trở Rx cần đo lên bảng lắp ráp.' });
+  if (!parts.some((p) => isLoad(p.kind))) {
+    msgs.push({ level: 'err', text: 'Chưa đặt vật dẫn cần đo lên bảng lắp ráp (điện trở mẫu Rx hoặc biến trở con chạy).' });
+  }
   if (!ammeterPresent) msgs.push({ level: 'err', text: 'Thiếu dụng cụ đo cường độ dòng điện (ampe kế hoặc đồng hồ vạn năng ở thang A).' });
   if (!voltmeterPresent) msgs.push({ level: 'err', text: 'Thiếu dụng cụ đo hiệu điện thế (vôn kế hoặc đồng hồ vạn năng ở thang V).' });
 

@@ -27,7 +27,7 @@ const ACCENT_KEY = 'modulab-accent';
 
 const DICT = {
   /* Chung */
-  'app.tagline': ['Phòng thực hành Vật lí điện học ảo', 'Virtual physics lab for electricity'],
+  'app.tagline': ['Trợ lý số giờ học thực hành', 'Digital lab-session assistant'],
   'app.back': ['Quay lại', 'Back'],
   'app.home': ['Trang chủ', 'Home'],
   'app.start': ['Bắt đầu', 'Start'],
@@ -49,7 +49,8 @@ const DICT = {
   'nav.theory.lesson': ['Lý thuyết ôn tập', 'Lesson notes'],
   'nav.theory.tools': ['Khám phá dụng cụ', 'Explore instruments'],
   'nav.quiz': ['Khởi động', 'Warm-up'],
-  'nav.quest': ['Trò chơi', 'Adventure'],
+  'nav.quiz.drill': ['Ôn tập nhanh', 'Quick drill'],
+  'nav.quest': ['Trò chơi phiêu lưu', 'Adventure game'],
   'nav.circuit': ['Thực hành', 'Lab practice'],
   'nav.report': ['Báo cáo thực hành', 'Lab report'],
   'nav.teacher': ['Bảng quản lý', 'Class dashboard'],

@@ -55,6 +55,8 @@ export interface PartSpec {
   desc: string;
   /** Có đặt được lên bảng lắp ráp hay không */
   onBoard: boolean;
+  /** Số cái có trong bộ dụng cụ thật; đặt hết số này thì khay hết hàng */
+  stock?: number;
 }
 
 const T = (id: string, x: number, y: number, pol: Terminal['pol'], label: string): Terminal => ({ id, x, y, pol, label });
@@ -138,7 +140,7 @@ export const PART_CATALOG: Record<PartKind, PartSpec> = {
     onBoard: true,
   },
   multimeter: {
-    kind: 'multimeter', name: 'Đồng hồ vạn năng số', short: 'Đồng hồ vạn năng', group: 'Đo lường',
+    kind: 'multimeter', stock: 2, name: 'Đồng hồ vạn năng số', short: 'Đồng hồ vạn năng', group: 'Đo lường',
     w: 158, h: 268, elec: 'voltmeter',
     terminals: [T('com', 79, 241, 'neg', 'Cổng COM (đen)'), T('in', 128, 241, 'pos', 'Cổng VΩmA (đỏ)')],
     desc: 'Đo được V, mV, A, mA, điện trở và thông mạch. Có HOLD, REL, MAX/MIN, chọn thang tự động hoặc thủ công, đèn nền và chế độ một chiều / xoay chiều.',

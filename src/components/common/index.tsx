@@ -184,8 +184,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
     roleOnly?: UserRole;
     children?: { id: LabStep; label: string; icon: React.ReactNode }[];
   }[] = [
-    { id: 'quiz', label: t('nav.quiz'), icon: <Rocket className="w-4 h-4" /> },
-    { id: 'quest', label: t('nav.quest'), icon: <Swords className="w-4 h-4" /> },
+    {
+      id: 'quiz',
+      label: t('nav.quiz'),
+      icon: <Rocket className="w-4 h-4" />,
+      children: [
+        { id: 'quiz', label: t('nav.quiz.drill'), icon: <Rocket className="w-3.5 h-3.5" /> },
+        { id: 'quest', label: t('nav.quest'), icon: <Swords className="w-3.5 h-3.5" /> },
+      ],
+    },
     { id: 'circuit', label: t('nav.circuit'), icon: <Cpu className="w-4 h-4" /> },
     { id: 'report', label: t('nav.report'), icon: <FileText className="w-4 h-4" /> },
     {

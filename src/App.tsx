@@ -215,8 +215,8 @@ function Workspace() {
               <span className="font-bold text-slate-800">
                 {currentStep === 'theory' && `${t('nav.theory')} — ${t('nav.theory.lesson')}`}
                 {currentStep === 'tools' && `${t('nav.theory')} — ${t('nav.theory.tools')}`}
-                {currentStep === 'quiz' && t('nav.quiz')}
-                {currentStep === 'quest' && t('nav.quest')}
+                {currentStep === 'quiz' && `${t('nav.quiz')} — ${t('nav.quiz.drill')}`}
+                {currentStep === 'quest' && `${t('nav.quiz')} — ${t('nav.quest')}`}
                 {currentStep === 'circuit' && t('nav.circuit')}
                 {currentStep === 'report' && t('nav.report')}
                 {currentStep === 'teacher' && t('nav.teacher')}

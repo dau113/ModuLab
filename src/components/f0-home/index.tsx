@@ -41,8 +41,15 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({ users, onEnter }) => {
       </header>
 
       <div className="max-w-5xl mx-auto px-6 md:px-8">
+        {/* Tên đầy đủ của sản phẩm */}
+        <section className="pt-12 md:pt-16 pb-8">
+          <h1 className="text-2xl md:text-3xl font-extrabold leading-snug uppercase tracking-tight text-indigo-700">
+            “ModuLab” trợ lý số hỗ trợ giờ học thực hành cho học sinh THPT
+          </h1>
+        </section>
+
         {/* Giới thiệu */}
-        <section className="py-12 md:py-16 border-b border-slate-200">
+        <section className="pb-12 md:pb-16 border-b border-slate-200">
           <h2 className="text-3xl md:text-4xl font-bold leading-snug max-w-2xl mb-5">
             Giới thiệu
           </h2>

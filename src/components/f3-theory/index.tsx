@@ -191,6 +191,151 @@ const LiveCircuitDiagram: React.FC = () => {
 };
 
 /* ------------------------------------------------------------------ */
+/* Sơ đồ đoạn mạch nối tiếp và song song, có dòng điện chạy            */
+/* ------------------------------------------------------------------ */
+
+/** Nguồn điện vẽ theo ký hiệu sách giáo khoa: vạch dài là cực dương */
+const Source: React.FC<{ x: number; y: number }> = ({ x, y }) => (
+  <g>
+    <line x1={x - 14} y1={y} x2={x + 14} y2={y} stroke="#334155" strokeWidth={4} />
+    <line x1={x - 7} y1={y + 12} x2={x + 7} y2={y + 12} stroke="#334155" strokeWidth={2.4} />
+    <text x={x - 22} y={y + 3} textAnchor="end" fontSize={13} fontWeight={700} fill="#334155">+</text>
+    <text x={x - 22} y={y + 18} textAnchor="end" fontSize={15} fontWeight={700} fill="#334155">−</text>
+  </g>
+);
+
+/** Điện trở hình chữ nhật kèm nhãn */
+const ResBox: React.FC<{ x: number; y: number; label: string; w?: number }> = ({ x, y, label, w = 56 }) => (
+  <g>
+    <rect x={x - w / 2} y={y - 12} width={w} height={24} rx={4}
+      fill="#FFFFFF" stroke="#7C3AED" strokeWidth={2.5} />
+    <text x={x} y={y + 5} textAnchor="middle" fontSize={13} fontWeight={800} fill="#7C3AED">{label}</text>
+  </g>
+);
+
+/** Khoá K: bấm để đóng hoặc ngắt mạch */
+const KeySwitch: React.FC<{ x: number; y: number; closed: boolean }> = ({ x, y, closed }) => (
+  <g>
+    <circle cx={x - 18} cy={y} r={4} fill="#475569" />
+    <circle cx={x + 18} cy={y} r={4} fill="#475569" />
+    <line x1={x - 18} y1={y} x2={x + 18} y2={y} stroke="#E2E8F0" strokeWidth={3} />
+    <line x1={x - 18} y1={y} x2={x + 18} y2={closed ? y : y - 20}
+      stroke="#334155" strokeWidth={3.5} strokeLinecap="round"
+      style={{ transition: 'all 0.25s cubic-bezier(0.3,1.3,0.6,1)' }} />
+    <text x={x} y={y - 30} textAnchor="middle" fontSize={12} fontWeight={800}
+      fill={closed ? '#059669' : '#DC2626'}>K</text>
+  </g>
+);
+
+/**
+ * Sơ đồ mạch có thể bấm đóng ngắt khoá K. Khi đóng, các vệt sáng chạy dọc
+ * theo từng nhánh dây để thấy rõ dòng điện đi đâu.
+ */
+const CircuitFigure: React.FC<{
+  title: string;
+  viewBox: string;
+  paths: string[];
+  note: (closed: boolean) => string;
+  children: (closed: boolean) => React.ReactNode;
+}> = ({ title, viewBox, paths, note, children }) => {
+  const [closed, setClosed] = useState(false);
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 p-4">
+      <p className="text-[12.5px] font-bold text-slate-400 uppercase tracking-wide mb-2">{title}</p>
+
+      <svg viewBox={viewBox} className="w-full max-w-lg mx-auto block">
+        {paths.map((d, i) => (
+          <path key={`w${i}`} d={d} fill="none" stroke="#94A3B8" strokeWidth={3}
+            strokeLinejoin="round" strokeLinecap="round" />
+        ))}
+        {closed && paths.map((d, i) => (
+          <path key={`c${i}`} d={d} fill="none" stroke="#F59E0B" strokeWidth={3.5}
+            strokeLinecap="round" strokeDasharray="6 26" className="ml-current" />
+        ))}
+        {children(closed)}
+      </svg>
+
+      <div className="flex items-center justify-center gap-3 mt-2 flex-wrap">
+        <button
+          onClick={() => setClosed((v) => !v)}
+          className={`h-9 px-3.5 rounded-lg text-[clamp(13px,0.9vw,15.5px)] font-bold flex items-center gap-2 transition-colors ${
+            closed ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-slate-700 hover:bg-slate-800 text-white'
+          }`}
+        >
+          <Power className="w-4 h-4" />
+          {closed ? 'Khoá K đang đóng — bấm để ngắt' : 'Bấm để đóng khoá K'}
+        </button>
+        <span className="text-[12.5px] text-slate-500 flex-1 min-w-[200px]">{note(closed)}</span>
+      </div>
+    </div>
+  );
+};
+
+/** Hai điện trở mắc nối tiếp: dòng điện chỉ có một đường duy nhất */
+const SeriesFigure: React.FC = () => (
+  <CircuitFigure
+    title="Sơ đồ đoạn mạch mắc nối tiếp"
+    viewBox="0 0 380 170"
+    paths={['M 50 130 L 50 50 L 130 50 L 200 50 L 290 50 L 330 50 L 330 130 L 50 130']}
+    note={(closed) => (closed
+      ? 'Chỉ có một đường cho dòng điện nên I qua R₁ và R₂ đều bằng nhau; hiệu điện thế thì chia ra hai phần.'
+      : 'Mạch đang hở nên chưa có dòng điện. Bấm khoá K để xem dòng chạy.')}
+  >
+    {(closed) => (
+      <>
+        <Source x={50} y={84} />
+        <text x={50} y={122} textAnchor="middle" fontSize={11} fontWeight={700} fill="#64748B">Nguồn</text>
+        <KeySwitch x={110} y={50} closed={closed} />
+        <ResBox x={200} y={50} label="R₁" />
+        <ResBox x={290} y={50} label="R₂" />
+        <text x={190} y={152} textAnchor="middle" fontSize={12} fontWeight={700} fill="#0F172A">
+          I = I₁ = I₂
+        </text>
+      </>
+    )}
+  </CircuitFigure>
+);
+
+/** Hai điện trở mắc song song: dòng điện tách làm hai nhánh rồi nhập lại */
+const ParallelFigure: React.FC = () => (
+  <CircuitFigure
+    title="Sơ đồ đoạn mạch mắc song song"
+    viewBox="0 0 380 200"
+    paths={[
+      /* mạch chính: nguồn, khoá K, tới điểm rẽ rồi vòng về */
+      'M 50 160 L 50 50 L 130 50 L 190 50',
+      'M 300 50 L 330 50 L 330 160 L 50 160',
+      /* nhánh trên */
+      'M 190 50 L 190 50 L 245 50 L 300 50',
+      /* nhánh dưới */
+      'M 190 50 L 190 110 L 245 110 L 300 110 L 300 50',
+    ]}
+    note={(closed) => (closed
+      ? 'Dòng điện tách làm hai nhánh rồi nhập lại: I = I₁ + I₂, còn hiệu điện thế hai nhánh bằng nhau.'
+      : 'Mạch đang hở nên chưa có dòng điện. Bấm khoá K để xem dòng tách nhánh.')}
+  >
+    {(closed) => (
+      <>
+        <Source x={50} y={100} />
+        <text x={50} y={138} textAnchor="middle" fontSize={11} fontWeight={700} fill="#64748B">Nguồn</text>
+        <KeySwitch x={110} y={50} closed={closed} />
+        <ResBox x={245} y={50} label="R₁" />
+        <ResBox x={245} y={110} label="R₂" />
+        {/* điểm rẽ nhánh */}
+        <circle cx={190} cy={50} r={4} fill="#334155" />
+        <circle cx={300} cy={50} r={4} fill="#334155" />
+        <text x={190} y={186} textAnchor="middle" fontSize={12} fontWeight={700} fill="#0F172A">
+          I = I₁ + I₂
+        </text>
+        <text x={330} y={186} textAnchor="end" fontSize={12} fontWeight={700} fill="#0F172A">
+          U = U₁ = U₂
+        </text>
+      </>
+    )}
+  </CircuitFigure>
+);
+
+/* ------------------------------------------------------------------ */
 /* Bốn bài lý thuyết                                                   */
 /* ------------------------------------------------------------------ */
 
@@ -290,6 +435,8 @@ const LessonMach: React.FC = () => (
         Điện trở tương đương của đoạn mạch là điện trở có thể thay thế các điện trở của đoạn mạch, sao cho
         với cùng hiệu điện thế đặt vào hai đầu đoạn mạch thì cường độ dòng điện chạy qua vẫn có giá trị như trước.
       </p>
+      <div className="mb-3"><SeriesFigure /></div>
+
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
         <div className="bg-white rounded-xl border border-slate-200 p-3">
           <p className="text-[12.5px] font-bold text-slate-400 uppercase mb-1.5">Điện trở tương đương</p>
@@ -308,6 +455,9 @@ const LessonMach: React.FC = () => (
 
     <Card>
       <SectionTitle n="II">Đoạn mạch song song</SectionTitle>
+
+      <div className="mb-3"><ParallelFigure /></div>
+
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
         <div className="bg-white rounded-xl border border-slate-200 p-3">
           <p className="text-[12.5px] font-bold text-slate-400 uppercase mb-1.5">Điện trở tương đương</p>
