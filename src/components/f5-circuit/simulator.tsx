@@ -11,7 +11,7 @@ import {
 import { PART_CATALOG, PART_ORDER, PartArt, PartDefs, PartThumb, DMM_FUNCS, DMM_HOTSPOTS, PS_HOTSPOTS, DMM_SCALE } from './parts';
 import type { PartKind, PartLive, DmmFunc, DmmButton } from './parts';
 import { simulate, checkCircuit, effectiveElec, measureResistance } from './sim';
-import { BOARD_ID, BOARD_RECT, BOARD_HOLES, BOARD_TRACKS, trackOf } from './board';
+import { BOARD_ID, BOARD_RECT, BOARD_HOLES, BOARD_TRACKS, trackOf, holeLabel } from './board';
 import { useSettings } from '../../settings';
 import { sfx } from '../../audio';
 import type { PlacedPart, Wire, TermRef, CheckReport } from './sim';
@@ -335,7 +335,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
   };
 
   const labelOf = (r: TermRef) => {
-    if (r.c === BOARD_ID) return `lỗ cắm ${r.t.replace('h', '').replace('-', '·')} trên bảng`;
+    if (r.c === BOARD_ID) return `lỗ cắm ở ${holeLabel(r.t)}`;
     const p = parts.find((x) => x.id === r.c);
     if (!p) return r.c;
     const t = PART_CATALOG[p.kind].terminals.find((x) => x.id === r.t);
@@ -506,9 +506,19 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
       return;
     }
     if (tool !== 'wire') return;
+
+    /* Mỗi lỗ cắm chỉ nhận một đầu dây, giống chốt cắm trên bảng thật */
+    const occupied = (r: TermRef) =>
+      r.c === BOARD_ID && wires.some((w) => sameRef(w.from, r) || sameRef(w.to, r));
+
+    if (occupied(ref)) {
+      setHint(`Lỗ ${labelOf(ref)} đã có dây rồi. Mỗi lỗ chỉ cắm được một đầu dây — chọn lỗ khác cùng vạch trắng nếu cần nối thêm.`);
+      return;
+    }
+
     if (!pending) {
       setPending(ref);
-      setHint(`Đang kéo dây từ chốt ${labelOf(ref)} — bấm tiếp vào chốt còn lại để hoàn tất.`);
+      setHint(`Đang kéo dây từ ${labelOf(ref)} — bấm tiếp vào chốt còn lại để hoàn tất.`);
       return;
     }
     if (sameRef(pending, ref)) { setPending(null); return; }
@@ -557,19 +567,14 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
     return { x: x0, y: y0 };
   };
 
-  /** Số cái của một loại đang nằm trên bàn, và số cái bộ dụng cụ có */
+  /** Số cái của một loại đang nằm trên bàn — chỉ để hiện lên khay cho dễ theo dõi */
   const usedOf = (kind: PartKind) => parts.filter((p) => p.kind === kind).length;
-  const stockOf = (kind: PartKind) => PART_CATALOG[kind].stock ?? 1;
 
   const addPart = (kind: PartKind) => {
     const spec = PART_CATALOG[kind];
     const seq = usedOf(kind) + 1;
 
-    /* Bộ dụng cụ chỉ có chừng đó cái, lấy hết rồi thì thôi */
-    if (seq > stockOf(kind)) {
-      setHint(`Bộ dụng cụ chỉ có ${stockOf(kind)} ${spec.short.toLowerCase()}. Gỡ cái đang dùng ra nếu muốn đặt lại.`);
-      return;
-    }
+
     const id = `${kind.toUpperCase().slice(0, 4)}-${seq}`;
     const slot = parts.filter((p) => PART_CATALOG[p.kind].onBoard).length;
     const wantX = BOARD.x + 40 + ((slot * 160) % Math.max(160, BOARD.w - 220));
@@ -585,7 +590,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
       closed: false, knob: 0.35, func: 'V', rangeIdx: null, rel: null, peak: null,
       volt: 12, powerOn: true,
     }]);
-    setHint(`Đã lấy ${spec.name} ra khỏi khay. Chọn công cụ tẩy rồi bấm vào linh kiện để trả lại khay.`);
+    setHint(`Đã thêm ${spec.name} lên bàn lắp. Chọn linh kiện rồi bấm dấu ✕ đỏ hoặc phím Delete để gỡ ra.`);
   };
 
   /* Mạch được soát liên tục sau mỗi thao tác, không cần bấm nút kiểm tra */
@@ -722,34 +727,28 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
                 <p className="col-span-2 text-center text-[clamp(12.5px,0.86vw,15px)] text-slate-400 py-6">{t('sim.noResult')}</p>
               )}
               {visibleParts.map((k) => {
-                const left = stockOf(k) - usedOf(k);
-                const out = left <= 0;
+                const used = usedOf(k);
                 return (
                 <button
                   key={k}
                   onClick={() => addPart(k)}
-                  disabled={out}
-                  title={out ? `Đã lấy hết ${PART_CATALOG[k].short.toLowerCase()} khỏi khay` : PART_CATALOG[k].desc}
-                  className={`group relative rounded-xl p-2 flex flex-col items-center gap-1 border transition-colors ${
-                    out
-                      ? 'bg-slate-100 border-slate-200 opacity-45 cursor-not-allowed'
-                      : 'bg-slate-50 hover:bg-indigo-50 border-slate-200 hover:border-indigo-300'
-                  }`}
+                  title={PART_CATALOG[k].desc}
+                  className="group relative rounded-xl p-2 flex flex-col items-center gap-1 border bg-slate-50 hover:bg-indigo-50 border-slate-200 hover:border-indigo-300 transition-colors"
                 >
-                  {/* Số cái còn lại trong khay */}
-                  <span className={`absolute top-1 right-1 min-w-[18px] h-[18px] px-1 rounded-full text-[11px] font-extrabold grid place-items-center ${
-                    out ? 'bg-slate-300 text-slate-600' : 'bg-indigo-600 text-white'
-                  }`}>{left}</span>
+                  {/* Số cái đang dùng trên bàn lắp */}
+                  {used > 0 && (
+                    <span className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 rounded-full text-[11px] font-extrabold grid place-items-center bg-indigo-600 text-white">
+                      {used}
+                    </span>
+                  )}
 
                   <div className="h-12 grid place-items-center">
                     <PartThumb kind={k} size={k === 'multimeter' ? 26 : 60}
                       live={{ closed: true, knob: 0.4, needle: 0.55, func: 'V', unit: 'V', auto: true, reading: '12.0' }} />
                   </div>
                   <span className="text-[12px] font-bold text-slate-600 text-center leading-tight">{PART_CATALOG[k].short}</span>
-                  <span className={`text-[11.5px] font-bold flex items-center gap-0.5 ${
-                    out ? 'text-slate-400' : 'text-indigo-600 opacity-0 group-hover:opacity-100'
-                  }`}>
-                    {out ? 'Hết' : <><Plus className="w-2.5 h-2.5" /> Thêm</>}
+                  <span className="text-[11.5px] font-bold flex items-center gap-0.5 text-indigo-600 opacity-0 group-hover:opacity-100">
+                    <Plus className="w-2.5 h-2.5" /> Thêm
                   </span>
                 </button>
               );})}
@@ -908,18 +907,19 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
                 <rect x={BOARD.x + 11} y={BOARD.y + 11} width={BOARD.w - 22} height={10} rx={5}
                   fill="#000000" opacity={0.22} />
 
-                {/* Vạch trắng in trên mặt bảng: mỗi vạch là một thanh kim loại
-                    nối thông hai lỗ cắm ở hai đầu, giống bảng lắp ráp thật */}
+                {/* Vạch trắng in trên mặt bảng: mỗi vạch chữ V là một thanh kim
+                    loại nối thông cả ba lỗ, giống bảng lắp ráp Edison thật */}
                 {BOARD_TRACKS.map((t) => {
-                  const live = trackUsed(`${t.id}`) || holes.some((h) => h.track === t.id && trackUsed(h.id));
+                  const live = holes.some((h) => h.track === t.id && trackUsed(h.id));
+                  const d = `M ${t.points.map((p) => `${p.x} ${p.y}`).join(' L ')}`;
                   return (
                     <g key={t.id}>
-                      <line x1={t.a.x} y1={t.a.y + 1.5} x2={t.b.x} y2={t.b.y + 1.5}
-                        stroke="#0A1533" strokeWidth={11} strokeLinecap="round" opacity={0.45} />
-                      <line x1={t.a.x} y1={t.a.y} x2={t.b.x} y2={t.b.y}
-                        stroke={live ? '#FDE68A' : '#E8EEFB'} strokeWidth={9} strokeLinecap="round" />
-                      <line x1={t.a.x} y1={t.a.y - 1.2} x2={t.b.x} y2={t.b.y - 1.2}
-                        stroke="#FFFFFF" strokeWidth={3} strokeLinecap="round" opacity={0.55} />
+                      <path d={d} transform="translate(0,1.5)" fill="none"
+                        stroke="#0A1533" strokeWidth={11} strokeLinecap="round" strokeLinejoin="round" opacity={0.45} />
+                      <path d={d} fill="none"
+                        stroke={live ? '#FDE68A' : '#E8EEFB'} strokeWidth={9} strokeLinecap="round" strokeLinejoin="round" />
+                      <path d={d} transform="translate(0,-1.2)" fill="none"
+                        stroke="#FFFFFF" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" opacity={0.55} />
                     </g>
                   );
                 })}
@@ -932,7 +932,9 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
                       className={tool === 'wire' || tool === 'erase' ? 'cursor-crosshair' : ''}
                       onPointerDown={(e) => handleTerminal(e, { c: BOARD_ID, t: h.id })}
                       onClick={(e) => { if (tool !== 'select') e.stopPropagation(); }}>
-                      <title>Lỗ cắm — cắm được nhiều đầu dây, các dây cùng một lỗ được nối với nhau</title>
+                      <title>{used
+                        ? 'Lỗ này đã có dây — mỗi lỗ chỉ cắm được một đầu dây'
+                        : 'Lỗ cắm trống — ba lỗ trên cùng một vạch trắng là một điểm nối'}</title>
                       <circle cx={h.x} cy={h.y + 0.8} r={8} fill="#4E7BD8" opacity={0.5} />
                       <circle cx={h.x} cy={h.y} r={8} fill="#16295C" stroke="#12224B" strokeWidth={1} />
                       <path d={`M ${h.x - 5.6} ${h.y - 5.6} A 8 8 0 0 1 ${h.x + 5.6} ${h.y - 5.6}`}
