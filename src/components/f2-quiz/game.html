@@ -647,7 +647,9 @@
   ];
 
   /* Số câu mỗi lượt chơi: 2 quái thường rồi tới các pha đánh trùm */
-  const ROUND_SIZE = Math.max(3, Number(window.__MODULAB_ROUND__) || 5);
+  /* Mỗi chương phải có ít nhất 2 câu, nên một lượt tối thiểu 6 câu */
+  const MIN_PER_CHAPTER = 2;
+  const ROUND_SIZE = Math.max(6, Number(window.__MODULAB_ROUND__) || 6);
 
   let questions = [];
 
@@ -676,23 +678,35 @@
     return clone;
   }
 
+  /** Chia n câu cho các chương sao cho chương nào cũng có ít nhất MIN_PER_CHAPTER câu */
+  function splitByChapter(total){
+    const n = CHAPTERS.length;
+    const sizes = new Array(n).fill(MIN_PER_CHAPTER);
+    let left = total - MIN_PER_CHAPTER * n;
+    let i = 0;
+    while(left > 0){ sizes[i % n]++; left--; i++; }   // phần dư rải đều từ chương đầu
+    return sizes;
+  }
+
   function buildShuffledRun(){
-    /* Bốc ngẫu nhiên ROUND_SIZE câu rồi chia đều cho ba chương.
-       Chương cuối luôn là trùm, nên đánh xong chương hai là bước vào Tháp Điện. */
-    const picked = shuffled(questionBank).slice(0, Math.min(ROUND_SIZE, questionBank.length));
-    const perChapter = Math.max(1, Math.ceil(picked.length / CHAPTERS.length));
+    /* Bốc ngẫu nhiên câu hỏi rồi chia cho ba chương, mỗi chương 2–3 câu.
+       Chương cuối là trùm nên mỗi câu ở đó là một pha đánh trùm. */
+    const want = Math.max(MIN_PER_CHAPTER * CHAPTERS.length, ROUND_SIZE);
+    const picked = shuffled(questionBank).slice(0, Math.min(want, questionBank.length));
+    const sizes = splitByChapter(picked.length);
 
-    questions = picked.map((q, index) => {
-      const clone = shuffleMcqOptions(q);
-      const ch = CHAPTERS[Math.min(CHAPTERS.length - 1, Math.floor(index / perChapter))];
-      const phase = index - CHAPTERS.indexOf(ch) * perChapter + 1;
-
-      clone.chapter = ch.no;
-      clone.enemy = ch.enemy;
-      clone.boss = ch.boss;
-      clone.zone = ch.boss ? `${ch.zone} · Pha ${phase}` : ch.zone;
-      clone.zoneName = ch.zone;
-      return clone;
+    questions = [];
+    let index = 0;
+    CHAPTERS.forEach((ch, ci) => {
+      for(let k = 0; k < sizes[ci] && index < picked.length; k++, index++){
+        const clone = shuffleMcqOptions(picked[index]);
+        clone.chapter = ch.no;
+        clone.enemy = ch.enemy;
+        clone.boss = ch.boss;
+        clone.zone = ch.boss ? `${ch.zone} · Pha ${k + 1}` : `${ch.zone} · Trận ${k + 1}`;
+        clone.zoneName = ch.zone;
+        questions.push(clone);
+      }
     });
   }
 

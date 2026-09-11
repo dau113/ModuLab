@@ -2,7 +2,7 @@
  * Bộ giải mạch một chiều (phân tích nút) + bộ luật kiểm tra cách đấu nối.
  * Mọi kết quả đo đều tính ra từ tô-pô thật của mạch, không phụ thuộc vị trí đặt linh kiện.
  */
-import { BOARD_ID, trackOf } from './board';
+import { isBoardId, trackOf } from './board';
 import { PART_CATALOG } from './parts';
 import type { PartKind, ElecKind, DmmFunc } from './parts';
 
@@ -63,7 +63,7 @@ export interface SimResult {
  * kim loại nối thông bên trong nên quy về cùng một mã.
  */
 export const termKey = (c: string, t: string) =>
-  (c === BOARD_ID ? `${c}|${trackOf(t)}` : `${c}|${t}`);
+  (isBoardId(c) ? `${c}|${trackOf(t)}` : `${c}|${t}`);
 
 /** Suất điện động thực tế của một nguồn (bộ nguồn có núm chỉnh riêng) */
 export function sourceEmf(p: PlacedPart): number {

@@ -55,10 +55,11 @@ const toQuest = (q: QuizQuestion & { topic?: string }): QuestQuestion => {
   };
 };
 
-const ROUND_SIZES = [5, 8, 12];
+/* Mỗi lượt chia cho ba chương, mỗi chương ít nhất 2 câu */
+const ROUND_SIZES = [6, 9, 12];
 
 export const PhysicsQuest: React.FC<PhysicsQuestProps> = ({ userRole, onFinishQuiz, extraQuestions }) => {
-  const [roundSize, setRoundSize] = useState(5);
+  const [roundSize, setRoundSize] = useState(6);
   const [topic, setTopic] = useState<string | null>(null);
   const [runId, setRunId] = useState(0);
   const [lastResult, setLastResult] = useState<{ correct: number; total: number; won: boolean } | null>(null);

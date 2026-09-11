@@ -11,7 +11,7 @@ import {
 import { PART_CATALOG, PART_ORDER, PartArt, PartDefs, PartThumb, DMM_FUNCS, DMM_HOTSPOTS, PS_HOTSPOTS, DMM_SCALE } from './parts';
 import type { PartKind, PartLive, DmmFunc, DmmButton } from './parts';
 import { simulate, checkCircuit, effectiveElec, measureResistance } from './sim';
-import { BOARD_ID, BOARD_RECT, BOARD_HOLES, BOARD_TRACKS, trackOf, holeLabel } from './board';
+import { BOARD_PREFIX, isBoardId, BOARD_W, BOARD_H, BOARD_HOLES, BOARD_TRACKS, trackOf, holeLabel } from './board';
 import { useSettings } from '../../settings';
 import { sfx } from '../../audio';
 import type { PlacedPart, Wire, TermRef, CheckReport } from './sim';
@@ -31,10 +31,16 @@ const RX_TRUE = 105;
 
 const CANVAS_W = 840;
 const CANVAS_H = 560;
-const BOARD = BOARD_RECT;
 const SNAP = 8;
 
-/* Bàn lắp bắt đầu trống — học sinh tự chọn linh kiện từ khay */
+/** Một tấm bảng lắp ráp đang đặt trên bàn */
+export interface PlacedBoard {
+  id: string;
+  x: number;
+  y: number;
+}
+
+/* Bàn lắp bắt đầu trống — chưa có bảng nào, chưa có linh kiện nào */
 const INITIAL_PARTS: PlacedPart[] = [];
 
 /**
@@ -42,12 +48,14 @@ const INITIAL_PARTS: PlacedPart[] = [];
  * Dữ liệu nằm ngoài thành phần nên không mất khi thành phần bị gỡ khỏi cây.
  */
 const bench: {
+  boards: PlacedBoard[];
   parts: PlacedPart[];
   wires: Wire[];
   view: { z: number; tx: number; ty: number };
   wireSide: 'hot' | 'cold';
   activeRheostat: string | null;
 } = {
+  boards: [],
   parts: INITIAL_PARTS,
   wires: [],
   view: { z: 1, tx: 0, ty: 0 },
@@ -75,6 +83,8 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
   const [wires, setWires] = useState<Wire[]>(bench.wires);
   const [tool, setTool] = useState<'select' | 'wire' | 'erase'>('wire');
   const [query, setQuery] = useState('');
+  /** Các tấm bảng lắp ráp đang đặt trên bàn; ban đầu chưa có tấm nào */
+  const [boards, setBoards] = useState<PlacedBoard[]>(bench.boards);
   const [checked, setChecked] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [hint, setHint] = useState<string>(
@@ -87,6 +97,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
   const [view, setView] = useState(bench.view);
 
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const boardDrag = useRef<{ id: string; dx: number; dy: number } | null>(null);
   const drag = useRef<{ id: string; dx: number; dy: number; sx: number; sy: number; moved: boolean } | null>(null);
   const pan = useRef<{ x: number; y: number; tx: number; ty: number } | null>(null);
   const wireDrag = useRef<{ id: string; idx: number } | null>(null);
@@ -116,12 +127,13 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
 
   /* Ghi lại bàn lắp sau mỗi thay đổi để lần sau quay lại vẫn còn nguyên */
   useEffect(() => {
+    bench.boards = boards;
     bench.parts = parts;
     bench.wires = wires;
     bench.view = view;
     bench.wireSide = wireSide;
     bench.activeRheostat = activeRheostat;
-  }, [parts, wires, view, wireSide, activeRheostat]);
+  }, [boards, parts, wires, view, wireSide, activeRheostat]);
 
   /* Điện trở đo được của từng đồng hồ đang ở thang Ω hoặc thang thông mạch */
   const ohmReadings = useMemo(() => {
@@ -215,7 +227,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
         volt: p.volt ?? 12,
         powerOn: on,
         ampReading: on ? Math.abs(b?.I ?? 0).toFixed(2) : '---',
-        voltReading: on ? Math.abs(b?.V ?? 0).toFixed(1) : '---',
+        voltReading: on ? (p.volt ?? 12).toFixed(1) : '---',
       };
     }
     if (elec === 'ammeter') return { needle: Math.min(1, cur / 3) };
@@ -266,9 +278,10 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
   };
 
   const termPos = (ref: TermRef) => {
-    if (ref.c === BOARD_ID) {
-      const h = holes.find((x) => x.id === ref.t);
-      return h ? { x: h.x, y: h.y } : null;
+    if (isBoardId(ref.c)) {
+      const b = boards.find((x) => x.id === ref.c);
+      const h = BOARD_HOLES.find((x) => x.id === ref.t);
+      return b && h ? { x: b.x + h.x, y: b.y + h.y } : null;
     }
     const p = parts.find((c) => c.id === ref.c);
     if (!p) return null;
@@ -335,7 +348,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
   };
 
   const labelOf = (r: TermRef) => {
-    if (r.c === BOARD_ID) return `lỗ cắm ở ${holeLabel(r.t)}`;
+    if (isBoardId(r.c)) return `lỗ cắm ở ${holeLabel(r.t)}`;
     const p = parts.find((x) => x.id === r.c);
     if (!p) return r.c;
     const t = PART_CATALOG[p.kind].terminals.find((x) => x.id === r.t);
@@ -356,6 +369,38 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [selected]);
+
+  /** Thêm một tấm bảng, đặt lệch dần để không chồng lên tấm đã có */
+  const addBoard = () => {
+    const n = boards.length;
+    const id = `${BOARD_PREFIX}-${Date.now().toString(36)}`;
+    setBoards((prev) => [...prev, {
+      id,
+      x: 60 + (n % 2) * 40,
+      y: 90 + n * (BOARD_H + 46),
+    }]);
+    setSelected(id);
+    sfx.plug();
+    setHint('Đã thêm một bảng lắp ráp. Kéo bảng để đổi chỗ, đặt linh kiện lên trên rồi nối dây vào các lỗ.');
+  };
+
+  const removeBoard = (id: string) => {
+    sfx.unplug();
+    setBoards((prev) => prev.filter((b) => b.id !== id));
+    setWires((prev) => prev.filter((w) => w.from.c !== id && w.to.c !== id));
+    setSelected(null);
+  };
+
+  const handleBoardDown = (e: React.PointerEvent, b: PlacedBoard) => {
+    if (tool === 'erase') { e.stopPropagation(); removeBoard(b.id); return; }
+    if (tool !== 'select') return;
+    e.stopPropagation();
+    (e.currentTarget as unknown as SVGGElement).ownerSVGElement?.setPointerCapture?.(e.pointerId);
+    const { x, y } = toSvg(e);
+    boardDrag.current = { id: b.id, dx: x - b.x, dy: y - b.y };
+    setSelected(b.id);
+    setHint('Đang chọn bảng lắp ráp. Kéo để đổi chỗ, bấm dấu ✕ đỏ để gỡ bảng.');
+  };
 
   const removePart = (id: string) => {
     sfx.unplug();
@@ -454,6 +499,28 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
   };
 
   const handleMove = (e: React.PointerEvent) => {
+    if (boardDrag.current) {
+      const q = boardDrag.current;
+      const { x, y } = toSvg(e);
+      const nx = x - q.dx;
+      const ny = y - q.dy;
+      const cur = boards.find((b) => b.id === q.id);
+      if (cur) {
+        const ddx = nx - cur.x;
+        const ddy = ny - cur.y;
+        /* Linh kiện đang nằm trong lòng bảng thì trượt theo bảng */
+        if (ddx || ddy) {
+          setParts((ps) => ps.map((p) => {
+            const spec = PART_CATALOG[p.kind];
+            const on = p.x + spec.w > cur.x && p.x < cur.x + BOARD_W
+              && p.y + spec.h > cur.y && p.y < cur.y + BOARD_H;
+            return on ? { ...p, x: p.x + ddx, y: p.y + ddy } : p;
+          }));
+        }
+      }
+      setBoards((prev) => prev.map((b) => (b.id === q.id ? { ...b, x: nx, y: ny } : b)));
+      return;
+    }
     if (pan.current) {
       const v = toView(e);
       const q = pan.current;
@@ -485,6 +552,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
   };
 
   const handleUp = () => {
+    boardDrag.current = null;
     pan.current = null;
     wireDrag.current = null;
     const d = drag.current;
@@ -499,7 +567,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
       const attached = wires.filter((w) => sameRef(w.from, ref) || sameRef(w.to, ref));
       if (attached.length) {
         setWires((prev) => prev.filter((w) => !(sameRef(w.from, ref) || sameRef(w.to, ref))));
-      } else if (ref.c !== BOARD_ID) {
+      } else if (!isBoardId(ref.c)) {
         /* Chốt trống: coi như người dùng muốn gỡ hẳn linh kiện đó */
         removePart(ref.c);
       }
@@ -509,7 +577,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
 
     /* Mỗi lỗ cắm chỉ nhận một đầu dây, giống chốt cắm trên bảng thật */
     const occupied = (r: TermRef) =>
-      r.c === BOARD_ID && wires.some((w) => sameRef(w.from, r) || sameRef(w.to, r));
+      isBoardId(r.c) && wires.some((w) => sameRef(w.from, r) || sameRef(w.to, r));
 
     if (occupied(ref)) {
       setHint(`Lỗ ${labelOf(ref)} đã có dây rồi. Mỗi lỗ chỉ cắm được một đầu dây — chọn lỗ khác cùng vạch trắng nếu cần nối thêm.`);
@@ -577,9 +645,13 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
 
     const id = `${kind.toUpperCase().slice(0, 4)}-${seq}`;
     const slot = parts.filter((p) => PART_CATALOG[p.kind].onBoard).length;
-    const wantX = BOARD.x + 40 + ((slot * 160) % Math.max(160, BOARD.w - 220));
+    const home = boards[0];
+    const baseX = home ? home.x + 30 : 60;
+    const baseY = home ? home.y + 40 : 60;
+    const span = Math.max(160, (home ? BOARD_W : CANVAS_W) - 220);
+    const wantX = baseX + ((slot * 160) % span);
     const wantY = spec.onBoard
-      ? BOARD.y + 60 + (Math.floor((slot * 160) / Math.max(160, BOARD.w - 220)) % 2) * 130
+      ? baseY + (Math.floor((slot * 160) / span) % 2) * 130
       : 8;
     /* Chỗ đó đang có linh kiện khác thì tự dời sang ô trống gần nhất */
     const spot = findFreeSpot(kind, wantX, wantY);
@@ -623,15 +695,13 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
     });
   }, [query]);
 
-  const holes = BOARD_HOLES;
-  const holeAt = (id: string) => holes.find((h) => h.id === id);
-  const holeUsed = (id: string) =>
-    wires.some((w) => (w.from.c === BOARD_ID && w.from.t === id) || (w.to.c === BOARD_ID && w.to.t === id));
+  const holeUsed = (boardId: string, id: string) =>
+    wires.some((w) => (w.from.c === boardId && w.from.t === id) || (w.to.c === boardId && w.to.t === id));
   /** Lỗ nằm chung vạch trắng với một lỗ đang cắm dây thì cũng coi là đang có điện */
-  const trackUsed = (id: string) =>
+  const trackUsed = (boardId: string, id: string) =>
     wires.some((w) =>
-      (w.from.c === BOARD_ID && trackOf(w.from.t) === trackOf(id))
-      || (w.to.c === BOARD_ID && trackOf(w.to.t) === trackOf(id)));
+      (w.from.c === boardId && trackOf(w.from.t) === trackOf(id))
+      || (w.to.c === boardId && trackOf(w.to.t) === trackOf(id)));
 
   const kClosed = !!parts.find((p) => p.kind === 'switch')?.closed;
 
@@ -704,6 +774,20 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
                 </button>
               ))}
             </div>
+
+            {/* Bảng lắp ráp: thêm bao nhiêu tấm cũng được */}
+            <button
+              onClick={addBoard}
+              className="w-full h-10 mb-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[clamp(13px,0.9vw,15.5px)] font-bold flex items-center justify-center gap-2 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Thêm bảng lắp ráp
+              {boards.length > 0 && (
+                <span className="ml-1 px-1.5 h-5 rounded-full bg-white/20 text-[12px] grid place-items-center">
+                  {boards.length}
+                </span>
+              )}
+            </button>
 
             {/* Ô tìm kiếm linh kiện */}
             <div className="relative mb-2.5">
@@ -896,76 +980,101 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
               <rect x={-3000} y={-3000} width={9000} height={9000} fill="transparent" />
 
               <g transform={`translate(${view.tx},${view.ty}) scale(${view.z})`}>
-              {/* Bảng lắp ráp */}
-              <g>
-                <rect x={BOARD.x + 4} y={BOARD.y + 10} width={BOARD.w - 8} height={BOARD.h} rx={16}
-                  fill="#0F172A" opacity={0.28} />
-                <rect x={BOARD.x} y={BOARD.y} width={BOARD.w} height={BOARD.h} rx={14} fill="#7C8B9C" />
-                <rect x={BOARD.x} y={BOARD.y} width={BOARD.w} height={16} rx={14} fill="#B8C6D4" opacity={0.75} />
-                <rect x={BOARD.x + 5} y={BOARD.y + 5} width={BOARD.w - 10} height={BOARD.h - 10} rx={10} fill="#5A6B7C" />
-                <rect x={BOARD.x + 11} y={BOARD.y + 11} width={BOARD.w - 22} height={BOARD.h - 22} rx={7} fill="url(#mlBoard)" />
-                <rect x={BOARD.x + 11} y={BOARD.y + 11} width={BOARD.w - 22} height={10} rx={5}
-                  fill="#000000" opacity={0.22} />
+              {/* Các tấm bảng lắp ráp đang đặt trên bàn */}
+              {boards.map((b) => (
+                <g key={b.id}
+                  className={tool === 'erase' ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'}
+                  onPointerDown={(e) => handleBoardDown(e, b)}>
+                  <rect x={b.x + 4} y={b.y + 10} width={BOARD_W - 8} height={BOARD_H} rx={16}
+                    fill="#0F172A" opacity={0.28} />
+                  <rect x={b.x} y={b.y} width={BOARD_W} height={BOARD_H} rx={14} fill="#7C8B9C" />
+                  <rect x={b.x} y={b.y} width={BOARD_W} height={16} rx={14} fill="#B8C6D4" opacity={0.75} />
+                  <rect x={b.x + 5} y={b.y + 5} width={BOARD_W - 10} height={BOARD_H - 10} rx={10} fill="#5A6B7C" />
+                  <rect x={b.x + 11} y={b.y + 11} width={BOARD_W - 22} height={BOARD_H - 22} rx={7} fill="url(#mlBoard)" />
+                  <rect x={b.x + 11} y={b.y + 11} width={BOARD_W - 22} height={10} rx={5}
+                    fill="#000000" opacity={0.22} />
 
-                {/* Vạch trắng in trên mặt bảng: mỗi vạch chữ V là một thanh kim
-                    loại nối thông cả ba lỗ, giống bảng lắp ráp Edison thật */}
-                {BOARD_TRACKS.map((t) => {
-                  const live = holes.some((h) => h.track === t.id && trackUsed(h.id));
-                  const d = `M ${t.points.map((p) => `${p.x} ${p.y}`).join(' L ')}`;
-                  return (
-                    <g key={t.id}>
-                      <path d={d} transform="translate(0,1.5)" fill="none"
-                        stroke="#0A1533" strokeWidth={11} strokeLinecap="round" strokeLinejoin="round" opacity={0.45} />
-                      <path d={d} fill="none"
-                        stroke={live ? '#FDE68A' : '#E8EEFB'} strokeWidth={9} strokeLinecap="round" strokeLinejoin="round" />
-                      <path d={d} transform="translate(0,-1.2)" fill="none"
-                        stroke="#FFFFFF" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" opacity={0.55} />
+                  {/* Vạch trắng in trên mặt bảng — thanh kim loại chìm nối các lỗ */}
+                  {BOARD_TRACKS.map((t) => {
+                    const live = BOARD_HOLES.some((h) => h.track === t.id && trackUsed(b.id, h.id));
+                    const d = `M ${t.points.map((p) => `${b.x + p.x} ${b.y + p.y}`).join(' L ')}`;
+                    return (
+                      <g key={t.id}>
+                        <path d={d} transform="translate(0,1.5)" fill="none"
+                          stroke="#0A1533" strokeWidth={11} strokeLinecap="round" strokeLinejoin="round" opacity={0.45} />
+                        <path d={d} fill="none"
+                          stroke={live ? '#FDE68A' : '#E8EEFB'} strokeWidth={9} strokeLinecap="round" strokeLinejoin="round" />
+                        <path d={d} transform="translate(0,-1.2)" fill="none"
+                          stroke="#FFFFFF" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" opacity={0.55} />
+                      </g>
+                    );
+                  })}
+
+                  {BOARD_HOLES.map((h) => {
+                    const hx = b.x + h.x;
+                    const hy = b.y + h.y;
+                    const used = holeUsed(b.id, h.id);
+                    const active = !!pending && pending.c === b.id && pending.t === h.id;
+                    return (
+                      <g key={h.id}
+                        className={tool === 'wire' || tool === 'erase' ? 'cursor-crosshair' : ''}
+                        onPointerDown={(e) => handleTerminal(e, { c: b.id, t: h.id })}
+                        onClick={(e) => { if (tool !== 'select') e.stopPropagation(); }}>
+                        <title>{used
+                          ? 'Lỗ này đã có dây — mỗi lỗ chỉ cắm được một đầu dây'
+                          : 'Lỗ cắm trống — các lỗ trên cùng một vạch trắng là một điểm nối'}</title>
+                        <circle cx={hx} cy={hy + 0.8} r={8} fill="#4E7BD8" opacity={0.5} />
+                        <circle cx={hx} cy={hy} r={8} fill="#16295C" stroke="#12224B" strokeWidth={1} />
+                        <path d={`M ${hx - 5.6} ${hy - 5.6} A 8 8 0 0 1 ${hx + 5.6} ${hy - 5.6}`}
+                          fill="none" stroke="#0A1533" strokeWidth={1.6} strokeLinecap="round" opacity={0.9} />
+                        <circle cx={hx} cy={hy} r={3.6} fill="#070E22" />
+                        <circle cx={hx} cy={hy - 0.6} r={3.6} fill="#000000" opacity={0.6} />
+                        {used && <circle cx={hx} cy={hy} r={5.4} fill="#CBD5E1" stroke="#64748B" strokeWidth={1} />}
+                        {tool === 'wire' && (
+                          <circle cx={hx} cy={hy} r={10} fill="none"
+                            stroke={active ? '#F59E0B' : '#34D399'} strokeWidth={active ? 2.6 : 1.2}
+                            strokeOpacity={active ? 1 : 0.55} />
+                        )}
+                        {active && (
+                          <circle cx={hx} cy={hy} r={10} fill="none" stroke="#F59E0B" strokeWidth={2}>
+                            <animate attributeName="r" values="10;16;10" dur="1.1s" repeatCount="indefinite" />
+                            <animate attributeName="stroke-opacity" values="0.9;0;0.9" dur="1.1s" repeatCount="indefinite" />
+                          </circle>
+                        )}
+                      </g>
+                    );
+                  })}
+
+                  <text x={b.x + BOARD_W / 2} y={b.y + BOARD_H - 20} textAnchor="middle"
+                    fontSize={13} fontWeight={700} fill="#DBE6FF" letterSpacing={2.4}>
+                    BẢNG LẮP RÁP MẠCH ĐIỆN MÔN VẬT LÝ
+                  </text>
+
+                  {/* Nút gỡ bảng, hiện khi đang chọn */}
+                  {selected === b.id && (
+                    <g className="cursor-pointer"
+                      onPointerDown={(e) => { e.stopPropagation(); removeBoard(b.id); }}>
+                      <title>Gỡ bảng lắp ráp này</title>
+                      <circle cx={b.x + BOARD_W - 6} cy={b.y - 6} r={13} fill="#E11D48" stroke="#FFFFFF" strokeWidth={2.5} />
+                      <path d={`M ${b.x + BOARD_W - 12} ${b.y - 12} L ${b.x + BOARD_W} ${b.y}
+                                M ${b.x + BOARD_W} ${b.y - 12} L ${b.x + BOARD_W - 12} ${b.y}`}
+                        stroke="#FFFFFF" strokeWidth={2.6} strokeLinecap="round" />
                     </g>
-                  );
-                })}
+                  )}
+                  {selected === b.id && (
+                    <rect x={b.x - 6} y={b.y - 6} width={BOARD_W + 12} height={BOARD_H + 12} rx={18}
+                      fill="none" stroke="#6366F1" strokeWidth={2} strokeDasharray="6 5" />
+                  )}
+                </g>
+              ))}
 
-                {holes.map((h) => {
-                  const used = holeUsed(h.id);
-                  const active = !!pending && pending.c === BOARD_ID && pending.t === h.id;
-                  return (
-                    <g key={h.id}
-                      className={tool === 'wire' || tool === 'erase' ? 'cursor-crosshair' : ''}
-                      onPointerDown={(e) => handleTerminal(e, { c: BOARD_ID, t: h.id })}
-                      onClick={(e) => { if (tool !== 'select') e.stopPropagation(); }}>
-                      <title>{used
-                        ? 'Lỗ này đã có dây — mỗi lỗ chỉ cắm được một đầu dây'
-                        : 'Lỗ cắm trống — ba lỗ trên cùng một vạch trắng là một điểm nối'}</title>
-                      <circle cx={h.x} cy={h.y + 0.8} r={8} fill="#4E7BD8" opacity={0.5} />
-                      <circle cx={h.x} cy={h.y} r={8} fill="#16295C" stroke="#12224B" strokeWidth={1} />
-                      <path d={`M ${h.x - 5.6} ${h.y - 5.6} A 8 8 0 0 1 ${h.x + 5.6} ${h.y - 5.6}`}
-                        fill="none" stroke="#0A1533" strokeWidth={1.6} strokeLinecap="round" opacity={0.9} />
-                      <circle cx={h.x} cy={h.y} r={3.6} fill="#070E22" />
-                      <circle cx={h.x} cy={h.y - 0.6} r={3.6} fill="#000000" opacity={0.6} />
-                      {used && <circle cx={h.x} cy={h.y} r={5.4} fill="#CBD5E1" stroke="#64748B" strokeWidth={1} />}
-                      {tool === 'wire' && (
-                        <circle cx={h.x} cy={h.y} r={10} fill="none"
-                          stroke={active ? '#F59E0B' : '#34D399'} strokeWidth={active ? 2.6 : 1.2}
-                          strokeOpacity={active ? 1 : 0.55} />
-                      )}
-                      {active && (
-                        <circle cx={h.x} cy={h.y} r={10} fill="none" stroke="#F59E0B" strokeWidth={2}>
-                          <animate attributeName="r" values="10;16;10" dur="1.1s" repeatCount="indefinite" />
-                          <animate attributeName="stroke-opacity" values="0.9;0;0.9" dur="1.1s" repeatCount="indefinite" />
-                        </circle>
-                      )}
-                    </g>
-                  );
-                })}
-                <text x={CANVAS_W / 2} y={BOARD.y + BOARD.h - 26} textAnchor="middle"
-                  fontSize={13} fontWeight={700} fill="#DBE6FF" letterSpacing={2.4}>
-                  BẢNG LẮP RÁP MẠCH ĐIỆN MÔN VẬT LÝ
-                </text>
-              </g>
-
-              {parts.length === 0 && (
+              {parts.length === 0 && boards.length === 0 && (
                 <g>
-                  <text x={CANVAS_W / 2} y={150} textAnchor="middle" fontSize={19} fontWeight={800} fill="#94A3B8">
-                    {t('sim.empty')}
+                  <text x={CANVAS_W / 2} y={300} textAnchor="middle" fontSize={20} fontWeight={800} fill="#94A3B8">
+                    Bàn lắp đang trống
+                  </text>
+                  <text x={CANVAS_W / 2} y={332} textAnchor="middle" fontSize={16} fill="#94A3B8">
+                    Bấm “Thêm bảng lắp ráp” rồi chọn linh kiện từ khay bên trái để bắt đầu.
                   </text>
                 </g>
               )}
