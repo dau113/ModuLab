@@ -24,6 +24,8 @@ export interface PlacedPart {
   y: number;
   /** Các chốt đang cắm thẳng xuống bảng, không cần dây nối */
   plugs?: Plug[];
+  /** Màu của đèn LED */
+  ledColor?: string;
   closed?: boolean;   // công tắc
   knob?: number;      // biến trở 0..1
   /* Đồng hồ vạn năng */
@@ -62,6 +64,8 @@ export interface Branch {
   V: number;  // hiệu điện thế Va − Vb (V)
   /** Hai chốt bị nối tắt vào nhau; với nguồn thì đây là đoản mạch trực tiếp */
   shorted?: boolean;
+  /** Đèn đang mắc ngược cực nên không cho dòng qua */
+  reversed?: boolean;
 }
 
 export interface SimResult {
@@ -95,7 +99,12 @@ export function branchResistance(p: PlacedPart, rxTrue: number): number {
     case 'resistor': return p.kind === 'resistor' ? rxTrue : (spec.value ?? 100);
     case 'rheostat': return 0.4 + (p.knob ?? 0.5) * (spec.value ?? 120);
     case 'switch': return p.closed ? 2e-3 : 1e11;
-    case 'lamp': return spec.value ?? 30;
+    case 'lamp': {
+      /* Bóng sợi đốt: điện trở nóng = điện áp định mức chia dòng định mức */
+      const r = bulbRating(p);
+      return r.volt / r.amp;
+    }
+    case 'led': return spec.value ?? 150;
     case 'coil': return spec.value ?? 6;
     case 'ammeter': return p.kind === 'multimeter' ? (p.func === 'mA' ? 1.8 : 0.02) : 0.05;
     case 'voltmeter': return 2e6;
@@ -143,6 +152,31 @@ function solveLinear(G: number[][], I: number[]): number[] {
   return Array.from({ length: n }, (_, r) => (Number.isFinite(A[r][n]) ? A[r][n] : 0));
 }
 
+/** Đèn LED mắc ngược cực thì chặn dòng như một điốt */
+const LAMP_BLOCK_R = 1e11;
+
+/**
+ * Các loại bóng sợi đốt thay được: mức điện áp định mức và dòng định mức.
+ * Điện trở nóng của bóng bằng thương của hai số này.
+ */
+export const BULB_RATINGS: { volt: number; amp: number; label: string }[] = [
+  { volt: 2.5, amp: 0.3, label: '2,5V – 0,75W' },
+  { volt: 6, amp: 0.2, label: '6V – 1,2W' },
+  { volt: 12, amp: 0.1, label: '12V – 1,2W' },
+];
+
+export const bulbRating = (p: PlacedPart) =>
+  BULB_RATINGS.find((r) => r.volt === (p.volt ?? 6)) ?? BULB_RATINGS[1];
+
+/** Màu đèn LED chọn được, kèm dòng định mức chung 20mA */
+export const LED_COLORS = [
+  { id: 'red', hex: '#EF4444', name: 'đỏ' },
+  { id: 'green', hex: '#22C55E', name: 'lục' },
+  { id: 'blue', hex: '#3B82F6', name: 'lam' },
+  { id: 'amber', hex: '#F59E0B', name: 'hổ phách' },
+];
+export const LED_RATED_A = 0.02;
+
 export interface SimOptions {
   /** Triệt tiêu suất điện động của mọi nguồn, chỉ giữ điện trở trong (dùng khi đo điện trở) */
   zeroSources?: boolean;
@@ -154,7 +188,16 @@ export interface SimOptions {
   groundKey?: string;
 }
 
-export function simulate(parts: PlacedPart[], wires: Wire[], rxTrue: number, opts: SimOptions = {}): SimResult {
+/**
+ * Giải mạch một lượt. Hàm này chưa xét chiều của đèn; phần đó do simulate lo.
+ */
+function solveOnce(
+  parts: PlacedPart[],
+  wires: Wire[],
+  rxTrue: number,
+  opts: SimOptions,
+  blocked: Set<string>,
+): SimResult {
   /* 1. Gộp các chốt được nối dây thành cùng một nút (union-find) */
   const parent: Record<string, string> = {};
   const find = (a: string): string => {
@@ -202,7 +245,7 @@ export function simulate(parts: PlacedPart[], wires: Wire[], rxTrue: number, opt
     }
     branches.push({
       compId: p.id, kind: p.kind, elec, na, nb,
-      R: branchResistance(p, rxTrue),
+      R: blocked.has(p.id) ? LAMP_BLOCK_R : branchResistance(p, rxTrue),
       E: elec === 'source' && !opts.zeroSources ? sourceEmf(p) : 0,
       I: 0, V: 0,
     });
@@ -249,6 +292,43 @@ export function simulate(parts: PlacedPart[], wires: Wire[], rxTrue: number, opt
   });
 
   return { branches, node, voltages, nodeCount };
+}
+
+/**
+ * Giải mạch có xét chiều của bóng đèn.
+ *
+ * Đèn trong bộ dụng cụ có cực rõ ràng: dòng phải đi từ chốt đỏ (+) sang chốt
+ * đen (−) thì đèn mới sáng. Cắm ngược cực thì đèn chặn dòng như một điốt.
+ * Vì vậy phải giải vài lượt: lượt đầu coi mọi đèn đều dẫn, thấy đèn nào có
+ * dòng chạy ngược thì khoá lại rồi giải tiếp, cho tới khi không còn đèn ngược.
+ */
+export function simulate(
+  parts: PlacedPart[],
+  wires: Wire[],
+  rxTrue: number,
+  opts: SimOptions = {},
+): SimResult {
+  const blocked = new Set<string>();
+
+  for (let pass = 0; pass < 6; pass++) {
+    const res = solveOnce(parts, wires, rxTrue, opts, blocked);
+
+    /* Chốt đầu tiên của đèn là cực dương; dòng âm nghĩa là đang chạy ngược */
+    /* Chỉ đèn LED mới chặn dòng ngược; bóng sợi đốt cắm chiều nào cũng sáng */
+    const reversed = res.branches.filter((b) =>
+      b.elec === 'led' && !blocked.has(b.compId) && b.I < -1e-6);
+
+    if (!reversed.length) {
+      /* Đánh dấu những đèn đang bị khoá để giao diện biết mà báo cắm ngược */
+      res.branches.forEach((b) => {
+        if (b.elec === 'led' && blocked.has(b.compId)) b.reversed = true;
+      });
+      return res;
+    }
+    reversed.forEach((b) => blocked.add(b.compId));
+  }
+
+  return solveOnce(parts, wires, rxTrue, opts, blocked);
 }
 
 /**
@@ -306,10 +386,16 @@ export interface Damage {
 const CURRENT_LIMIT: Partial<Record<ElecKind, number>> = {
   source: 2.5,
   ammeter: 3,
-  lamp: 0.5,
   resistor: 0.35,
   rheostat: 1,
   coil: 1.5,
+};
+
+/** Ngưỡng chịu dòng của bóng đèn phụ thuộc loại bóng đang lắp */
+const lampLimit = (p: PlacedPart | undefined): number => {
+  if (!p) return 0.5;
+  if (p.kind === 'led') return LED_RATED_A * 1.8;
+  return bulbRating(p).amp * 1.7;
 };
 
 /**
@@ -322,7 +408,10 @@ export function findDamage(parts: PlacedPart[], wires: Wire[], rxTrue: number): 
   const out: Damage[] = [];
 
   sim.branches.forEach((b) => {
-    const limit = CURRENT_LIMIT[b.elec];
+    const owner = parts.find((x) => x.id === b.compId);
+    const limit = (b.elec === 'lamp' || b.elec === 'led')
+      ? lampLimit(owner)
+      : CURRENT_LIMIT[b.elec];
     if (limit === undefined) return;
     const i = Math.abs(b.I);
     if (i <= limit) return;
@@ -331,11 +420,13 @@ export function findDamage(parts: PlacedPart[], wires: Wire[], rxTrue: number): 
     const name = p ? PART_CATALOG[p.kind].short : b.compId;
     const amp = i >= 10 ? i.toFixed(0) : i.toFixed(2);
 
-    if (b.elec === 'lamp') {
+    if (b.elec === 'lamp' || b.elec === 'led') {
       out.push({
         compId: b.compId,
         kind: 'burn',
-        reason: `${name} chịu dòng ${amp}A, vượt mức cho phép ${limit}A — dây tóc đứt, bóng cháy.`,
+        reason: b.elec === 'led'
+          ? `${name} chịu dòng ${amp}A, vượt mức cho phép ${limit.toFixed(3)}A — LED cháy. Cần mắc thêm điện trở hạn dòng.`
+          : `${name} chịu dòng ${amp}A, vượt mức cho phép ${limit.toFixed(2)}A — dây tóc đứt, bóng cháy.`,
       });
     } else if (b.elec === 'source') {
       out.push({
@@ -416,6 +507,17 @@ export function checkCircuit(parts: PlacedPart[], wires: Wire[], rxTrue: number)
   }
   if (!ammeterPresent) msgs.push({ level: 'err', text: 'Thiếu dụng cụ đo cường độ dòng điện (ampe kế hoặc đồng hồ vạn năng ở thang A).' });
   if (!voltmeterPresent) msgs.push({ level: 'err', text: 'Thiếu dụng cụ đo hiệu điện thế (vôn kế hoặc đồng hồ vạn năng ở thang V).' });
+
+  /* Đèn mắc ngược cực thì không sáng — nhắc học sinh đảo hai đầu dây */
+  sim.branches.filter((b) => b.reversed).forEach((b) => {
+    const p = parts.find((x) => x.id === b.compId);
+    const name = p ? PART_CATALOG[p.kind].short : b.compId;
+    msgs.push({
+      level: 'warn',
+      text: `${name} (${b.compId}) đang mắc ngược cực nên không sáng. Dòng phải đi vào chân dài (+) và ra ở chân ngắn (−) — đảo hai đầu dây là được.`,
+    });
+    faulty.push(b.compId);
+  });
 
   const rx = resistors[0];
   const am = ammeters[0];

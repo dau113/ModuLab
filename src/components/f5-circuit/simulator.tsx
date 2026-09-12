@@ -10,8 +10,11 @@ import {
 } from 'lucide-react';
 import { PART_CATALOG, PART_ORDER, PartArt, PartDefs, PartThumb, DMM_FUNCS, DMM_HOTSPOTS, PS_HOTSPOTS, DMM_SCALE } from './parts';
 import type { PartKind, PartLive, DmmFunc, DmmButton } from './parts';
-import { simulate, checkCircuit, effectiveElec, measureResistance, findDamage } from './sim';
-import { Symbol as CircuitSymbol, SYM_W, SYM_H } from './schematic';
+import {
+  simulate, checkCircuit, effectiveElec, measureResistance, findDamage,
+  BULB_RATINGS, bulbRating, LED_COLORS, LED_RATED_A,
+} from './sim';
+import { Symbol as CircuitSymbol, SYM_W, SYM_H, layoutSchematic } from './schematic';
 import { BOARD_PREFIX, isBoardId, BOARD_W, BOARD_H, BOARD_HOLES, BOARD_TRACKS, trackOf, holeLabel } from './board';
 import { useSettings } from '../../settings';
 import { sfx } from '../../audio';
@@ -143,6 +146,12 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
   const damageOf = (id: string) => damages.find((d) => d.compId === id);
   /** Mạch hỏng thì mọi số đọc đều vô nghĩa, đồng hồ ngừng hiển thị */
   const circuitBroken = damages.length > 0 || report.level === 'err';
+
+  /* Bố cục sơ đồ: tự xếp lại mạch thành hình chữ nhật như vẽ trên giấy */
+  const layout = useMemo(() => layoutSchematic(
+    sim.branches.map((b) => ({ compId: b.compId, kind: b.kind, na: b.na, nb: b.nb })),
+    sim.branches.filter((b) => b.elec === 'source').map((b) => b.compId),
+  ), [sim]);
 
   const branchOf = (id: string) => sim.branches.find((b) => b.compId === id);
 
@@ -279,6 +288,21 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
     /* Mạch đang hỏng thì kim về 0: số đo lúc này không có ý nghĩa */
     if (elec === 'ammeter') return { needle: circuitBroken ? 0 : Math.min(1, cur / 3) };
     if (elec === 'voltmeter') return { needle: circuitBroken ? 0 : Math.min(1, Math.abs(b?.V ?? 0) / 15) };
+    if (elec === 'lamp' || elec === 'led') {
+      /* Độ sáng so với dòng định mức của chính loại bóng đang lắp. Lấy luỹ thừa
+         để mắt cảm nhận đều thay vì nhảy vọt ngay ở đoạn đầu. */
+      const ratedA = p.kind === 'led' ? LED_RATED_A : bulbRating(p).amp;
+      const ratio = circuitBroken ? 0 : Math.min(1.25, cur / ratedA);
+      const bright = Math.max(0, Math.min(1, Math.pow(ratio, p.kind === 'led' ? 1.1 : 1.6)));
+      return {
+        closed: p.closed, knob: p.knob,
+        energized: bright > 0.02,
+        bright,
+        rated: p.kind === 'led' ? 2 : bulbRating(p).volt,
+        ledColor: p.ledColor ?? LED_COLORS[0].hex,
+        reversed: !!b?.reversed,
+      };
+    }
     return { closed: p.closed, knob: p.knob, energized: cur > 1e-4 };
   };
 
@@ -463,6 +487,21 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
       if (p.kind === 'switch' || p.kind === 'switch2') {
         sfx.switchToggle(!p.closed);
         return { ...p, closed: !p.closed };
+      }
+      if (p.kind === 'lamp') {
+        /* Thay bóng: lần lượt 2,5V → 6V → 12V */
+        const i = BULB_RATINGS.findIndex((r) => r.volt === (p.volt ?? 6));
+        const next = BULB_RATINGS[(i + 1) % BULB_RATINGS.length];
+        sfx.plug();
+        setHint(`Đã thay bóng ${next.label}. Bấm tiếp vào bóng để đổi loại khác.`);
+        return { ...p, volt: next.volt };
+      }
+      if (p.kind === 'led') {
+        const i = LED_COLORS.findIndex((c) => c.hex === (p.ledColor ?? LED_COLORS[0].hex));
+        const next = LED_COLORS[(i + 1) % LED_COLORS.length];
+        sfx.click();
+        setHint(`Đã đổi sang đèn LED màu ${next.name}.`);
+        return { ...p, ledColor: next.hex };
       }
       return p;
     }));
@@ -1050,9 +1089,29 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
       <div className="flex flex-col gap-2 min-h-[560px] lg:min-h-0">
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex-1 min-h-0 flex flex-col overflow-hidden">
           <header className="px-4 py-2.5 border-b border-slate-200 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <CircuitBoard className="w-4 h-4 text-indigo-600" />
-              <h2 className="text-[clamp(12.5px,0.86vw,15px)] font-extrabold tracking-widest text-slate-700 uppercase">Bảng lắp ráp mạch điện</h2>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <CircuitBoard className="w-4 h-4 text-indigo-600" />
+                <h2 className="text-[clamp(12.5px,0.86vw,15px)] font-extrabold tracking-widest text-slate-700 uppercase">
+                  Bảng lắp ráp mạch điện
+                </h2>
+              </div>
+
+              {/* Chuyển giữa hình thật và sơ đồ mạch — đặt ngay cạnh tiêu đề cho dễ thấy */}
+              <div className="flex rounded-xl border-2 border-indigo-200 overflow-hidden">
+                {([
+                  [false, 'Hình thật', Wrench],
+                  [true, 'Sơ đồ mạch', Spline],
+                ] as [boolean, string, React.ElementType][]).map(([mode, label, Icon]) => (
+                  <button key={label} onClick={() => setSchematic(mode)}
+                    title={mode ? 'Vẽ lại mạch bằng ký hiệu quy ước như sơ đồ trên giấy' : 'Xem hình dạng thật của bộ dụng cụ'}
+                    className={`h-9 px-3.5 text-[clamp(13px,0.9vw,15.5px)] font-bold flex items-center gap-1.5 transition-colors ${
+                      schematic === mode ? 'bg-indigo-600 text-white' : 'bg-white text-slate-500 hover:bg-indigo-50'
+                    }`}>
+                    <Icon className="w-4 h-4" /> {label}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="flex items-center gap-1.5">
               <button onClick={toggleK}
@@ -1104,14 +1163,6 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
                 className="w-8 h-8 grid place-items-center rounded-lg text-slate-500 hover:bg-slate-100">
                 <ZoomIn className="w-4 h-4" />
               </button>
-              <button
-                title={schematic ? 'Xem hình dạng thật của linh kiện' : 'Xem dưới dạng sơ đồ mạch điện'}
-                onClick={() => setSchematic((v) => !v)}
-                className={`h-8 px-2.5 grid place-items-center border-l border-slate-200 text-[12.5px] font-bold transition-colors ${
-                  schematic ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-100'
-                }`}>
-                {schematic ? 'Sơ đồ' : 'Thực tế'}
-              </button>
               <button title="Về khung hình gốc" onClick={() => setView({ z: 1, tx: 0, ty: 0 })}
                 className="w-8 h-8 grid place-items-center rounded-lg text-slate-500 hover:bg-slate-100 border-l border-slate-200">
                 <Maximize2 className="w-4 h-4" />
@@ -1146,7 +1197,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
 
               <g transform={`translate(${view.tx},${view.ty}) scale(${view.z})`}>
               {/* Các tấm bảng lắp ráp đang đặt trên bàn */}
-              {boards.map((b) => (
+              {!schematic && boards.map((b) => (
                 <g key={b.id}
                   className={tool === 'erase' ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'}
                   onPointerDown={(e) => handleBoardDown(e, b)}>
@@ -1276,8 +1327,71 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
                 </g>
               )}
 
+              {/* ---------- Chế độ sơ đồ mạch điện ---------- */}
+              {schematic && (
+                <g>
+                  {/* Dây nối vẽ vuông góc như sơ đồ trên giấy */}
+                  {layout.paths.map((pt) => (
+                    <polyline key={pt.id}
+                      points={pt.points.map((q) => `${q.x},${q.y}`).join(' ')}
+                      fill="none" stroke="#1E293B" strokeWidth={2.4}
+                      strokeLinecap="square" strokeLinejoin="miter" />
+                  ))}
+
+                  {/* Chấm tròn ở chỗ ba dây gặp nhau */}
+                  {layout.paths.flatMap((pt) => [pt.points[0], pt.points[pt.points.length - 1]])
+                    .filter((q, i, arr) => arr.filter((z) => z.x === q.x && z.y === q.y).length > 2
+                      && arr.findIndex((z) => z.x === q.x && z.y === q.y) === i)
+                    .map((q, i) => <circle key={i} cx={q.x} cy={q.y} r={4} fill="#1E293B" />)}
+
+                  {layout.symbols.map((sy) => {
+                    const p = parts.find((x) => x.id === sy.compId);
+                    if (!p) return null;
+                    const dmg = damageOf(p.id);
+                    const cx = sy.x + SYM_W / 2;
+                    const cy = sy.y + SYM_H / 2;
+                    return (
+                      <g key={sy.compId}
+                        className="cursor-pointer"
+                        onPointerDown={(e) => { e.stopPropagation(); setSelected(p.id); togglePart(p.id); }}
+                        transform={sy.vertical
+                          ? `translate(${cx},${cy}) rotate(-90) translate(${-SYM_W / 2},${-SYM_H / 2})`
+                          : `translate(${sy.x},${sy.y})`}>
+                        <title>{PART_CATALOG[p.kind].name}</title>
+                        <CircuitSymbol
+                          kind={p.kind}
+                          closed={p.closed}
+                          lit={!circuitBroken && Math.abs(branchOf(p.id)?.I ?? 0) > 1e-3}
+                          bright={liveOf(p).bright ?? 0}
+                          role={effectiveElec(p) === 'ammeter' ? 'ammeter'
+                            : effectiveElec(p) === 'voltmeter' ? 'voltmeter' : 'inert'}
+                          faulty={!!dmg || report.faultyIds.includes(p.id)}
+                        />
+                        <text x={SYM_W / 2} y={SYM_H + 17} textAnchor="middle"
+                          fontSize={12} fontWeight={700} fill="#475569"
+                          transform={sy.vertical ? `rotate(90 ${SYM_W / 2} ${SYM_H + 17})` : undefined}>
+                          {p.id}
+                        </text>
+                      </g>
+                    );
+                  })}
+
+                  {layout.orphans.length > 0 && (
+                    <text x={CANVAS_W / 2} y={560} textAnchor="middle" fontSize={14} fill="#B45309">
+                      Chưa nối vào mạch: {layout.orphans.join(', ')}
+                    </text>
+                  )}
+
+                  {layout.symbols.length === 0 && (
+                    <text x={CANVAS_W / 2} y={330} textAnchor="middle" fontSize={18} fontWeight={700} fill="#94A3B8">
+                      Chưa có linh kiện nào để vẽ sơ đồ.
+                    </text>
+                  )}
+                </g>
+              )}
+
               {/* Linh kiện */}
-              {parts.map((p) => {
+              {!schematic && parts.map((p) => {
                 const spec = PART_CATALOG[p.kind];
                 const faulty = report.faultyIds.includes(p.id);
                 return (
@@ -1369,6 +1483,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
                           kind={p.kind}
                           closed={p.closed}
                           lit={!circuitBroken && Math.abs(branchOf(p.id)?.I ?? 0) > 1e-3}
+                          bright={liveOf(p).bright ?? 0}
                           role={effectiveElec(p) === 'ammeter' ? 'ammeter'
                             : effectiveElec(p) === 'voltmeter' ? 'voltmeter' : 'inert'}
                           faulty={!!damageOf(p.id) || report.faultyIds.includes(p.id)}
@@ -1430,7 +1545,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
 
               {/* Dây nối — luôn vẽ sau cùng nên nằm trên mọi linh kiện */}
               <g style={{ pointerEvents: tool === 'wire' ? 'none' : 'auto' }}>
-                {wires.map((w) => {
+                {!schematic && wires.map((w) => {
                   const pts = wirePath(w);
                   if (!pts) return null;
                   const d = splinePath(pts);

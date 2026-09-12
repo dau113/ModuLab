@@ -13,6 +13,7 @@ export type PartKind =
   | 'rheostat'
   | 'resistor'
   | 'lamp'
+  | 'led'
   | 'coil'
   | 'ammeter'
   | 'voltmeter'
@@ -28,6 +29,7 @@ export type ElecKind =
   | 'ammeter'
   | 'voltmeter'
   | 'coil'
+  | 'led'
   | 'inert';
 
 export type PartGroup = 'Nguồn điện' | 'Đo lường' | 'Điều khiển' | 'Tải & Điện trở' | 'Từ – Điện' | 'Phụ kiện';
@@ -110,12 +112,22 @@ export const PART_CATALOG: Record<PartKind, PartSpec> = {
     onBoard: true,
   },
   lamp: {
-    kind: 'lamp', name: 'Đui đèn & bóng 6V', short: 'Đui đèn', group: 'Tải & Điện trở',
+    kind: 'lamp', name: 'Đui đèn & bóng sợi đốt', short: 'Đèn sợi đốt', group: 'Tải & Điện trở',
     w: 100, h: 66, elec: 'lamp', value: 30, unit: 'Ω',
     terminals: [T('a', 22, 52, 'neg', 'Chốt A'), T('b', 78, 52, 'pos', 'Chốt B')],
-    desc: 'Bóng đèn 6V – 3W, điện trở nóng ≈ 30Ω. Sáng khi có dòng điện chạy qua.',
+    desc: 'Bóng sợi đốt thay được bóng 2,5V / 6V / 12V — bấm vào bóng để đổi. '
+      + 'Sợi đốt nóng dần nên đèn sáng và tắt từ từ, cắm chiều nào cũng sáng.',
     onBoard: true,
   },
+  led: {
+    kind: 'led', name: 'Đèn LED 2V', short: 'Đèn LED', group: 'Tải & Điện trở',
+    w: 100, h: 66, elec: 'led', value: 150, unit: 'Ω',
+    terminals: [T('a', 22, 52, 'pos', 'Chân dài (+)'), T('b', 78, 52, 'neg', 'Chân ngắn (−)')],
+    desc: 'Đèn LED có cực rõ ràng: dòng phải đi vào chân dài (+) mới sáng, cắm ngược thì tắt hẳn. '
+      + 'Bấm vào đèn để đổi màu. Sáng tắt tức thì, không có quán tính nhiệt như sợi đốt.',
+    onBoard: true,
+  },
+
   coil: {
     kind: 'coil', name: 'Cuộn dây', short: 'Cuộn dây', group: 'Từ – Điện',
     w: 96, h: 58, elec: 'coil', value: 6, unit: 'Ω',
@@ -149,7 +161,7 @@ export const PART_CATALOG: Record<PartKind, PartSpec> = {
 export const PART_ORDER: PartKind[] = [
   'battery', 'battery9v', 'powersupply',
   'switch', 'switch2', 'rheostat',
-  'resistor', 'lamp', 'coil',
+  'resistor', 'lamp', 'led', 'coil',
   'multimeter', 'ammeter', 'voltmeter',
 ];
 
@@ -163,6 +175,14 @@ export interface PartLive {
   knob?: number;      // 0..1 vị trí con chạy biến trở
   needle?: number;    // 0..1 độ lệch kim
   energized?: boolean;
+  /** Độ sáng bóng đèn, 0 là tắt hẳn, 1 là sáng đủ công suất định mức */
+  bright?: number;
+  /** Mức điện áp định mức đang chọn của bóng đèn */
+  rated?: number;
+  /** Màu của đèn LED */
+  ledColor?: string;
+  /** Đèn LED đang cắm ngược cực nên không sáng */
+  reversed?: boolean;
   reading?: string;
   mode?: 'A' | 'V';
   unit?: string;
@@ -353,6 +373,14 @@ const Post: React.FC<{ x: number; y: number; tone: 'red' | 'black' }> = ({ x, y,
         transform="rotate(-28 -2.8 -4.6)" />
     </g>
   );
+};
+
+/* Sợi đốt nóng và nguội dần nên đèn sáng tắt từ từ; LED thì gần như tức thì */
+const FADE: React.CSSProperties = {
+  transition: 'fill 340ms ease-out, stroke 340ms ease-out, opacity 340ms ease-out, r 340ms ease-out',
+};
+const FADE_FAST: React.CSSProperties = {
+  transition: 'fill 60ms linear, opacity 60ms linear, r 60ms linear',
 };
 
 const Screw: React.FC<{ x: number; y: number }> = ({ x, y }) => (
@@ -647,14 +675,37 @@ const Art: Record<PartKind, (live: PartLive) => React.ReactNode> = {
   ),
 
   lamp: (live) => {
-    const on = !!live.energized;
+    /* Độ sáng chạy liên tục theo công suất: tối → đỏ sẫm → cam → vàng trắng,
+       giống hệt dây tóc nóng dần khi tăng điện áp */
+    const b = Math.max(0, Math.min(1, live.bright ?? (live.energized ? 1 : 0)));
+    const lerp = (a: number, c: number, t: number) => a + (c - a) * t;
+    const hex = (n: number) => Math.round(Math.max(0, Math.min(255, n))).toString(16).padStart(2, '0');
+
+    /* Màu dây tóc: từ xám nguội sang vàng trắng */
+    const glassR = lerp(226, 253, b), glassG = lerp(232, 224, b), glassB = lerp(240, 138, b);
+    const coreR = lerp(238, 255, b), coreG = lerp(242, 241, b), coreB = lerp(246, 186, b);
+    const glass = `#${hex(glassR)}${hex(glassG)}${hex(glassB)}`;
+    const core = `#${hex(coreR)}${hex(coreG)}${hex(coreB)}`;
+    const wire = b > 0.05
+      ? `#${hex(lerp(148, 251, b))}${hex(lerp(163, 146, b))}${hex(lerp(184, 60, b))}`
+      : '#94A3B8';
+
     return (
       <g>
         <Plate w={100} h={66} />
-        {on && <circle cx={50} cy={20} r={30} fill="url(#mlGlow)" />}
-        <path d="M42 26 Q50 4 58 26 Z" fill={on ? '#FDE68A' : '#E2E8F0'} stroke="#94A3B8" />
-        <circle cx={50} cy={18} r={11} fill={on ? '#FCD34D' : '#EEF2F6'} stroke="#94A3B8" opacity={0.95} />
-        <path d="M46 20 l4 -5 l4 5" fill="none" stroke={on ? '#B45309' : '#94A3B8'} strokeWidth={1.4} />
+        {/* Quầng sáng nở rộng và đậm dần theo độ sáng */}
+        <circle cx={50} cy={20} r={16 + b * 22} fill="url(#mlGlow)"
+          opacity={b > 0.02 ? 0.25 + b * 0.75 : 0} style={FADE} />
+        <path d="M42 26 Q50 4 58 26 Z" fill={glass} stroke="#94A3B8" style={FADE} />
+        <circle cx={50} cy={18} r={11} fill={core} stroke="#94A3B8" opacity={0.95} style={FADE} />
+        {/* Dây tóc sáng lên trước, quầng theo sau */}
+        <path d="M46 20 l4 -5 l4 5" fill="none" stroke={wire} strokeWidth={1.4 + b * 1.1} style={FADE} />
+        <circle cx={50} cy={18} r={5 + b * 3} fill="#FFFBEB"
+          opacity={b > 0.35 ? (b - 0.35) * 1.2 : 0} style={FADE} />
+        {/* Mức điện áp của bóng đang lắp */}
+        <text x={50} y={62} textAnchor="middle" fontSize={8} fontWeight={800} fill="#0F5E73">
+          {(live.rated ?? 6).toString().replace('.', ',')}V
+        </text>
         <rect x={42} y={28} width={16} height={10} rx={2} fill="url(#mlMetal)" />
         <rect x={40} y={36} width={20} height={8} rx={2} fill="#EAF6FA" stroke="#8FC3D3" />
         <Post x={22} y={52} tone="black" />
@@ -664,6 +715,41 @@ const Art: Record<PartKind, (live: PartLive) => React.ReactNode> = {
   },
 
 
+
+  led: (live) => {
+    const b = Math.max(0, Math.min(1, live.bright ?? 0));
+    const color = live.ledColor ?? '#EF4444';
+    const rev = !!live.reversed;
+    return (
+      <g>
+        <Plate w={100} h={66} />
+        {/* Quầng sáng của LED: bật tắt gần như tức thì */}
+        <circle cx={50} cy={22} r={12 + b * 20} fill={color}
+          opacity={b > 0.02 ? b * 0.45 : 0} style={FADE_FAST} />
+
+        {/* Vỏ nhựa trong hình viên thuốc */}
+        <path d="M40 34 L40 20 A10 10 0 0 1 60 20 L60 34 Z"
+          fill={color} fillOpacity={0.25 + b * 0.7} stroke={color} strokeWidth={1.4} style={FADE_FAST} />
+        <ellipse cx={45} cy={19} rx={3} ry={5} fill="#FFFFFF" opacity={0.55} />
+        {/* Vành đế và hai chân */}
+        <rect x={38} y={33} width={24} height={4} rx={2} fill={color} opacity={0.55} />
+        <line x1={44} y1={37} x2={44} y2={46} stroke="url(#mlMetal)" strokeWidth={2.6} strokeLinecap="round" />
+        <line x1={56} y1={37} x2={56} y2={43} stroke="url(#mlMetal)" strokeWidth={2.6} strokeLinecap="round" />
+
+        {/* Dấu cực để học sinh biết chân nào dài hơn */}
+        <text x={24} y={40} textAnchor="middle" fontSize={11} fontWeight={800} fill="#B91C1C">+</text>
+        <text x={76} y={40} textAnchor="middle" fontSize={13} fontWeight={800} fill="#111827">−</text>
+        {rev && (
+          <text x={50} y={62} textAnchor="middle" fontSize={7.6} fontWeight={800} fill="#B91C1C">
+            NGƯỢC CỰC
+          </text>
+        )}
+
+        <Post x={22} y={52} tone="red" />
+        <Post x={78} y={52} tone="black" />
+      </g>
+    );
+  },
 
   coil: (live) => (
     <g>

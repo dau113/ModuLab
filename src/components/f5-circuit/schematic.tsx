@@ -14,6 +14,8 @@ export interface SymbolProps {
   /** Trạng thái cần vẽ: công tắc đóng hay mở, đèn sáng hay tắt */
   closed?: boolean;
   lit?: boolean;
+  /** Độ sáng bóng đèn 0..1, dùng để tô đậm nhạt ký hiệu */
+  bright?: number;
   /** Vai trò của đồng hồ vạn năng theo núm xoay */
   role?: 'ammeter' | 'voltmeter' | 'inert';
   faulty?: boolean;
@@ -26,7 +28,7 @@ export const SYM_H = 56;
 const STROKE = '#1E293B';
 
 /** Ký hiệu quy ước của từng loại linh kiện, vẽ trong khung SYM_W × SYM_H */
-export const Symbol: React.FC<SymbolProps> = ({ kind, closed, lit, role, faulty }) => {
+export const Symbol: React.FC<SymbolProps> = ({ kind, closed, lit, bright = 0, role, faulty }) => {
   const cx = SYM_W / 2;
   const cy = SYM_H / 2;
   const color = faulty ? '#DC2626' : STROKE;
@@ -102,10 +104,34 @@ export const Symbol: React.FC<SymbolProps> = ({ kind, closed, lit, role, faulty 
       return (
         <g>
           {lead(0, cx - 15)}{lead(cx + 15, SYM_W)}
-          <circle cx={cx} cy={cy} r={15} fill={lit ? '#FEF3C7' : '#FFFFFF'} stroke={color} strokeWidth={2.2} />
+          <circle cx={cx} cy={cy} r={15}
+            fill={lit || bright > 0.02 ? '#FEF3C7' : '#FFFFFF'}
+            fillOpacity={lit || bright > 0.02 ? 0.25 + bright * 0.75 : 1}
+            stroke={color} strokeWidth={2.2} />
+          {bright > 0.05 && (
+            <circle cx={cx} cy={cy} r={15 + bright * 9} fill="#FDE68A" opacity={bright * 0.45} />
+          )}
           <path d={`M ${cx - 10.6} ${cy - 10.6} L ${cx + 10.6} ${cy + 10.6}
                     M ${cx + 10.6} ${cy - 10.6} L ${cx - 10.6} ${cy + 10.6}`}
             stroke={color} strokeWidth={2} />
+        </g>
+      );
+
+    /* Đèn LED: điốt có hai mũi tên chỉ ra ngoài */
+    case 'led':
+      return (
+        <g>
+          {lead(0, cx - 12)}{lead(cx + 12, SYM_W)}
+          <path d={`M ${cx - 12} ${cy - 11} L ${cx + 12} ${cy} L ${cx - 12} ${cy + 11} Z`}
+            fill={bright > 0.02 ? '#FDE68A' : '#FFFFFF'} fillOpacity={0.3 + bright * 0.7}
+            stroke={color} strokeWidth={2.2} />
+          <line x1={cx + 12} y1={cy - 12} x2={cx + 12} y2={cy + 12} stroke={color} strokeWidth={2.4} />
+          {[0, 1].map((i) => (
+            <g key={i} transform={`translate(${i * 9}, 0)`}>
+              <line x1={cx - 2} y1={cy - 15} x2={cx + 6} y2={cy - 24} stroke={color} strokeWidth={1.8} />
+              <path d={`M ${cx + 6} ${cy - 24} l -5 1 l 2 4 z`} fill={color} />
+            </g>
+          ))}
         </g>
       );
 
@@ -159,3 +185,186 @@ export const symbolTerminal = (kind: PartKind, index: number) => {
   }
   return { x: index === 0 ? 0 : SYM_W, y: SYM_H / 2 };
 };
+
+/* ------------------------------------------------------------------ */
+/* Tự sắp xếp lại mạch thành sơ đồ hình chữ nhật như vẽ trên giấy      */
+/* ------------------------------------------------------------------ */
+
+/** Một nhánh lấy từ kết quả mô phỏng, chỉ cần các thông tin để sắp xếp */
+export interface GraphBranch {
+  compId: string;
+  kind: PartKind;
+  na: number;
+  nb: number;
+}
+
+export interface PlacedSymbol {
+  compId: string;
+  kind: PartKind;
+  /** Góc trên trái của khung ký hiệu */
+  x: number;
+  y: number;
+  /** Xoay 90° cho các ký hiệu nằm trên cạnh dọc */
+  vertical: boolean;
+  /** Hai đầu dây của ký hiệu, đã tính sẵn theo toạ độ sơ đồ */
+  a: { x: number; y: number };
+  b: { x: number; y: number };
+}
+
+export interface SchematicLayout {
+  symbols: PlacedSymbol[];
+  /** Các đoạn dây nối, vẽ vuông góc như sơ đồ trên giấy */
+  paths: { id: string; points: { x: number; y: number }[] }[];
+  /** Linh kiện không nằm trong mạch kín nào */
+  orphans: string[];
+}
+
+/* Khung sơ đồ */
+const FRAME = { x: 150, y: 170, w: 560, h: 300 };
+const SHUNT_DROP = 110;   // nhánh song song vẽ thấp hơn cạnh chính chừng này
+
+/** Đặt một ký hiệu nằm ngang, tâm tại (cx, cy) */
+const placeH = (b: GraphBranch, cx: number, cy: number, flip: boolean): PlacedSymbol => {
+  const x = cx - SYM_W / 2;
+  const y = cy - SYM_H / 2;
+  const left = { x, y: cy };
+  const right = { x: x + SYM_W, y: cy };
+  return { compId: b.compId, kind: b.kind, x, y, vertical: false, a: flip ? right : left, b: flip ? left : right };
+};
+
+/** Đặt một ký hiệu nằm dọc, tâm tại (cx, cy) */
+const placeV = (b: GraphBranch, cx: number, cy: number, flip: boolean): PlacedSymbol => {
+  const x = cx - SYM_W / 2;
+  const y = cy - SYM_H / 2;
+  const top = { x: cx, y: cy - SYM_W / 2 };
+  const bottom = { x: cx, y: cy + SYM_W / 2 };
+  return { compId: b.compId, kind: b.kind, x, y, vertical: true, a: flip ? bottom : top, b: flip ? top : bottom };
+};
+
+/** Đường gấp khúc vuông góc nối hai điểm, đi ngang trước rồi mới đi dọc */
+const elbow = (p: { x: number; y: number }, q: { x: number; y: number }) => {
+  if (Math.abs(p.x - q.x) < 1 || Math.abs(p.y - q.y) < 1) return [p, q];
+  return [p, { x: q.x, y: p.y }, q];
+};
+
+/**
+ * Sắp xếp mạch thành sơ đồ: nguồn nằm ở cạnh trái, các linh kiện còn lại của
+ * vòng mạch chính trải đều trên cạnh trên và cạnh dưới, dây nối vẽ vuông góc.
+ * Nhánh mắc song song (thường là vôn kế) được vẽ tụt xuống dưới linh kiện mà
+ * nó đo, đúng như cách vẽ trong sách.
+ */
+export function layoutSchematic(branches: GraphBranch[], sourceIds: string[]): SchematicLayout {
+  const symbols: PlacedSymbol[] = [];
+  const paths: { id: string; points: { x: number; y: number }[] }[] = [];
+
+  const source = branches.find((b) => sourceIds.includes(b.compId));
+  if (!source) {
+    /* Chưa có nguồn: xếp tạm thành hàng ngang cho dễ nhìn */
+    branches.forEach((b, i) => symbols.push(placeH(b, FRAME.x + 120 + i * 150, FRAME.y, false)));
+    return { symbols, paths, orphans: [] };
+  }
+
+  /* Tìm vòng mạch chính: đi từ cực này của nguồn vòng về cực kia */
+  const adj = new Map<number, GraphBranch[]>();
+  branches.forEach((b) => {
+    if (b.compId === source.compId) return;
+    [b.na, b.nb].forEach((n) => {
+      if (!adj.has(n)) adj.set(n, []);
+      adj.get(n)!.push(b);
+    });
+  });
+
+  const loop: { br: GraphBranch; flip: boolean }[] = [];
+  const used = new Set<string>();
+  const walk = (node: number): boolean => {
+    if (node === source.na) return true;
+    for (const b of adj.get(node) ?? []) {
+      if (used.has(b.compId)) continue;
+      used.add(b.compId);
+      const next = b.na === node ? b.nb : b.na;
+      loop.push({ br: b, flip: b.nb === node });
+      if (walk(next)) return true;
+      loop.pop();
+      used.delete(b.compId);
+    }
+    return false;
+  };
+  walk(source.nb);
+
+  const loopIds = new Set(loop.map((l) => l.br.compId));
+  const inLoopNodes = new Set<number>([source.na, source.nb]);
+  loop.forEach((l) => { inLoopNodes.add(l.br.na); inLoopNodes.add(l.br.nb); });
+
+  /* Nguồn đặt dọc ở cạnh trái */
+  const leftX = FRAME.x;
+  const rightX = FRAME.x + FRAME.w;
+  const topY = FRAME.y;
+  const botY = FRAME.y + FRAME.h;
+  const midY = (topY + botY) / 2;
+
+  const srcSym = placeV(source, leftX, midY, true);   // dòng đi ra từ đầu trên
+  symbols.push(srcSym);
+
+  /* Chia linh kiện vòng chính cho cạnh trên và cạnh dưới */
+  const half = Math.ceil(loop.length / 2);
+  const top = loop.slice(0, half);
+  const bottom = loop.slice(half);
+
+  const spread = (n: number, i: number) => {
+    const span = FRAME.w;
+    return leftX + (span * (i + 1)) / (n + 1);
+  };
+
+  const topSyms = top.map((l, i) => placeH(l.br, spread(top.length, i), topY, l.flip));
+  const botSyms = bottom.map((l, i) =>
+    placeH(l.br, spread(bottom.length, bottom.length - 1 - i), botY, !l.flip));
+  symbols.push(...topSyms, ...botSyms);
+
+  /* Nối thành vòng: nguồn → cạnh trên → cạnh phải → cạnh dưới → về nguồn */
+  const chain: { x: number; y: number }[][] = [];
+  let cursor = srcSym.a;                       // đầu ra của nguồn (phía trên)
+  chain.push(elbow(cursor, { x: leftX, y: topY }));
+  cursor = { x: leftX, y: topY };
+
+  topSyms.forEach((sym) => {
+    chain.push([cursor, sym.a]);
+    cursor = sym.b;
+  });
+  chain.push([cursor, { x: rightX, y: topY }]);
+  chain.push([{ x: rightX, y: topY }, { x: rightX, y: botY }]);
+  cursor = { x: rightX, y: botY };
+
+  botSyms.forEach((sym) => {
+    chain.push([cursor, sym.a]);
+    cursor = sym.b;
+  });
+  chain.push([cursor, { x: leftX, y: botY }]);
+  chain.push(elbow({ x: leftX, y: botY }, srcSym.b));
+
+  chain.forEach((pts, i) => paths.push({ id: `ring-${i}`, points: pts }));
+
+  /* Nhánh mắc song song: vẽ tụt xuống dưới linh kiện mà nó đo */
+  const orphans: string[] = [];
+  branches.forEach((b) => {
+    if (b.compId === source.compId || loopIds.has(b.compId)) return;
+    if (!inLoopNodes.has(b.na) || !inLoopNodes.has(b.nb)) { orphans.push(b.compId); return; }
+
+    /* Tìm linh kiện trên vòng có cùng hai nút — đó là thứ đang được đo */
+    const host = symbols.find((sy) => {
+      const l = loop.find((x) => x.br.compId === sy.compId);
+      if (!l) return false;
+      return (l.br.na === b.na && l.br.nb === b.nb) || (l.br.na === b.nb && l.br.nb === b.na);
+    });
+    const cx = host ? host.x + SYM_W / 2 : (leftX + rightX) / 2;
+    const cy = (host ? host.y + SYM_H / 2 : topY) + SHUNT_DROP;
+    const sym = placeH(b, cx, cy, false);
+    symbols.push(sym);
+
+    const hostA = host ? host.a : { x: cx - SYM_W, y: topY };
+    const hostB = host ? host.b : { x: cx + SYM_W, y: topY };
+    paths.push({ id: `shunt-a-${b.compId}`, points: [hostA, { x: hostA.x, y: cy }, sym.a] });
+    paths.push({ id: `shunt-b-${b.compId}`, points: [hostB, { x: hostB.x, y: cy }, sym.b] });
+  });
+
+  return { symbols, paths, orphans };
+}
