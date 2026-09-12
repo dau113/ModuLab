@@ -8,11 +8,22 @@ import type { PartKind, ElecKind, DmmFunc } from './parts';
 
 export interface TermRef { c: string; t: string }
 
+/** Một chốt của linh kiện đang cắm thẳng vào lỗ trên bảng lắp ráp */
+export interface Plug {
+  /** Mã chốt của linh kiện */
+  t: string;
+  /** Mã tấm bảng và mã lỗ mà chốt này cắm vào */
+  board: string;
+  hole: string;
+}
+
 export interface PlacedPart {
   id: string;
   kind: PartKind;
   x: number;
   y: number;
+  /** Các chốt đang cắm thẳng xuống bảng, không cần dây nối */
+  plugs?: Plug[];
   closed?: boolean;   // công tắc
   knob?: number;      // biến trở 0..1
   /* Đồng hồ vạn năng */
@@ -49,6 +60,8 @@ export interface Branch {
   E: number;
   I: number;  // dòng từ a → b (A)
   V: number;  // hiệu điện thế Va − Vb (V)
+  /** Hai chốt bị nối tắt vào nhau; với nguồn thì đây là đoản mạch trực tiếp */
+  shorted?: boolean;
 }
 
 export interface SimResult {
@@ -170,8 +183,23 @@ export function simulate(parts: PlacedPart[], wires: Wire[], rxTrue: number, opt
     if (!pair) return;
     const na = node[termKey(p.id, pair[0])];
     const nb = node[termKey(p.id, pair[1])];
-    if (na === undefined || nb === undefined || na === nb) return;
+    if (na === undefined || nb === undefined) return;
     if (opts.exclude?.includes(p.id)) return;
+
+    if (na === nb) {
+      /* Hai chốt chập vào nhau. Với nguồn điện đây là đoản mạch trực tiếp:
+         dòng chỉ bị hạn bởi điện trở trong, phải ghi lại để hệ thống soát mạch
+         và hiệu ứng hỏng nhận ra. Linh kiện khác bị nối tắt thì không có dòng. */
+      const emf = elec === 'source' && !opts.zeroSources ? sourceEmf(p) : 0;
+      if (emf > 0) {
+        const r = branchResistance(p, rxTrue);
+        branches.push({
+          compId: p.id, kind: p.kind, elec, na, nb,
+          R: r, E: emf, I: emf / r, V: 0, shorted: true,
+        });
+      }
+      return;
+    }
     branches.push({
       compId: p.id, kind: p.kind, elec, na, nb,
       R: branchResistance(p, rxTrue),
@@ -192,6 +220,7 @@ export function simulate(parts: PlacedPart[], wires: Wire[], rxTrue: number, opt
   for (let k = 0; k < n; k++) G[k][k] += 1e-11; // rò rất nhỏ chống suy biến
 
   branches.forEach((b) => {
+    if (b.shorted) return;   // nhánh chập không đưa vào ma trận được
     const g = 1 / b.R;
     G[b.na][b.na] += g; G[b.nb][b.nb] += g;
     G[b.na][b.nb] -= g; G[b.nb][b.na] -= g;
@@ -213,6 +242,7 @@ export function simulate(parts: PlacedPart[], wires: Wire[], rxTrue: number, opt
   idx.forEach((nd, i) => { voltages[nd] = vr[i] ?? 0; });
 
   branches.forEach((b) => {
+    if (b.shorted) return;   // dòng đoản mạch đã tính sẵn ở trên
     b.V = voltages[b.na] - voltages[b.nb];
     b.I = b.E ? (b.E - (voltages[b.nb] - voltages[b.na])) / b.R : b.V / b.R;
     if (b.E) b.I = (b.E - (voltages[b.nb] - voltages[b.na])) / b.R;
@@ -261,6 +291,68 @@ export interface CheckReport {
   safeToPower: boolean;
   ammeterReading: number | null;
   voltmeterReading: number | null;
+}
+
+/** Một chỗ hỏng cụ thể trên bàn lắp: hỏng ở đâu, vì sao, hậu quả thế nào */
+export interface Damage {
+  /** Mã linh kiện bị hỏng */
+  compId: string;
+  /** Kiểu hỏng để chọn hiệu ứng: cháy, nổ, hay chỉ cảnh báo */
+  kind: 'burn' | 'blast' | 'warn';
+  reason: string;
+}
+
+/* Ngưỡng chịu đựng của từng loại linh kiện, vượt qua là hỏng */
+const CURRENT_LIMIT: Partial<Record<ElecKind, number>> = {
+  source: 2.5,
+  ammeter: 3,
+  lamp: 0.5,
+  resistor: 0.35,
+  rheostat: 1,
+  coil: 1.5,
+};
+
+/**
+ * Tìm những linh kiện đang phải chịu dòng vượt ngưỡng.
+ * Trả về danh sách chỗ hỏng kèm lý do, để giao diện vẽ hiệu ứng và ghi rõ
+ * hỏng ở đâu chứ không chỉ báo chung chung.
+ */
+export function findDamage(parts: PlacedPart[], wires: Wire[], rxTrue: number): Damage[] {
+  const sim = simulate(parts, wires, rxTrue);
+  const out: Damage[] = [];
+
+  sim.branches.forEach((b) => {
+    const limit = CURRENT_LIMIT[b.elec];
+    if (limit === undefined) return;
+    const i = Math.abs(b.I);
+    if (i <= limit) return;
+
+    const p = parts.find((x) => x.id === b.compId);
+    const name = p ? PART_CATALOG[p.kind].short : b.compId;
+    const amp = i >= 10 ? i.toFixed(0) : i.toFixed(2);
+
+    if (b.elec === 'lamp') {
+      out.push({
+        compId: b.compId,
+        kind: 'burn',
+        reason: `${name} chịu dòng ${amp}A, vượt mức cho phép ${limit}A — dây tóc đứt, bóng cháy.`,
+      });
+    } else if (b.elec === 'source') {
+      out.push({
+        compId: b.compId,
+        kind: 'blast',
+        reason: `${name} đang bị đoản mạch, dòng qua nguồn lên tới ${amp}A — nguồn quá tải, có thể nổ.`,
+      });
+    } else {
+      out.push({
+        compId: b.compId,
+        kind: b.elec === 'ammeter' ? 'blast' : 'burn',
+        reason: `${name} chịu dòng ${amp}A, vượt mức cho phép ${limit}A — linh kiện hỏng.`,
+      });
+    }
+  });
+
+  return out;
 }
 
 export function checkCircuit(parts: PlacedPart[], wires: Wire[], rxTrue: number): CheckReport {

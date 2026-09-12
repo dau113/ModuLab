@@ -10,11 +10,12 @@ import {
 } from 'lucide-react';
 import { PART_CATALOG, PART_ORDER, PartArt, PartDefs, PartThumb, DMM_FUNCS, DMM_HOTSPOTS, PS_HOTSPOTS, DMM_SCALE } from './parts';
 import type { PartKind, PartLive, DmmFunc, DmmButton } from './parts';
-import { simulate, checkCircuit, effectiveElec, measureResistance } from './sim';
+import { simulate, checkCircuit, effectiveElec, measureResistance, findDamage } from './sim';
+import { Symbol as CircuitSymbol, SYM_W, SYM_H } from './schematic';
 import { BOARD_PREFIX, isBoardId, BOARD_W, BOARD_H, BOARD_HOLES, BOARD_TRACKS, trackOf, holeLabel } from './board';
 import { useSettings } from '../../settings';
 import { sfx } from '../../audio';
-import type { PlacedPart, Wire, TermRef, CheckReport } from './sim';
+import type { PlacedPart, Plug, Wire, TermRef, CheckReport } from './sim';
 
 interface CircuitSimulatorProps {
   onPassCircuit: () => void;
@@ -97,14 +98,51 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
   const [view, setView] = useState(bench.view);
 
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const [schematic, setSchematic] = useState(false);
+  const [snapHint, setSnapHint] = useState<{ plugs: Plug[] } | null>(null);
   const boardDrag = useRef<{ id: string; dx: number; dy: number } | null>(null);
   const drag = useRef<{ id: string; dx: number; dy: number; sx: number; sy: number; moved: boolean } | null>(null);
   const pan = useRef<{ x: number; y: number; tx: number; ty: number } | null>(null);
   const wireDrag = useRef<{ id: string; idx: number } | null>(null);
 
   /* ---------------- Mô phỏng & kiểm tra ---------------- */
-  const sim = useMemo(() => simulate(parts, wires, RX_TRUE), [parts, wires]);
-  const report: CheckReport = useMemo(() => checkCircuit(parts, wires, RX_TRUE), [parts, wires]);
+  /**
+   * Chốt cắm thẳng xuống bảng được coi như một sợi dây ngầm nối chốt đó với lỗ.
+   * Dây này không vẽ ra nhưng vẫn tính vào mạch điện.
+   */
+  const plugWires = useMemo<Wire[]>(() => {
+    const out: Wire[] = [];
+    parts.forEach((p) => {
+      (p.plugs ?? []).forEach((pl) => {
+        out.push({
+          id: `plug:${p.id}:${pl.t}`,
+          from: { c: p.id, t: pl.t },
+          to: { c: pl.board, t: pl.hole },
+          color: '#94A3B8',
+        });
+      });
+    });
+    return out;
+  }, [parts]);
+
+  /** Toàn bộ đường nối của mạch: dây học sinh kéo cộng với các chốt cắm thẳng */
+  const allWires = useMemo(() => [...wires, ...plugWires], [wires, plugWires]);
+
+  /** Lỗ đang bị chiếm bởi một sợi dây hoặc một chốt linh kiện */
+  const holeBusy = (boardId: string, holeId: string, ignorePartId?: string) =>
+    wires.some((w) => (w.from.c === boardId && w.from.t === holeId)
+      || (w.to.c === boardId && w.to.t === holeId))
+    || parts.some((p) => p.id !== ignorePartId
+      && (p.plugs ?? []).some((pl) => pl.board === boardId && pl.hole === holeId));
+
+  const sim = useMemo(() => simulate(parts, allWires, RX_TRUE), [parts, allWires]);
+  const report: CheckReport = useMemo(() => checkCircuit(parts, allWires, RX_TRUE), [parts, allWires]);
+
+  /* Những linh kiện đang chịu quá dòng — hỏng ở đâu, vì sao */
+  const damages = useMemo(() => findDamage(parts, allWires, RX_TRUE), [parts, allWires]);
+  const damageOf = (id: string) => damages.find((d) => d.compId === id);
+  /** Mạch hỏng thì mọi số đọc đều vô nghĩa, đồng hồ ngừng hiển thị */
+  const circuitBroken = damages.length > 0 || report.level === 'err';
 
   const branchOf = (id: string) => sim.branches.find((b) => b.compId === id);
 
@@ -156,6 +194,14 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
       auto: p.rangeIdx == null, light: p.light,
     };
     if (f === 'off') return { value: null, text: '', unit: '', live: base };
+
+    /* Mạch đang hỏng: đồng hồ không đưa ra số đọc nào, tránh học sinh ghi nhầm số liệu */
+    if (circuitBroken) {
+      return {
+        value: null, text: '---', unit: spec.unit,
+        live: { ...base, reading: '---', unit: spec.unit, bar: 0 },
+      };
+    }
 
     const b = branchOf(p.id);
     let raw: number | null;
@@ -222,7 +268,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
     const elec = effectiveElec(p);
     if (p.kind === 'multimeter') return dmm(p).live;
     if (p.kind === 'powersupply') {
-      const on = p.powerOn !== false;
+      const on = p.powerOn !== false && !circuitBroken;
       return {
         volt: p.volt ?? 12,
         powerOn: on,
@@ -230,8 +276,9 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
         voltReading: on ? (p.volt ?? 12).toFixed(1) : '---',
       };
     }
-    if (elec === 'ammeter') return { needle: Math.min(1, cur / 3) };
-    if (elec === 'voltmeter') return { needle: Math.min(1, Math.abs(b?.V ?? 0) / 15) };
+    /* Mạch đang hỏng thì kim về 0: số đo lúc này không có ý nghĩa */
+    if (elec === 'ammeter') return { needle: circuitBroken ? 0 : Math.min(1, cur / 3) };
+    if (elec === 'voltmeter') return { needle: circuitBroken ? 0 : Math.min(1, Math.abs(b?.V ?? 0) / 15) };
     return { closed: p.closed, knob: p.knob, energized: cur > 1e-4 };
   };
 
@@ -296,6 +343,8 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
   const wirePath = (w: Wire): { x: number; y: number }[] | null => {
     const a = termPos(w.from), b = termPos(w.to);
     if (!a || !b) return null;
+    /* Chế độ sơ đồ: dây vẽ thành đoạn thẳng, không võng cũng không bẻ khúc */
+    if (schematic) return [a, b];
     const bends = w.points ?? [];
     if (!bends.length) {
       // dây chưa bẻ: võng xuống tự nhiên như dây thật
@@ -494,6 +543,10 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
     (e.currentTarget as unknown as SVGGElement).ownerSVGElement?.setPointerCapture?.(e.pointerId);
     const { x, y } = toSvg(e);
     drag.current = { id: p.id, dx: x - p.x, dy: y - p.y, sx: x, sy: y, moved: false };
+    /* Nhấc lên là rút chốt khỏi lỗ; thả xuống chỗ mới sẽ cắm lại */
+    if (p.plugs?.length) {
+      setParts((prev) => prev.map((q) => (q.id === p.id ? { ...q, plugs: undefined } : q)));
+    }
     setSelected(p.id);
     setHint(`Đang chọn ${PART_CATALOG[p.kind].short}. Kéo để di chuyển, bấm dấu ✕ đỏ hoặc phím Delete để gỡ ra.`);
   };
@@ -549,6 +602,73 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
         && overlaps({ x: nx, y: ny, kind: p.kind }, q));
       return blocked ? p : { ...p, x: nx, y: ny };
     }));
+
+    /* Báo trước những lỗ mà linh kiện sẽ cắm vào nếu thả tay ngay lúc này */
+    const moving = parts.find((p) => p.id === d.id);
+    if (moving) {
+      const nx = Math.round((x - d.dx) / SNAP) * SNAP;
+      const ny = Math.round((y - d.dy) / SNAP) * SNAP;
+      setSnapHint(findSnap({ ...moving, x: nx, y: ny }, nx, ny));
+    }
+  };
+
+  /* Khoảng cách tối đa cho phép hít chốt vào lỗ, tính theo toạ độ khung vẽ */
+  const SNAP_REACH = 46;   // chốt phải nằm trong tầm này mới hít
+  const SNAP_SHIFT = 54;   // linh kiện chỉ được dịch tối đa chừng này khi hít
+
+  /**
+   * Tìm cách đặt linh kiện sao cho nhiều chốt cắm trúng lỗ nhất, kiểu ghép Lego.
+   * Trả về vị trí mới cùng danh sách chốt đã cắm, hoặc null nếu không hít được.
+   */
+  const findSnap = (part: PlacedPart, x: number, y: number) => {
+    const spec = PART_CATALOG[part.kind];
+    if (!spec.onBoard) return null;
+
+    const terms = spec.terminals;
+    let best: { x: number; y: number; plugs: Plug[]; shift: number } | null = null;
+
+    for (const b of boards) {
+      /* Bỏ qua bảng ở xa cho nhẹ */
+      if (x + spec.w < b.x - SNAP_SHIFT || x > b.x + BOARD_W + SNAP_SHIFT
+        || y + spec.h < b.y - SNAP_SHIFT || y > b.y + BOARD_H + SNAP_SHIFT) continue;
+
+      for (const t of terms) {
+        for (const h of BOARD_HOLES) {
+          /* Dời linh kiện sao cho chốt t rơi đúng vào lỗ h */
+          const nx = b.x + h.x - t.x;
+          const ny = b.y + h.y - t.y;
+          const shift = Math.hypot(nx - x, ny - y);
+          if (shift > SNAP_SHIFT) continue;
+
+          /* Với vị trí đó, xem còn chốt nào khác cũng trúng lỗ không */
+          const plugs: Plug[] = [];
+          const taken = new Set<string>();
+          for (const tt of terms) {
+            const tx = nx + tt.x;
+            const ty = ny + tt.y;
+            let hit: { hole: string; d: number } | null = null;
+            for (const hh of BOARD_HOLES) {
+              const key = `${b.id}|${hh.id}`;
+              if (taken.has(key)) continue;
+              if (holeBusy(b.id, hh.id, part.id)) continue;
+              const d = Math.hypot(b.x + hh.x - tx, b.y + hh.y - ty);
+              if (d <= SNAP_REACH && (!hit || d < hit.d)) hit = { hole: hh.id, d };
+            }
+            if (hit) {
+              plugs.push({ t: tt.id, board: b.id, hole: hit.hole });
+              taken.add(`${b.id}|${hit.hole}`);
+            }
+          }
+          if (!plugs.length) continue;
+
+          const better = !best
+            || plugs.length > best.plugs.length
+            || (plugs.length === best.plugs.length && shift < best.shift);
+          if (better) best = { x: nx, y: ny, plugs, shift };
+        }
+      }
+    }
+    return best;
   };
 
   const handleUp = () => {
@@ -557,7 +677,24 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
     wireDrag.current = null;
     const d = drag.current;
     if (d && !d.moved) togglePart(d.id);
+
+    /* Thả linh kiện xuống: nếu chốt nằm gần lỗ thì hít vào cho khớp */
+    if (d && d.moved) {
+      const part = parts.find((p) => p.id === d.id);
+      if (part) {
+        const snap = findSnap(part, part.x, part.y);
+        if (snap) {
+          sfx.plug();
+          setParts((prev) => prev.map((p) => (p.id === d.id
+            ? { ...p, x: snap.x, y: snap.y, plugs: snap.plugs }
+            : p)));
+          const spec = PART_CATALOG[part.kind];
+          setHint(`${spec.short} đã cắm ${snap.plugs.length}/${spec.terminals.length} chốt xuống bảng — không cần nối dây cho các chốt này.`);
+        }
+      }
+    }
     drag.current = null;
+    setSnapHint(null);
   };
 
   const handleTerminal = (e: React.PointerEvent, ref: TermRef) => {
@@ -695,11 +832,10 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
     });
   }, [query]);
 
-  const holeUsed = (boardId: string, id: string) =>
-    wires.some((w) => (w.from.c === boardId && w.from.t === id) || (w.to.c === boardId && w.to.t === id));
+  const holeUsed = (boardId: string, id: string) => holeBusy(boardId, id);
   /** Lỗ nằm chung vạch trắng với một lỗ đang cắm dây thì cũng coi là đang có điện */
   const trackUsed = (boardId: string, id: string) =>
-    wires.some((w) =>
+    allWires.some((w) =>
       (w.from.c === boardId && trackOf(w.from.t) === trackOf(id))
       || (w.to.c === boardId && trackOf(w.to.t) === trackOf(id)));
 
@@ -724,6 +860,27 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
               <SearchCheck className="w-4 h-4" /> {checked ? 'Ẩn kết quả' : 'Kiểm tra'}
             </button>
           </header>
+
+          {/* Chỗ hỏng cụ thể luôn hiện, không cần bấm Kiểm tra */}
+          {damages.length > 0 && (
+            <div className="ml-rise p-3 space-y-2 border-b border-rose-200 bg-rose-50">
+              <div className="flex items-center gap-2 text-rose-800 font-extrabold text-[clamp(13px,0.9vw,15.5px)]">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                Nguy hiểm — ngắt điện ngay
+              </div>
+              {damages.map((d) => (
+                <div key={d.compId} className="rounded-lg bg-white border border-rose-200 px-3 py-2">
+                  <div className="text-[12.5px] font-bold text-rose-700 mb-0.5">
+                    Vị trí: {PART_CATALOG[parts.find((p) => p.id === d.compId)?.kind ?? 'resistor'].short} ({d.compId})
+                  </div>
+                  <p className="text-[clamp(12.5px,0.86vw,15px)] text-rose-900 leading-snug">{d.reason}</p>
+                </div>
+              ))}
+              <p className="text-[12.5px] text-rose-700">
+                Số đọc trên các đồng hồ đã bị khoá vì mạch hỏng — sửa lại mạch rồi bấm Kiểm tra.
+              </p>
+            </div>
+          )}
 
           {checked && (
             <div className="ml-scroll p-3 space-y-2 max-h-[280px] overflow-y-auto">
@@ -947,6 +1104,14 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
                 className="w-8 h-8 grid place-items-center rounded-lg text-slate-500 hover:bg-slate-100">
                 <ZoomIn className="w-4 h-4" />
               </button>
+              <button
+                title={schematic ? 'Xem hình dạng thật của linh kiện' : 'Xem dưới dạng sơ đồ mạch điện'}
+                onClick={() => setSchematic((v) => !v)}
+                className={`h-8 px-2.5 grid place-items-center border-l border-slate-200 text-[12.5px] font-bold transition-colors ${
+                  schematic ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-100'
+                }`}>
+                {schematic ? 'Sơ đồ' : 'Thực tế'}
+              </button>
               <button title="Về khung hình gốc" onClick={() => setView({ z: 1, tx: 0, ty: 0 })}
                 className="w-8 h-8 grid place-items-center rounded-lg text-slate-500 hover:bg-slate-100 border-l border-slate-200">
                 <Maximize2 className="w-4 h-4" />
@@ -1079,6 +1244,38 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
                 </g>
               )}
 
+              {/* Cảnh báo nguy hiểm nổi trên bàn lắp khi có linh kiện hỏng */}
+              {damages.length > 0 && (
+                <g pointerEvents="none">
+                  <rect x={CANVAS_W / 2 - 300} y={10} width={600} height={34 + damages.length * 22} rx={12}
+                    fill="#7F1D1D" opacity={0.94} stroke="#FCA5A5" strokeWidth={2} />
+                  <text x={CANVAS_W / 2} y={34} textAnchor="middle" fontSize={17} fontWeight={900} fill="#FEF2F2">
+                    ⚠ NGUY HIỂM — NGẮT ĐIỆN NGAY
+                  </text>
+                  {damages.map((d, i) => (
+                    <text key={d.compId} x={CANVAS_W / 2} y={56 + i * 22} textAnchor="middle"
+                      fontSize={13.5} fill="#FEE2E2">
+                      {d.reason}
+                    </text>
+                  ))}
+                </g>
+              )}
+
+              {/* Gợi ý những lỗ sắp cắm vào khi đang kéo linh kiện */}
+              {snapHint && (
+                <g pointerEvents="none">
+                  {snapHint.plugs.map((pl) => {
+                    const b = boards.find((x) => x.id === pl.board);
+                    const h = BOARD_HOLES.find((x) => x.id === pl.hole);
+                    if (!b || !h) return null;
+                    return (
+                      <circle key={pl.hole} cx={b.x + h.x} cy={b.y + h.y} r={14}
+                        fill="none" stroke="#34D399" strokeWidth={3} strokeDasharray="4 3" />
+                    );
+                  })}
+                </g>
+              )}
+
               {/* Linh kiện */}
               {parts.map((p) => {
                 const spec = PART_CATALOG[p.kind];
@@ -1099,6 +1296,62 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
                         fill="none" stroke="#6366F1" strokeWidth={2} strokeDasharray="5 4" />
                     )}
 
+                    {/* Linh kiện đang hỏng: vẽ vệt cháy hoặc tia nổ ngay tại chỗ */}
+                    {(() => {
+                      const dmg = damageOf(p.id);
+                      if (!dmg) return null;
+                      const cx = spec.w / 2;
+                      const cy = spec.h / 2;
+                      return (
+                        <g pointerEvents="none">
+                          {dmg.kind === 'burn' && (
+                            <>
+                              <rect x={0} y={0} width={spec.w} height={spec.h} rx={10}
+                                fill="#1C1917" opacity={0.45} />
+                              <circle cx={cx} cy={cy} r={Math.min(spec.w, spec.h) * 0.34}
+                                fill="#0C0A09" opacity={0.6} />
+                              <path d={`M ${cx - 14} ${cy - 12} L ${cx + 6} ${cy + 2}
+                                        M ${cx + 12} ${cy - 10} L ${cx - 4} ${cy + 6}`}
+                                stroke="#F59E0B" strokeWidth={2.4} strokeLinecap="round" opacity={0.9} />
+                            </>
+                          )}
+                          {dmg.kind === 'blast' && (
+                            <g className="ml-blast">
+                              {Array.from({ length: 10 }, (_, i) => {
+                                const a = (i / 10) * Math.PI * 2;
+                                const r1 = Math.min(spec.w, spec.h) * 0.3;
+                                const r2 = r1 + 22;
+                                return (
+                                  <line key={i}
+                                    x1={cx + Math.cos(a) * r1} y1={cy + Math.sin(a) * r1}
+                                    x2={cx + Math.cos(a) * r2} y2={cy + Math.sin(a) * r2}
+                                    stroke={i % 2 ? '#F59E0B' : '#EF4444'} strokeWidth={4} strokeLinecap="round" />
+                                );
+                              })}
+                              <circle cx={cx} cy={cy} r={Math.min(spec.w, spec.h) * 0.3} fill="#F97316" opacity={0.85} />
+                            </g>
+                          )}
+                          {/* Dấu cảnh báo nổi lên trên linh kiện */}
+                          <g transform={`translate(${spec.w / 2 - 16}, -34)`}>
+                            <path d="M16 0 L32 28 L0 28 Z" fill="#DC2626" stroke="#FFFFFF" strokeWidth={2} />
+                            <text x={16} y={24} textAnchor="middle" fontSize={19} fontWeight={900} fill="#FFFFFF">!</text>
+                          </g>
+                        </g>
+                      );
+                    })()}
+
+                    {/* Chốt đang cắm xuống lỗ bảng — vẽ vòng cho thấy đã ghim chặt */}
+                    {(p.plugs ?? []).map((pl) => {
+                      const t = spec.terminals.find((x) => x.id === pl.t);
+                      if (!t) return null;
+                      return (
+                        <g key={pl.t} pointerEvents="none">
+                          <circle cx={t.x} cy={t.y} r={13} fill="none"
+                            stroke="#34D399" strokeWidth={2.4} strokeOpacity={0.9} />
+                        </g>
+                      );
+                    })}
+
                     {/* Nút gỡ linh kiện, hiện khi đang chọn — khỏi phải đổi sang công cụ tẩy */}
                     {selected === p.id && (
                       <g className="cursor-pointer"
@@ -1110,7 +1363,22 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
                           stroke="#FFFFFF" strokeWidth={2.6} strokeLinecap="round" />
                       </g>
                     )}
-                    <PartArt kind={p.kind} live={liveOf(p)} />
+                    {schematic ? (
+                      <g transform={`translate(${(spec.w - SYM_W) / 2}, ${(spec.h - SYM_H) / 2})`}>
+                        <CircuitSymbol
+                          kind={p.kind}
+                          closed={p.closed}
+                          lit={!circuitBroken && Math.abs(branchOf(p.id)?.I ?? 0) > 1e-3}
+                          role={effectiveElec(p) === 'ammeter' ? 'ammeter'
+                            : effectiveElec(p) === 'voltmeter' ? 'voltmeter' : 'inert'}
+                          faulty={!!damageOf(p.id) || report.faultyIds.includes(p.id)}
+                        />
+                        <text x={spec.w / 2 - (spec.w - SYM_W) / 2} y={SYM_H + 16} textAnchor="middle"
+                          fontSize={11.5} fontWeight={700} fill="#475569">{p.id}</text>
+                      </g>
+                    ) : (
+                      <PartArt kind={p.kind} live={liveOf(p)} />
+                    )}
                     {p.kind === 'powersupply' && PS_HOTSPOTS.map((h) => (
                       <g key={h.id} className="cursor-pointer"
                         onPointerDown={(e) => { e.stopPropagation(); psAction(p.id, h.id); }}
