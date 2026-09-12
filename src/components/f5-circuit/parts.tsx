@@ -115,7 +115,7 @@ export const PART_CATALOG: Record<PartKind, PartSpec> = {
     kind: 'lamp', name: 'Đui đèn & bóng sợi đốt', short: 'Đèn sợi đốt', group: 'Tải & Điện trở',
     w: 100, h: 66, elec: 'lamp', value: 30, unit: 'Ω',
     terminals: [T('a', 22, 52, 'neg', 'Chốt A'), T('b', 78, 52, 'pos', 'Chốt B')],
-    desc: 'Bóng sợi đốt thay được bóng 2,5V / 6V / 12V — bấm vào bóng để đổi. '
+    desc: 'Bóng sợi đốt thay được bảy loại từ 1,5V tới 24V — bấm vào bóng để đổi. '
       + 'Sợi đốt nóng dần nên đèn sáng và tắt từ từ, cắm chiều nào cũng sáng.',
     onBoard: true,
   },
@@ -704,7 +704,7 @@ const Art: Record<PartKind, (live: PartLive) => React.ReactNode> = {
           opacity={b > 0.35 ? (b - 0.35) * 1.2 : 0} style={FADE} />
         {/* Mức điện áp của bóng đang lắp */}
         <text x={50} y={62} textAnchor="middle" fontSize={8} fontWeight={800} fill="#0F5E73">
-          {(live.rated ?? 6).toString().replace('.', ',')}V
+          {(live.rated ?? 12).toString().replace('.', ',')}V
         </text>
         <rect x={42} y={28} width={16} height={10} rx={2} fill="url(#mlMetal)" />
         <rect x={40} y={36} width={20} height={8} rx={2} fill="#EAF6FA" stroke="#8FC3D3" />

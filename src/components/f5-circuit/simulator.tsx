@@ -12,7 +12,7 @@ import { PART_CATALOG, PART_ORDER, PartArt, PartDefs, PartThumb, DMM_FUNCS, DMM_
 import type { PartKind, PartLive, DmmFunc, DmmButton } from './parts';
 import {
   simulate, checkCircuit, effectiveElec, measureResistance, findDamage,
-  BULB_RATINGS, bulbRating, LED_COLORS, LED_RATED_A,
+  BULB_RATINGS, bulbRating, DEFAULT_BULB_V, LED_COLORS, LED_RATED_A,
 } from './sim';
 import { Symbol as CircuitSymbol, SYM_W, SYM_H, layoutSchematic } from './schematic';
 import { BOARD_PREFIX, isBoardId, BOARD_W, BOARD_H, BOARD_HOLES, BOARD_TRACKS, trackOf, holeLabel } from './board';
@@ -277,12 +277,14 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
     const elec = effectiveElec(p);
     if (p.kind === 'multimeter') return dmm(p).live;
     if (p.kind === 'powersupply') {
-      const on = p.powerOn !== false && !circuitBroken;
+      /* Đèn nguồn theo đúng công tắc; mạch hỏng thì chỉ số đọc ngừng, không tắt nguồn */
+      const on = p.powerOn !== false;
+      const showing = on && !circuitBroken;
       return {
         volt: p.volt ?? 12,
         powerOn: on,
-        ampReading: on ? Math.abs(b?.I ?? 0).toFixed(2) : '---',
-        voltReading: on ? (p.volt ?? 12).toFixed(1) : '---',
+        ampReading: showing ? Math.abs(b?.I ?? 0).toFixed(2) : '---',
+        voltReading: showing ? (p.volt ?? 12).toFixed(1) : '---',
       };
     }
     /* Mạch đang hỏng thì kim về 0: số đo lúc này không có ý nghĩa */
@@ -489,8 +491,8 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
         return { ...p, closed: !p.closed };
       }
       if (p.kind === 'lamp') {
-        /* Thay bóng: lần lượt 2,5V → 6V → 12V */
-        const i = BULB_RATINGS.findIndex((r) => r.volt === (p.volt ?? 6));
+        /* Thay bóng: chạy lần lượt qua bảy mức điện áp có trong bộ dụng cụ */
+        const i = BULB_RATINGS.findIndex((r) => r.volt === (p.volt ?? DEFAULT_BULB_V));
         const next = BULB_RATINGS[(i + 1) % BULB_RATINGS.length];
         sfx.plug();
         setHint(`Đã thay bóng ${next.label}. Bấm tiếp vào bóng để đổi loại khác.`);
@@ -559,8 +561,10 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
         return { ...p, powerOn: on };
       }
       sfx.knob();
-      const next = ((p.volt ?? 12) + 2) % 14;
-      setHint(`Bộ nguồn đặt ở ${next}V một chiều.`);
+      const steps = [1.5, 3, 4.5, 6, 9, 12, 18, 24];
+      const i = steps.findIndex((v) => v === (p.volt ?? 12));
+      const next = steps[(i + 1) % steps.length];
+      setHint(`Biến áp nguồn đặt ở ${String(next).replace('.', ',')}V một chiều.`);
       return { ...p, volt: next };
     }));
   };
@@ -836,7 +840,8 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
     setParts((prev) => [...prev, {
       id, kind, x: spot.x, y: spot.y,
       closed: false, knob: 0.35, func: 'V', rangeIdx: null, rel: null, peak: null,
-      volt: 12, powerOn: true,
+      volt: kind === 'lamp' ? DEFAULT_BULB_V : 12,
+      powerOn: true,
     }]);
     setHint(`Đã thêm ${spec.name} lên bàn lắp. Chọn linh kiện rồi bấm dấu ✕ đỏ hoặc phím Delete để gỡ ra.`);
   };

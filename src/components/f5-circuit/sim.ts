@@ -160,13 +160,21 @@ const LAMP_BLOCK_R = 1e11;
  * Điện trở nóng của bóng bằng thương của hai số này.
  */
 export const BULB_RATINGS: { volt: number; amp: number; label: string }[] = [
-  { volt: 2.5, amp: 0.3, label: '2,5V – 0,75W' },
-  { volt: 6, amp: 0.2, label: '6V – 1,2W' },
-  { volt: 12, amp: 0.1, label: '12V – 1,2W' },
+  { volt: 1.5, amp: 0.30, label: '1,5V – 0,45W' },
+  { volt: 2.5, amp: 0.30, label: '2,5V – 0,75W' },
+  { volt: 3.5, amp: 0.25, label: '3,5V – 0,88W' },
+  { volt: 6, amp: 0.20, label: '6V – 1,2W' },
+  { volt: 9, amp: 0.15, label: '9V – 1,35W' },
+  { volt: 12, amp: 0.10, label: '12V – 1,2W' },
+  { volt: 24, amp: 0.08, label: '24V – 1,92W' },
 ];
 
+/** Bóng mặc định là loại 12V cho hợp với đế pin 12V có sẵn trong bộ dụng cụ */
+export const DEFAULT_BULB_V = 12;
+
 export const bulbRating = (p: PlacedPart) =>
-  BULB_RATINGS.find((r) => r.volt === (p.volt ?? 6)) ?? BULB_RATINGS[1];
+  BULB_RATINGS.find((r) => r.volt === (p.volt ?? DEFAULT_BULB_V))
+  ?? BULB_RATINGS.find((r) => r.volt === DEFAULT_BULB_V)!;
 
 /** Màu đèn LED chọn được, kèm dòng định mức chung 20mA */
 export const LED_COLORS = [
