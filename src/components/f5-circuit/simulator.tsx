@@ -1323,22 +1323,6 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
                 </g>
               )}
 
-              {/* Cảnh báo nguy hiểm nổi trên bàn lắp khi có linh kiện hỏng */}
-              {damages.length > 0 && (
-                <g pointerEvents="none">
-                  <rect x={CANVAS_W / 2 - 300} y={10} width={600} height={34 + damages.length * 22} rx={12}
-                    fill="#7F1D1D" opacity={0.94} stroke="#FCA5A5" strokeWidth={2} />
-                  <text x={CANVAS_W / 2} y={34} textAnchor="middle" fontSize={17} fontWeight={900} fill="#FEF2F2">
-                    ⚠ NGUY HIỂM — NGẮT ĐIỆN NGAY
-                  </text>
-                  {damages.map((d, i) => (
-                    <text key={d.compId} x={CANVAS_W / 2} y={56 + i * 22} textAnchor="middle"
-                      fontSize={13.5} fill="#FEE2E2">
-                      {d.reason}
-                    </text>
-                  ))}
-                </g>
-              )}
 
               {/* Gợi ý những lỗ sắp cắm vào khi đang kéo linh kiện */}
               {snapHint && (

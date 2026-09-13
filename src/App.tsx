@@ -7,7 +7,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { LabStep, LabReportRow, TeacherClassStats } from './types';
 import { api, isOffline } from './api/client';
 import type { ApiUser, Bootstrap } from './api/client';
-import { TopNav, Sidebar, Footer, WarningBadge } from './components/common';
+import { TopNav, Sidebar, Footer, WarningBadge, VersionBadge } from './components/common';
 import { SettingsProvider, useSettings } from './settings';
 import { sfx, music } from './audio';
 import { HomeMenu } from './components/f0-home';
@@ -150,6 +150,7 @@ function Workspace() {
     return (
       <div className="ml-page ml-scale">
         <PageFade active={fading} />
+        <VersionBadge />
         <HomeMenu
         users={data.users}
         currentUserId={currentUser.id}
@@ -168,6 +169,7 @@ function Workspace() {
   return (
     <div className="ml-scale w-full h-screen bg-slate-100 text-slate-900 flex flex-col font-sans select-none overflow-hidden">
       <PageFade active={fading} />
+      <VersionBadge />
       {/* Top Navigation Bar */}
       <TopNav
         currentUser={currentUser}

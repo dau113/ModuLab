@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../../theme';
 import { useSettings, ACCENTS } from '../../settings';
+import { APP_VERSION } from '../../version';
 import { Home, Sun, Moon, Rocket, Swords, Volume2, VolumeX, Music } from 'lucide-react';
 import { music, isSfxEnabled, toggleSfx } from '../../audio';
 
@@ -297,7 +298,7 @@ export const Footer: React.FC = () => {
         </span>
       </div>
       <div className="flex gap-4 items-center font-bold text-slate-500">
-        <span>Phiên bản v1.30</span>
+        <span>Phiên bản v{APP_VERSION}</span>
       </div>
     </footer>
   );
@@ -388,3 +389,14 @@ export const WarningBadge: React.FC<WarningBadgeProps> = ({
     </div>
   );
 };
+
+/**
+ * Nhãn phiên bản dán ở góc dưới bên trái màn hình, hiện ở mọi trang.
+ * Không chắn thao tác vì không nhận sự kiện chuột.
+ */
+export const VersionBadge: React.FC = () => (
+  <div className="fixed bottom-2 left-2 z-50 pointer-events-none select-none
+    px-2 py-1 rounded-md bg-slate-900/70 text-white text-[11.5px] font-bold tracking-wide">
+    ModuLab v{APP_VERSION}
+  </div>
+);
