@@ -221,9 +221,12 @@ export const DMM_FUNCS: DmmFuncSpec[] = [
 
 /** Vùng bấm trên bộ nguồn điều chỉnh */
 export const PS_HOTSPOTS: { id: 'power' | 'knob'; shape: 'rect' | 'circle'; x: number; y: number; w?: number; h?: number; r?: number; title: string }[] = [
-  { id: 'power', shape: 'rect', x: 18, y: 90, w: 20, h: 28, title: 'Công tắc nguồn — bật / tắt bộ nguồn' },
-  { id: 'knob', shape: 'circle', x: 158, y: 100, r: 15, title: 'Núm chỉnh điện áp — bấm để tăng 2V, hết thang quay về 0V' },
+  { id: 'power', shape: 'rect', x: 14, y: 84, w: 28, h: 40, title: 'Công tắc nguồn — bấm để bật hoặc tắt biến áp nguồn' },
+  { id: 'knob', shape: 'circle', x: 158, y: 98, r: 17, title: 'Núm chỉnh điện áp — bấm để chuyển sang mức kế tiếp' },
 ];
+
+/** Vùng bấm trên đế bóng đèn: chỉ ô nhỏ này mới đổi loại bóng hoặc màu LED */
+export const LAMP_HOTSPOT = { x: 36, y: 47, w: 28, h: 13 };
 
 /** Hệ số phóng to thân đồng hồ vạn năng so với bản vẽ gốc */
 export const DMM_SCALE = 1.34;
@@ -375,13 +378,10 @@ const Post: React.FC<{ x: number; y: number; tone: 'red' | 'black' }> = ({ x, y,
   );
 };
 
-/* Sợi đốt nóng và nguội dần nên đèn sáng tắt từ từ; LED thì gần như tức thì */
-const FADE: React.CSSProperties = {
-  transition: 'fill 340ms ease-out, stroke 340ms ease-out, opacity 340ms ease-out, r 340ms ease-out',
-};
-const FADE_FAST: React.CSSProperties = {
-  transition: 'fill 60ms linear, opacity 60ms linear, r 60ms linear',
-};
+/* Sợi đốt nóng và nguội dần nên đèn sáng tắt từ từ; LED thì gần như tức thì.
+   Chỉ chuyển bằng độ mờ vì đây là thuộc tính trình duyệt nào cũng hỗ trợ. */
+const FADE: React.CSSProperties = { transition: 'opacity 340ms ease-out' };
+const FADE_FAST: React.CSSProperties = { transition: 'opacity 60ms linear' };
 
 const Screw: React.FC<{ x: number; y: number }> = ({ x, y }) => (
   <g transform={`translate(${x},${y})`}>
@@ -702,10 +702,14 @@ const Art: Record<PartKind, (live: PartLive) => React.ReactNode> = {
         <path d="M46 20 l4 -5 l4 5" fill="none" stroke={wire} strokeWidth={1.4 + b * 1.1} style={FADE} />
         <circle cx={50} cy={18} r={5 + b * 3} fill="#FFFBEB"
           opacity={b > 0.35 ? (b - 0.35) * 1.2 : 0} style={FADE} />
-        {/* Mức điện áp của bóng đang lắp */}
-        <text x={50} y={62} textAnchor="middle" fontSize={8} fontWeight={800} fill="#0F5E73">
-          {(live.rated ?? 12).toString().replace('.', ',')}V
-        </text>
+        {/* Nút thay bóng: bấm vào đây mới đổi loại bóng, bấm vào bóng thì không */}
+        <g>
+          <rect x={36} y={47} width={28} height={13} rx={6} fill="#FFFFFF" opacity={0.92}
+            stroke="#0F5E73" strokeWidth={0.9} />
+          <text x={50} y={56.5} textAnchor="middle" fontSize={8} fontWeight={800} fill="#0F5E73">
+            {(live.rated ?? 12).toString().replace('.', ',')}V
+          </text>
+        </g>
         <rect x={42} y={28} width={16} height={10} rx={2} fill="url(#mlMetal)" />
         <rect x={40} y={36} width={20} height={8} rx={2} fill="#EAF6FA" stroke="#8FC3D3" />
         <Post x={22} y={52} tone="black" />
@@ -739,10 +743,18 @@ const Art: Record<PartKind, (live: PartLive) => React.ReactNode> = {
         {/* Dấu cực để học sinh biết chân nào dài hơn */}
         <text x={24} y={40} textAnchor="middle" fontSize={11} fontWeight={800} fill="#B91C1C">+</text>
         <text x={76} y={40} textAnchor="middle" fontSize={13} fontWeight={800} fill="#111827">−</text>
-        {rev && (
-          <text x={50} y={62} textAnchor="middle" fontSize={7.6} fontWeight={800} fill="#B91C1C">
+        {rev ? (
+          <text x={50} y={57} textAnchor="middle" fontSize={7.4} fontWeight={800} fill="#B91C1C">
             NGƯỢC CỰC
           </text>
+        ) : (
+          <g>
+            <rect x={36} y={47} width={28} height={13} rx={6} fill="#FFFFFF" opacity={0.92}
+              stroke={color} strokeWidth={0.9} />
+            <text x={50} y={56.5} textAnchor="middle" fontSize={7.6} fontWeight={800} fill={color}>
+              Màu
+            </text>
+          </g>
         )}
 
         <Post x={22} y={52} tone="red" />

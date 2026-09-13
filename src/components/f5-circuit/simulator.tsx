@@ -8,7 +8,7 @@ import {
   CheckCircle2, AlertTriangle, AlertCircle, Plus, Power, Save, SearchCheck,
   ZoomIn, ZoomOut, Maximize2, Gauge, Spline, Search, X,
 } from 'lucide-react';
-import { PART_CATALOG, PART_ORDER, PartArt, PartDefs, PartThumb, DMM_FUNCS, DMM_HOTSPOTS, PS_HOTSPOTS, DMM_SCALE } from './parts';
+import { PART_CATALOG, PART_ORDER, PartArt, PartDefs, PartThumb, DMM_FUNCS, DMM_HOTSPOTS, PS_HOTSPOTS, LAMP_HOTSPOT, DMM_SCALE } from './parts';
 import type { PartKind, PartLive, DmmFunc, DmmButton } from './parts';
 import {
   simulate, checkCircuit, effectiveElec, measureResistance, findDamage,
@@ -144,8 +144,16 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
   /* Những linh kiện đang chịu quá dòng — hỏng ở đâu, vì sao */
   const damages = useMemo(() => findDamage(parts, allWires, RX_TRUE), [parts, allWires]);
   const damageOf = (id: string) => damages.find((d) => d.compId === id);
-  /** Mạch hỏng thì mọi số đọc đều vô nghĩa, đồng hồ ngừng hiển thị */
-  const circuitBroken = damages.length > 0 || report.level === 'err';
+  /**
+   * Mạch HỎNG là khi có linh kiện quá dòng, cháy hoặc đoản mạch — lúc đó số đọc
+   * mới vô nghĩa và đèn mới tắt.
+   *
+   * Khác hẳn với việc mạch "chưa đúng bài thực hành mẫu" (thiếu ampe kế, thiếu
+   * điện trở Rx…): những mạch đó vẫn chạy bình thường về mặt vật lí, đèn vẫn
+   * sáng, chỉ là chưa làm đúng yêu cầu của bài. Trước đây gộp hai thứ này làm
+   * một nên mạch pin – bóng đèn đơn giản cũng bị coi là hỏng và đèn không sáng.
+   */
+  const circuitBroken = damages.length > 0;
 
   /* Bố cục sơ đồ: tự xếp lại mạch thành hình chữ nhật như vẽ trên giấy */
   const layout = useMemo(() => layoutSchematic(
@@ -490,21 +498,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
         sfx.switchToggle(!p.closed);
         return { ...p, closed: !p.closed };
       }
-      if (p.kind === 'lamp') {
-        /* Thay bóng: chạy lần lượt qua bảy mức điện áp có trong bộ dụng cụ */
-        const i = BULB_RATINGS.findIndex((r) => r.volt === (p.volt ?? DEFAULT_BULB_V));
-        const next = BULB_RATINGS[(i + 1) % BULB_RATINGS.length];
-        sfx.plug();
-        setHint(`Đã thay bóng ${next.label}. Bấm tiếp vào bóng để đổi loại khác.`);
-        return { ...p, volt: next.volt };
-      }
-      if (p.kind === 'led') {
-        const i = LED_COLORS.findIndex((c) => c.hex === (p.ledColor ?? LED_COLORS[0].hex));
-        const next = LED_COLORS[(i + 1) % LED_COLORS.length];
-        sfx.click();
-        setHint(`Đã đổi sang đèn LED màu ${next.name}.`);
-        return { ...p, ledColor: next.hex };
-      }
+
       return p;
     }));
   };
@@ -549,6 +543,35 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
           return p;
       }
     }));
+  };
+
+  /** Bấm vào ô nhỏ trên đế đèn: thay bóng sợi đốt hoặc đổi màu LED */
+  const lampAction = (id: string) => {
+    setParts((prev) => prev.map((p) => {
+      if (p.id !== id) return p;
+      if (p.kind === 'led') {
+        const i = LED_COLORS.findIndex((c) => c.hex === (p.ledColor ?? LED_COLORS[0].hex));
+        const next = LED_COLORS[(i + 1) % LED_COLORS.length];
+        return { ...p, ledColor: next.hex };
+      }
+      const i = BULB_RATINGS.findIndex((r) => r.volt === (p.volt ?? DEFAULT_BULB_V));
+      const next = BULB_RATINGS[(i + 1) % BULB_RATINGS.length];
+      return { ...p, volt: next.volt };
+    }));
+
+    const cur = parts.find((p) => p.id === id);
+    if (!cur) return;
+    if (cur.kind === 'led') {
+      const i = LED_COLORS.findIndex((c) => c.hex === (cur.ledColor ?? LED_COLORS[0].hex));
+      const next = LED_COLORS[(i + 1) % LED_COLORS.length];
+      sfx.click();
+      setHint(`Đã đổi sang đèn LED màu ${next.name}.`);
+    } else {
+      const i = BULB_RATINGS.findIndex((r) => r.volt === (cur.volt ?? DEFAULT_BULB_V));
+      const next = BULB_RATINGS[(i + 1) % BULB_RATINGS.length];
+      sfx.plug();
+      setHint(`Đã thay bóng ${next.label}. Nhớ chọn bóng có điện áp bằng hoặc cao hơn nguồn, không thì bóng cháy.`);
+    }
   };
 
   const psAction = (id: string, btn: 'power' | 'knob') => {
@@ -1499,6 +1522,28 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
                     ) : (
                       <PartArt kind={p.kind} live={liveOf(p)} />
                     )}
+                    {(p.kind === 'lamp' || p.kind === 'led') && (
+                      <g className="cursor-pointer"
+                        onPointerDown={(e) => { e.stopPropagation(); lampAction(p.id); }}
+                        onClick={(e) => e.stopPropagation()}>
+                        <title>{p.kind === 'led' ? 'Bấm để đổi màu đèn LED' : 'Bấm để thay loại bóng'}</title>
+                        <rect x={LAMP_HOTSPOT.x} y={LAMP_HOTSPOT.y}
+                          width={LAMP_HOTSPOT.w} height={LAMP_HOTSPOT.h} fill="transparent" />
+                      </g>
+                    )}
+
+                    {p.kind === 'powersupply' && (
+                      <g pointerEvents="none">
+                        {/* Viền sáng quanh công tắc cho thấy nguồn đang bật hay tắt */}
+                        <rect x={14} y={84} width={28} height={40} rx={7} fill="none"
+                          stroke={p.powerOn !== false ? '#22C55E' : '#94A3B8'} strokeWidth={2.2} />
+                        <text x={28} y={80} textAnchor="middle" fontSize={8} fontWeight={800}
+                          fill={p.powerOn !== false ? '#16A34A' : '#64748B'}>
+                          {p.powerOn !== false ? 'ON' : 'OFF'}
+                        </text>
+                      </g>
+                    )}
+
                     {p.kind === 'powersupply' && PS_HOTSPOTS.map((h) => (
                       <g key={h.id} className="cursor-pointer"
                         onPointerDown={(e) => { e.stopPropagation(); psAction(p.id, h.id); }}
