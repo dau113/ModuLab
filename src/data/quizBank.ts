@@ -841,8 +841,18 @@ export const QUIZ_BANK: (QuizQuestion & { topic: string })[] = [
 ];
 
 /** Lấy ngẫu nhiên n câu, có thể lọc theo chủ đề */
-export const pickQuestions = (n: number, topic?: string) => {
-  const pool = topic ? QUIZ_BANK.filter((q) => q.topic === topic) : QUIZ_BANK;
+/**
+ * Bốc ngẫu nhiên n câu. Truyền vào danh sách mã chủ đề để ghép nhiều chủ đề
+ * với nhau; bỏ trống hoặc để rỗng thì lấy toàn bộ ngân hàng.
+ */
+export const pickQuestions = (n: number, topics?: string[]) => {
+  const pool = topics && topics.length
+    ? QUIZ_BANK.filter((q) => topics.includes(q.topic))
+    : QUIZ_BANK;
   const shuffled = [...pool].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, Math.min(n, shuffled.length));
 };
+
+/** Số câu có trong tập chủ đề đã chọn */
+export const countQuestions = (topics?: string[]) =>
+  (topics && topics.length ? QUIZ_BANK.filter((q) => topics.includes(q.topic)) : QUIZ_BANK).length;

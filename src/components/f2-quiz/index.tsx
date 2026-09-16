@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { BentoCard } from '../common';
 import { useSettings } from '../../settings';
-import { QUIZ_BANK, QUIZ_TOPICS, pickQuestions } from '../../data/quizBank';
+import { QUIZ_BANK, QUIZ_TOPICS, pickQuestions, countQuestions } from '../../data/quizBank';
 import { QuestionArt, QUESTION_ART } from './art';
 import { sfx } from '../../audio';
 import type { QuizQuestion, UserRole } from '../../types';
@@ -38,8 +38,15 @@ export const QuizGame: React.FC<QuizGameProps> = ({ userRole, onFinishQuiz, extr
   const bi = (vi: string, en: string) => (lang === 'en' ? en : vi);
 
   const [phase, setPhase] = useState<Phase>('setup');
-  const [topic, setTopic] = useState<string | null>(null);
+  /* Chọn được nhiều chủ đề cùng lúc; rỗng nghĩa là lấy cả ba */
+  const [topics, setTopics] = useState<string[]>([]);
   const [roundSize, setRoundSize] = useState<number>(10);
+  const available = countQuestions(topics);
+
+  /* Đổi chủ đề làm kho câu ít đi thì kéo số câu xuống cho vừa */
+  useEffect(() => {
+    setRoundSize((n) => Math.max(1, Math.min(n, available)));
+  }, [available]);
   const [deck, setDeck] = useState<QuizQuestion[]>([]);
   const [idx, setIdx] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
@@ -70,14 +77,14 @@ export const QuizGame: React.FC<QuizGameProps> = ({ userRole, onFinishQuiz, extr
   }, [phase, timeLeft, answered]);
 
   const start = useCallback(() => {
-    const base = pickQuestions(roundSize, topic ?? undefined);
-    const extra = (extraQuestions ?? []).filter(() => !topic);
+    const base = pickQuestions(roundSize, topics);
+    const extra = (extraQuestions ?? []).filter(() => topics.length === 0);
     const deckNow = [...base, ...extra].slice(0, roundSize);
     setDeck(deckNow);
     setIdx(0); setPicked(null); setScore(0); setCorrectCount(0); setStreak(0); setBestStreak(0);
     setTimeLeft(deckNow[0]?.timeLimit ?? 30);
     setPhase('playing');
-  }, [roundSize, topic, extraQuestions]);
+  }, [roundSize, topics, extraQuestions]);
 
   const choose = (optId: string) => {
     if (answered) return;
@@ -148,22 +155,36 @@ export const QuizGame: React.FC<QuizGameProps> = ({ userRole, onFinishQuiz, extr
         </section>
 
         <BentoCard className="lg:col-span-4" title={bi('Chủ đề', 'Topic')}
-          subtitle={bi('Chọn một chủ đề hoặc chơi tổng hợp', 'Pick one topic or mix them all')}>
+          subtitle={bi('Bấm để chọn, ghép bao nhiêu chủ đề cũng được',
+                       'Tap to select — combine as many topics as you like')}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <TopicButton active={topic === null} onClick={() => setTopic(null)}
+            <TopicButton
+              active={topics.length === 0}
+              onClick={() => setTopics([])}
               icon={Target} title={t('quiz.allTopics')} count={counts.all} />
             {QUIZ_TOPICS.map((tp) => (
-              <TopicButton key={tp.id} active={topic === tp.id} onClick={() => setTopic(tp.id)}
+              <TopicButton key={tp.id}
+                active={topics.includes(tp.id)}
+                onClick={() => setTopics((prev) => (prev.includes(tp.id)
+                  ? prev.filter((x) => x !== tp.id)
+                  : [...prev, tp.id]))}
                 icon={TOPIC_ICON[tp.id]}
                 title={lang === 'en' ? tp.nameEn : tp.name} count={counts[tp.id]} />
             ))}
           </div>
+
+          <p className="mt-3 text-[clamp(13px,0.9vw,15.5px)] text-slate-600">
+            {topics.length === 0
+              ? bi(`Đang lấy cả ba chủ đề — ${counts.all} câu.`, `Using all three topics — ${counts.all} questions.`)
+              : bi(`Đã chọn ${topics.length} chủ đề, tổng cộng ${available} câu để bốc.`,
+                   `${topics.length} topics selected — ${available} questions in the pool.`)}
+          </p>
         </BentoCard>
 
         <BentoCard className="lg:col-span-2" title={t('quiz.questionCount')}
           subtitle={bi('Càng nhiều câu, điểm tối đa càng cao', 'More questions, higher ceiling')}>
           <div className="grid grid-cols-2 gap-2">
-            {ROUND_SIZES.map((n) => (
+            {ROUND_SIZES.filter((n) => n <= available).map((n) => (
               <button key={n} onClick={() => setRoundSize(n)}
                 className={`h-14 rounded-xl border font-bold text-lg transition-colors ${
                   roundSize === n
@@ -172,6 +193,28 @@ export const QuizGame: React.FC<QuizGameProps> = ({ userRole, onFinishQuiz, extr
                 }`}>{n}</button>
             ))}
           </div>
+
+          {/* Tự nhập số câu nếu không thích các mức có sẵn */}
+          <label className="mt-3 block">
+            <span className="text-[12.5px] font-bold text-slate-500 uppercase">
+              {bi('Hoặc tự nhập', 'Or type a number')}
+            </span>
+            <div className="flex items-center gap-2 mt-1">
+              <input
+                type="number" min={1} max={available}
+                value={roundSize}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  if (Number.isFinite(v)) setRoundSize(Math.max(1, Math.min(available, Math.round(v))));
+                }}
+                className="w-24 h-10 px-3 rounded-xl border border-slate-200 text-[clamp(14px,0.98vw,16.5px)] font-bold
+                  outline-none focus:border-indigo-400"
+              />
+              <span className="text-[clamp(13px,0.9vw,15.5px)] text-slate-500">
+                {bi(`câu, tối đa ${available}`, `questions, max ${available}`)}
+              </span>
+            </div>
+          </label>
           <button onClick={start}
             className="mt-4 w-full h-12 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[clamp(14px,0.98vw,16.5px)] flex items-center justify-center gap-2">
             <Rocket className="w-5 h-5" /> {t('quiz.begin')}

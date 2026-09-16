@@ -16,6 +16,19 @@ import {
   FilePlus
 } from 'lucide-react';
 
+/**
+ * Định dạng số liệu: luôn giữ đúng số chữ số sau dấu phẩy để các giá trị trong
+ * cùng một cột thẳng hàng nhau. Trước đây 100,5 và 100 hiện khác nhau vì phép
+ * làm tròn cắt mất số 0 ở cuối.
+ */
+const DEC_R = 2;   // điện trở và sai số tuyệt đối: 2 chữ số
+const DEC_U = 2;   // hiệu điện thế
+const DEC_I = 4;   // cường độ dòng điện, thường rất nhỏ
+const DEC_PCT = 2; // sai số tương đối
+
+const fmt = (value: number, digits: number) =>
+  Number.isFinite(value) ? value.toFixed(digits) : (0).toFixed(digits);
+
 interface LabReportViewProps {
   module: LabModule;
   rows: LabReportRow[];
@@ -194,7 +207,7 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
                   {/* R Calc */}
                   <td className="p-3">
                     <span className="font-mono text-sm font-extrabold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100">
-                      {row.rCalc > 0 ? `${row.rCalc} Ω` : '---'}
+                      {row.rCalc > 0 ? `${fmt(row.rCalc, DEC_R)} Ω` : '---'}
                     </span>
                   </td>
 
@@ -251,19 +264,94 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
           <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3 text-[clamp(13px,0.9vw,15.5px)]">
             <div className="flex justify-between items-center">
               <span className="text-slate-500 font-medium">R trung bình (R-avg):</span>
-              <span className="font-mono font-extrabold text-base text-slate-900">{avgR > 0 ? `${avgR} Ω` : '0 Ω'}</span>
+              <span className="font-mono font-extrabold text-base text-slate-900">{fmt(avgR, DEC_R)} Ω</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-slate-500 font-medium">Giá trị mẫu (R0):</span>
               <span className="font-mono font-bold text-slate-700">{expectedR} Ω</span>
             </div>
+            <div className="flex justify-between items-center">
+              <span className="text-slate-500 font-medium">Sai số tuyệt đối (ΔR):</span>
+              <span className="font-mono font-bold text-slate-700">{fmt(absError, DEC_R)} Ω</span>
+            </div>
             <div className="flex justify-between items-center pt-2 border-t border-slate-200">
               <span className="text-slate-700 font-bold">Sai số tương đối:</span>
               <span className={`font-mono font-extrabold text-sm px-2 py-0.5 rounded ${isPassed ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
-                {relativeError}% (Ngưỡng ≤ {(module.maxErrorThreshold * 100).toFixed(0)}%)
+                {fmt(relativeError, DEC_PCT)}% (Ngưỡng ≤ {(module.maxErrorThreshold * 100).toFixed(0)}%)
               </span>
             </div>
           </div>
+
+          {/* Hướng dẫn cách tính R trung bình */}
+          <details className="rounded-2xl border border-indigo-200 bg-indigo-50/60 overflow-hidden" open={avgR === 0}>
+            <summary className="cursor-pointer select-none px-4 py-2.5 flex items-center gap-2
+              text-[clamp(13px,0.9vw,15.5px)] font-bold text-indigo-800">
+              <HelpCircle className="w-4 h-4" />
+              Cách tính R trung bình và sai số
+            </summary>
+
+            <div className="px-4 pb-4 space-y-3 text-[clamp(13px,0.9vw,15.5px)] text-slate-700 leading-relaxed">
+              <div>
+                <p className="font-bold text-indigo-900 mb-1">Bước 1 — Tính R của từng lần đo</p>
+                <p>Mỗi lần đo cho một cặp U và I. Lấy thương của chúng để ra điện trở của lần đo đó.</p>
+                <div className="bg-white rounded-lg border border-slate-200 py-2.5 mt-1.5 flex items-center justify-center gap-2 text-indigo-700">
+                  <span className="font-serif italic text-[20px]">R</span>
+                  <span className="text-[16px]">
+                    <sub>i</sub>
+                  </span>
+                  <span className="text-[18px]">=</span>
+                  <Frac left="" num="Uᵢ" den="Iᵢ" />
+                </div>
+              </div>
+
+              <div>
+                <p className="font-bold text-indigo-900 mb-1">Bước 2 — Lấy trung bình cộng</p>
+                <p>
+                  Cộng tất cả {validRows.length > 0 ? validRows.length : 'n'} giá trị R vừa tính rồi chia cho số lần đo.
+                  Đây chính là kết quả của phép đo.
+                </p>
+                <div className="bg-white rounded-lg border border-slate-200 py-2.5 mt-1.5 flex items-center justify-center gap-2 text-indigo-700">
+                  <span className="font-serif italic text-[20px]">R̄</span>
+                  <span className="text-[18px]">=</span>
+                  <Frac left="" num="R₁ + R₂ + … + Rₙ" den="n" />
+                </div>
+                {validRows.length > 0 && (
+                  <p className="mt-1.5 text-[12.5px] text-slate-500">
+                    Với số liệu hiện có: ({validRows.map((r) => fmt(r.rCalc, DEC_R)).join(' + ')}) / {validRows.length}
+                    {' = '}<strong className="text-indigo-700">{fmt(avgR, DEC_R)} Ω</strong>
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <p className="font-bold text-indigo-900 mb-1">Bước 3 — Tính sai số</p>
+                <p>
+                  So R trung bình với giá trị mẫu R₀ ghi trên điện trở. Chênh lệch là sai số tuyệt đối;
+                  chia cho R₀ rồi nhân 100 ra sai số tương đối.
+                </p>
+                <div className="bg-white rounded-lg border border-slate-200 py-2.5 mt-1.5 flex items-center justify-center gap-4 flex-wrap text-indigo-700">
+                  <span className="font-serif italic text-[17px]">ΔR = |R̄ − R₀|</span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="font-serif italic text-[17px]">δ =</span>
+                    <Frac left="" num="ΔR" den="R₀" />
+                    <span className="text-[17px]">× 100%</span>
+                  </span>
+                </div>
+                {avgR > 0 && (
+                  <p className="mt-1.5 text-[12.5px] text-slate-500">
+                    ΔR = |{fmt(avgR, DEC_R)} − {expectedR}| = <strong className="text-indigo-700">{fmt(absError, DEC_R)} Ω</strong>
+                    {' · '}δ = {fmt(absError, DEC_R)} / {expectedR} × 100% ={' '}
+                    <strong className="text-indigo-700">{fmt(relativeError, DEC_PCT)}%</strong>
+                  </p>
+                )}
+              </div>
+
+              <p className="text-[12.5px] text-slate-500">
+                Bài đạt khi sai số tương đối không vượt quá {(module.maxErrorThreshold * 100).toFixed(0)}%.
+                Muốn sai số nhỏ thì đo nhiều lần ở các vị trí biến trở khác nhau và đọc số thật cẩn thận.
+              </p>
+            </div>
+          </details>
 
           {/* Pass/Fail banner */}
           <div className={`p-4 rounded-2xl border transition-all ${
@@ -369,11 +457,11 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
                     <strong className="text-indigo-900 block mb-1">Bước 1: Nhận diện & Quy đổi đơn vị chuẩn SI</strong>
                     <p className="text-slate-600">
                       • Hiệu điện thế đo được: <code className="font-bold text-slate-800">{r.u} {r.uUnit}</code>
-                      {r.uUnit === 'mV' && ` = ${uInVolts} V (chia 1000)`}
+                      {r.uUnit === 'mV' && ` = ${fmt(uInVolts, DEC_U)} V (chia 1000)`}
                     </p>
                     <p className="text-slate-600 mt-1">
                       • Cường độ dòng đo được: <code className="font-bold text-slate-800">{r.i} {r.iUnit}</code>
-                      {r.iUnit === 'mA' ? ` ➔ Quy đổi: ${r.i} mA / 1000 = ${iInAmperes} A` : ' (Đã ở chuẩn Ampe)'}
+                      {r.iUnit === 'mA' ? ` ➔ Quy đổi: ${r.i} mA / 1000 = ${fmt(iInAmperes, DEC_I)} A` : ' (Đã ở chuẩn Ampe)'}
                     </p>
                   </div>
 
@@ -382,14 +470,14 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
                     <div className="bg-white p-4 rounded-lg border border-slate-200 flex items-center justify-center gap-4 flex-wrap">
                       <Frac left="R" num="U" den="I" />
                       <span className="text-slate-300 text-xl">=</span>
-                      <Frac left="" num={String(uInVolts)} den={String(iInAmperes)} mono />
+                      <Frac left="" num={fmt(uInVolts, DEC_U)} den={fmt(iInAmperes, DEC_I)} mono />
                       <span className="text-slate-300 text-xl">=</span>
-                      <span className="text-[26px] font-bold text-indigo-700 leading-none">{r.rCalc} Ω</span>
+                      <span className="text-[26px] font-bold text-indigo-700 leading-none">{fmt(r.rCalc, DEC_R)} Ω</span>
                     </div>
                   </div>
 
                   <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 font-medium leading-relaxed">
-                    ✓ <strong>Đảm bảo chữ số có nghĩa:</strong> Kết quả được làm tròn hợp lý theo quy tắc sai số dụng cụ đo và hiển thị chính xác <code className="font-extrabold">{r.rCalc} Ω</code>.
+                    ✓ <strong>Đảm bảo chữ số có nghĩa:</strong> Kết quả được làm tròn hợp lý theo quy tắc sai số dụng cụ đo và hiển thị chính xác <code className="font-extrabold">{fmt(r.rCalc, DEC_R)} Ω</code>, luôn giữ {DEC_R} chữ số sau dấu phẩy để các lần đo dễ so sánh với nhau.
                   </div>
                 </div>
               );

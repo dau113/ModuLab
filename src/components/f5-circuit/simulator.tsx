@@ -5,7 +5,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   MousePointer2, Cable, Eraser, RotateCcw, Wrench, CircuitBoard,
-  CheckCircle2, AlertTriangle, AlertCircle, Plus, Power, Save, SearchCheck,
+  CheckCircle2, AlertTriangle, AlertCircle, Plus, Power, Save, SearchCheck, HelpCircle,
   ZoomIn, ZoomOut, Maximize2, Gauge, Spline, Search, X,
 } from 'lucide-react';
 import { PART_CATALOG, PART_ORDER, PartArt, PartDefs, PartThumb, DMM_FUNCS, DMM_HOTSPOTS, PS_HOTSPOTS, LAMP_HOTSPOT, DMM_SCALE } from './parts';
@@ -15,6 +15,7 @@ import {
   BULB_RATINGS, bulbRating, DEFAULT_BULB_V, LED_COLORS, LED_RATED_A,
 } from './sim';
 import { Symbol as CircuitSymbol, SYM_W, SYM_H, layoutSchematic } from './schematic';
+import { PracticeGuide } from './guide';
 import { BOARD_PREFIX, isBoardId, BOARD_W, BOARD_H, BOARD_HOLES, BOARD_TRACKS, trackOf, holeLabel } from './board';
 import { useSettings } from '../../settings';
 import { sfx } from '../../audio';
@@ -102,6 +103,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
 
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [schematic, setSchematic] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
   const [snapHint, setSnapHint] = useState<{ plugs: Plug[] } | null>(null);
   const boardDrag = useRef<{ id: string; dx: number; dy: number } | null>(null);
   const drag = useRef<{ id: string; dx: number; dy: number; sx: number; sy: number; moved: boolean } | null>(null);
@@ -909,6 +911,8 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
   const kClosed = !!parts.find((p) => p.kind === 'switch')?.closed;
 
   return (
+    <>
+    {guideOpen && <PracticeGuide onClose={() => setGuideOpen(false)} />}
     <div className="ml-scroll h-full min-h-0 overflow-y-auto lg:overflow-hidden grid grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[330px_minmax(0,1fr)] gap-3 pb-3 pr-1">
 
       {/* ============ CỘT TRÁI — KIỂM TRA MẠCH & KHAY LINH KIỆN ============ */}
@@ -1124,6 +1128,14 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
                   Bảng lắp ráp mạch điện
                 </h2>
               </div>
+
+              <button
+                onClick={() => setGuideOpen(true)}
+                title="Mở hướng dẫn sử dụng phần Thực hành"
+                className="h-9 px-3.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white
+                  text-[clamp(13px,0.9vw,15.5px)] font-bold flex items-center gap-1.5 transition-colors">
+                <HelpCircle className="w-4 h-4" /> Hướng dẫn
+              </button>
 
               {/* Chuyển giữa hình thật và sơ đồ mạch — đặt ngay cạnh tiêu đề cho dễ thấy */}
               <div className="flex rounded-xl border-2 border-indigo-200 overflow-hidden">
@@ -1643,6 +1655,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
         </div>
       </div>
     </div>
+    </>
   );
 };
 
