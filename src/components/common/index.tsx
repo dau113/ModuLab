@@ -17,7 +17,7 @@ import {
 import { useTheme } from '../../theme';
 import { useSettings, ACCENTS } from '../../settings';
 import { APP_VERSION } from '../../version';
-import { Home, Sun, Moon, Rocket, Swords, Volume2, VolumeX, Music } from 'lucide-react';
+import { Home, Rocket, Swords, Settings } from 'lucide-react';
 import { music, isSfxEnabled, toggleSfx } from '../../audio';
 
 interface TopNavProps {
@@ -27,65 +27,97 @@ interface TopNavProps {
   onGoHome: () => void;
 }
 
-/** Cụm cài đặt: ngôn ngữ · màu chủ đạo · sáng tối */
-export const SettingsBar: React.FC = () => {
+/**
+ * Cài đặt gom vào một nút bánh răng.
+ *
+ * Trước đây sáu chấm màu chủ đạo nằm thẳng trên thanh trên, chiếm gần một phần
+ * năm bề ngang và kéo mắt về phía nó mỗi lần nhìn lên — không hợp với một công
+ * cụ học tập. Giờ chúng nằm trong bảng cài đặt, mở khi cần.
+ */
+export const SettingsMenu: React.FC = () => {
   const { lang, accent, setAccent, t } = useSettings();
   const { theme, setTheme } = useTheme();
+  const [open, setOpen] = useState(false);
   const [musicOn, setMusicOn] = useState(music.isOn());
   const [sfxOn, setSfxOn] = useState(isSfxEnabled());
 
+  const Row: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+    <div className="flex items-center justify-between gap-4 py-2.5">
+      <span className="text-[clamp(13px,0.9vw,15.5px)] text-slate-600">{label}</span>
+      {children}
+    </div>
+  );
+
+  const Toggle: React.FC<{ on: boolean; onClick: () => void; onLabel: string; offLabel: string }> =
+    ({ on, onClick, onLabel, offLabel }) => (
+      <button onClick={onClick}
+        className="h-8 px-3 rounded-lg border border-slate-200 text-[clamp(13px,0.9vw,15.5px)]
+          font-medium text-slate-700 hover:bg-slate-50 transition-colors">
+        {on ? onLabel : offLabel}
+      </button>
+    );
+
   return (
-    <div className="flex items-center gap-3">
-      {/* Màu chủ đạo */}
-      <div className="flex items-center gap-1" title={t('app.accent')}>
-        {ACCENTS.map((a) => (
-          <button
-            key={a.id}
-            onClick={() => setAccent(a.id)}
-            title={lang === 'en' ? a.en : a.vi}
-            aria-label={lang === 'en' ? a.en : a.vi}
-            className={`w-5 h-5 rounded-full transition-all ${
-              accent === a.id
-                ? 'ring-2 ring-offset-2 ring-slate-400 scale-110'
-                : 'opacity-60 hover:opacity-100'
-            }`}
-            style={{ backgroundColor: a.swatch }}
-          />
-        ))}
-      </div>
-
-      <div className="h-6 w-px bg-slate-200" />
-
-      {/* Nhạc nền */}
+    <div className="relative">
       <button
-        onClick={() => setMusicOn(music.toggle())}
-        title={musicOn ? 'Tắt nhạc nền' : 'Bật nhạc nền'}
-        className={`w-8 h-7 grid place-items-center rounded-lg border transition-colors ${
-          musicOn ? 'border-indigo-300 bg-indigo-50 text-indigo-600' : 'border-slate-200 text-slate-400 hover:bg-slate-50'
-        }`}>
-        <Music className="w-4 h-4" />
+        onClick={() => setOpen((v) => !v)}
+        title={t('app.settings')}
+        aria-expanded={open}
+        className="h-9 w-9 grid place-items-center rounded-lg border border-slate-200
+          text-slate-500 hover:bg-slate-50 transition-colors"
+      >
+        <Settings className="w-4 h-4" />
       </button>
 
-      {/* Tiếng thao tác của linh kiện */}
-      <button
-        onClick={() => setSfxOn(toggleSfx())}
-        title={sfxOn ? 'Tắt tiếng thao tác' : 'Bật tiếng thao tác'}
-        className={`w-8 h-7 grid place-items-center rounded-lg border transition-colors ${
-          sfxOn ? 'border-indigo-300 bg-indigo-50 text-indigo-600' : 'border-slate-200 text-slate-400 hover:bg-slate-50'
-        }`}>
-        {sfxOn ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-11 z-50 w-72 rounded-xl border border-slate-200
+            bg-white shadow-lg p-4">
+            <p className="text-[clamp(14px,0.98vw,16.5px)] font-semibold text-slate-900 mb-1">
+              {t('app.settings')}
+            </p>
 
-      {/* Sáng / tối */}
-      <button
-        onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-        title={theme === 'dark' ? t('app.theme.light') : t('app.theme.dark')}
-        className="w-8 h-7 grid place-items-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors">
-        {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-      </button>
+            <div className="divide-y divide-slate-100">
+              <Row label={t('app.theme')}>
+                <Toggle on={theme === 'dark'} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                  onLabel={t('app.theme.dark')} offLabel={t('app.theme.light')} />
+              </Row>
+
+              <Row label="Nhạc nền">
+                <Toggle on={musicOn} onClick={() => setMusicOn(music.toggle())}
+                  onLabel="Đang bật" offLabel="Đang tắt" />
+              </Row>
+
+              <Row label="Tiếng thao tác">
+                <Toggle on={sfxOn} onClick={() => setSfxOn(toggleSfx())}
+                  onLabel="Đang bật" offLabel="Đang tắt" />
+              </Row>
+
+              <div className="pt-3">
+                <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-600 mb-2">{t('app.accent')}</p>
+                <div className="flex items-center gap-2">
+                  {ACCENTS.map((a) => (
+                    <button key={a.id} onClick={() => setAccent(a.id)}
+                      title={lang === 'en' ? a.en : a.vi}
+                      aria-label={lang === 'en' ? a.en : a.vi}
+                      className={`w-6 h-6 rounded-full transition-all ${
+                        accent === a.id ? 'ring-2 ring-offset-2 ring-slate-400' : 'opacity-50 hover:opacity-100'
+                      }`}
+                      style={{ backgroundColor: a.swatch }} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };
+
+/** Giữ tên cũ cho những chỗ đang dùng */
+export const SettingsBar = SettingsMenu;
 
 export const TopNav: React.FC<TopNavProps> = ({ currentUser, onSwitchUser, availableUsers, onGoHome }) => {
   return (
