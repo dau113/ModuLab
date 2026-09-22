@@ -26,6 +26,10 @@ const DEC_U = 2;   // hiệu điện thế
 const DEC_I = 4;   // cường độ dòng điện, thường rất nhỏ
 const DEC_PCT = 2; // sai số tương đối
 
+/** Ngưỡng sai số của bài; thiếu dữ liệu thì lấy mặc định 10% thay vì hiện NaN */
+const thresholdOf = (m: { maxErrorThreshold?: number }) =>
+  Number.isFinite(m.maxErrorThreshold) ? (m.maxErrorThreshold as number) : 0.10;
+
 const fmt = (value: number, digits: number) =>
   Number.isFinite(value) ? value.toFixed(digits) : (0).toFixed(digits);
 
@@ -38,6 +42,9 @@ interface LabReportViewProps {
   isSubmitted: boolean;
   /** Mở một bản báo cáo mới, xoá sạch số liệu cũ để làm lại từ đầu */
   onNewReport: () => void;
+  /** Trạng thái lưu bảng số liệu lên máy chủ */
+  syncState?: 'idle' | 'saving' | 'saved' | 'local' | 'error';
+  savedAt?: Date | null;
 }
 
 export const LabReportView: React.FC<LabReportViewProps> = ({
@@ -48,6 +55,8 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
   onSubmitReport,
   isSubmitted,
   onNewReport,
+  syncState = 'idle',
+  savedAt = null,
 }) => {
   const [showFormulaModal, setShowFormulaModal] = useState<boolean>(false);
   const [selectedRowForFormula, setSelectedRowForFormula] = useState<number | null>(1);
@@ -108,7 +117,7 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
   const expectedR = 20.0;
   const absError = Math.round(Math.abs(avgR - expectedR) * 100) / 100;
   const relativeError = expectedR > 0 ? Math.round((absError / expectedR) * 10000) / 100 : 0;
-  const isPassed = relativeError <= module.maxErrorThreshold * 100;
+  const isPassed = relativeError <= thresholdOf(module) * 100;
 
   const handleExportPDF = () => {
     setIsExporting(true);
@@ -126,22 +135,23 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
         title="Biểu mẫu Báo cáo thực hành nhóm (Dùng chung)" 
         subtitle={`${module.title} • ${teamCode || 'Nhóm 3 - Bàn 5'}`}
         action={
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg text-[clamp(13px,0.9vw,15.5px)] font-bold border border-blue-200 flex items-center gap-1">
-              <Users className="w-3.5 h-3.5" />
-              <span>Đang đồng bộ realtime (4 thành viên)</span>
-            </span>
-          </div>
+          <span className={`text-meta ${syncState === 'error' ? 'text-rose-600' : 'text-slate-500'}`}>
+            {syncState === 'saving' && 'Đang lưu…'}
+            {syncState === 'saved' && `Đã lưu lúc ${savedAt?.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) ?? ''}`}
+            {syncState === 'local' && 'Đã lưu trên máy này'}
+            {syncState === 'error' && 'Chưa lưu được — kiểm tra kết nối'}
+            {syncState === 'idle' && 'Số liệu tự lưu khi em nhập'}
+          </span>
         }
       >
-        <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-500 mt-1 mb-4">
+        <p className="text-body text-slate-500 mt-1 mb-4">
           Nhập số liệu đo từ thí nghiệm thật vào bảng bên dưới. Hệ thống sẽ tự động chuyển đổi đơn vị và tính toán giá trị điện trở R = U / I.
         </p>
 
         {/* Table Data */}
         <div className="overflow-x-auto rounded-xl border border-slate-200">
-          <table className="w-full text-left text-[clamp(13px,0.9vw,15.5px)] font-sans">
-            <thead className="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider text-[clamp(12.5px,0.86vw,15px)] border-b border-slate-200">
+          <table className="w-full text-left text-body font-sans">
+            <thead className="bg-slate-100 text-slate-700 font-semibold text-meta border-b border-slate-200">
               <tr>
                 <th className="p-3 w-16">Lần đo</th>
                 <th className="p-3">Hiệu điện thế (U)</th>
@@ -154,7 +164,7 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
             <tbody className="divide-y divide-slate-200 bg-white font-medium">
               {rows.map((row) => (
                 <tr key={row.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="p-3 font-bold text-center bg-slate-50/50">#0{row.id}</td>
+                  <td className="p-3 font-semibold text-center bg-slate-50/50">#0{row.id}</td>
                   
                   {/* U input */}
                   <td className="p-3">
@@ -166,13 +176,13 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
                         value={row.u || ''}
                         onChange={(e) => handleValueChange(row.id, 'u', e.target.value)}
                         placeholder="0.0"
-                        className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg font-mono font-bold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                        className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg font-mono font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white"
                       />
                       <select
                         disabled={isSubmitted}
                         value={row.uUnit}
                         onChange={(e) => handleUnitChange(row.id, 'uUnit', e.target.value as any)}
-                        className="p-1.5 bg-slate-100 border border-slate-200 rounded font-bold text-slate-600 outline-none"
+                        className="p-1.5 bg-slate-100 border border-slate-200 rounded font-semibold text-slate-600 outline-none"
                       >
                         <option value="V">V</option>
                         <option value="mV">mV</option>
@@ -190,13 +200,13 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
                         value={row.i || ''}
                         onChange={(e) => handleValueChange(row.id, 'i', e.target.value)}
                         placeholder="0"
-                        className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg font-mono font-bold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                        className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg font-mono font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white"
                       />
                       <select
                         disabled={isSubmitted}
                         value={row.iUnit}
                         onChange={(e) => handleUnitChange(row.id, 'iUnit', e.target.value as any)}
-                        className="p-1.5 bg-slate-100 border border-slate-200 rounded font-bold text-slate-600 outline-none"
+                        className="p-1.5 bg-slate-100 border border-slate-200 rounded font-semibold text-slate-600 outline-none"
                       >
                         <option value="mA">mA</option>
                         <option value="A">A</option>
@@ -206,7 +216,7 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
 
                   {/* R Calc */}
                   <td className="p-3">
-                    <span className="font-mono text-sm font-extrabold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100">
+                    <span className="font-mono text-body font-semibold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100">
                       {row.rCalc > 0 ? `${fmt(row.rCalc, DEC_R)} Ω` : '---'}
                     </span>
                   </td>
@@ -218,7 +228,7 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
                         setSelectedRowForFormula(row.id);
                         setShowFormulaModal(true);
                       }}
-                      className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-[clamp(12.5px,0.86vw,15px)] font-bold text-slate-700 flex items-center gap-1 ml-auto transition-colors"
+                      className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-meta font-semibold text-slate-700 flex items-center gap-1 ml-auto transition-colors"
                     >
                       <Calculator className="w-3.5 h-3.5 text-indigo-600" />
                       <span>Xem cách tính</span>
@@ -243,13 +253,13 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
         </div>
 
         <div className="mt-3 flex items-center justify-between gap-3">
-          <p className="text-[clamp(12.5px,0.86vw,15px)] text-slate-500">
+          <p className="text-meta text-slate-500">
             Bảng đang có <strong className="text-slate-700">{rows.length}</strong> lần đo — càng nhiều lần đo thì sai số ngẫu nhiên càng nhỏ.
           </p>
           <button
             disabled={isSubmitted}
             onClick={handleAddRow}
-            className="px-3.5 h-9 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[clamp(13px,0.9vw,15.5px)] font-bold flex items-center gap-1.5 transition-colors disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed"
+            className="px-3.5 h-9 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-body font-semibold flex items-center gap-1.5 transition-colors disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed"
           >
             <PlusCircle className="w-4 h-4" />
             <span>Thêm lần đo</span>
@@ -261,62 +271,64 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
       <BentoCard className="md:col-span-2 flex flex-col justify-between" title="KẾT QUẢ & THẨM ĐỊNH" subtitle="Chấm điểm sai số">
         <div className="space-y-4 font-sans">
           {/* Average metrics */}
-          <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3 text-[clamp(13px,0.9vw,15.5px)]">
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3 text-body">
             <div className="flex justify-between items-center">
               <span className="text-slate-500 font-medium">R trung bình (R-avg):</span>
-              <span className="font-mono font-extrabold text-base text-slate-900">{fmt(avgR, DEC_R)} Ω</span>
+              <span className="font-mono font-semibold text-h3 text-slate-900">{fmt(avgR, DEC_R)} Ω</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-slate-500 font-medium">Giá trị mẫu (R0):</span>
-              <span className="font-mono font-bold text-slate-700">{expectedR} Ω</span>
+              <span className="font-mono font-semibold text-slate-700">{expectedR} Ω</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-slate-500 font-medium">Sai số tuyệt đối (ΔR):</span>
-              <span className="font-mono font-bold text-slate-700">{fmt(absError, DEC_R)} Ω</span>
+              <span className="font-mono font-semibold text-slate-700">{fmt(absError, DEC_R)} Ω</span>
             </div>
             <div className="flex justify-between items-center pt-2 border-t border-slate-200">
-              <span className="text-slate-700 font-bold">Sai số tương đối:</span>
-              <span className={`font-mono font-extrabold text-sm px-2 py-0.5 rounded ${isPassed ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
-                {fmt(relativeError, DEC_PCT)}% (Ngưỡng ≤ {(module.maxErrorThreshold * 100).toFixed(0)}%)
+              <span className="text-slate-700 font-semibold">Sai số tương đối:</span>
+              <span className="font-mono text-body">
+                <span className={isPassed ? 'text-emerald-700 font-semibold' : 'text-rose-600 font-semibold'}>
+                  {fmt(relativeError, DEC_PCT)}%
+                </span>
+                <span className="text-slate-400"> (ngưỡng ≤ {(thresholdOf(module) * 100).toFixed(0)}%)</span>
               </span>
             </div>
           </div>
 
           {/* Hướng dẫn cách tính R trung bình */}
           <details className="rounded-2xl border border-indigo-200 bg-indigo-50/60 overflow-hidden" open={avgR === 0}>
-            <summary className="cursor-pointer select-none px-4 py-2.5 flex items-center gap-2
-              text-[clamp(13px,0.9vw,15.5px)] font-bold text-indigo-800">
+            <summary className="cursor-pointer select-none px-4 py-2.5 flex items-center gap-2 text-body font-semibold text-indigo-800">
               <HelpCircle className="w-4 h-4" />
               Cách tính R trung bình và sai số
             </summary>
 
-            <div className="px-4 pb-4 space-y-3 text-[clamp(13px,0.9vw,15.5px)] text-slate-700 leading-relaxed">
+            <div className="px-4 pb-4 space-y-3 text-body text-slate-700 leading-relaxed">
               <div>
-                <p className="font-bold text-indigo-900 mb-1">Bước 1 — Tính R của từng lần đo</p>
+                <p className="font-semibold text-indigo-900 mb-1">Bước 1 — Tính R của từng lần đo</p>
                 <p>Mỗi lần đo cho một cặp U và I. Lấy thương của chúng để ra điện trở của lần đo đó.</p>
                 <div className="bg-white rounded-lg border border-slate-200 py-2.5 mt-1.5 flex items-center justify-center gap-2 text-indigo-700">
                   <span className="font-serif italic text-[20px]">R</span>
-                  <span className="text-[16px]">
+                  <span className="text-h3">
                     <sub>i</sub>
                   </span>
-                  <span className="text-[18px]">=</span>
+                  <span className="text-h2">=</span>
                   <Frac left="" num="Uᵢ" den="Iᵢ" />
                 </div>
               </div>
 
               <div>
-                <p className="font-bold text-indigo-900 mb-1">Bước 2 — Lấy trung bình cộng</p>
+                <p className="font-semibold text-indigo-900 mb-1">Bước 2 — Lấy trung bình cộng</p>
                 <p>
                   Cộng tất cả {validRows.length > 0 ? validRows.length : 'n'} giá trị R vừa tính rồi chia cho số lần đo.
                   Đây chính là kết quả của phép đo.
                 </p>
                 <div className="bg-white rounded-lg border border-slate-200 py-2.5 mt-1.5 flex items-center justify-center gap-2 text-indigo-700">
                   <span className="font-serif italic text-[20px]">R̄</span>
-                  <span className="text-[18px]">=</span>
+                  <span className="text-h2">=</span>
                   <Frac left="" num="R₁ + R₂ + … + Rₙ" den="n" />
                 </div>
                 {validRows.length > 0 && (
-                  <p className="mt-1.5 text-[12.5px] text-slate-500">
+                  <p className="mt-1.5 text-meta text-slate-500">
                     Với số liệu hiện có: ({validRows.map((r) => fmt(r.rCalc, DEC_R)).join(' + ')}) / {validRows.length}
                     {' = '}<strong className="text-indigo-700">{fmt(avgR, DEC_R)} Ω</strong>
                   </p>
@@ -324,7 +336,7 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
               </div>
 
               <div>
-                <p className="font-bold text-indigo-900 mb-1">Bước 3 — Tính sai số</p>
+                <p className="font-semibold text-indigo-900 mb-1">Bước 3 — Tính sai số</p>
                 <p>
                   So R trung bình với giá trị mẫu R₀ ghi trên điện trở. Chênh lệch là sai số tuyệt đối;
                   chia cho R₀ rồi nhân 100 ra sai số tương đối.
@@ -334,11 +346,11 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
                   <span className="flex items-center gap-1.5">
                     <span className="font-serif italic text-[17px]">δ =</span>
                     <Frac left="" num="ΔR" den="R₀" />
-                    <span className="text-[17px]">× 100%</span>
+                    <span className="text-h2">× 100%</span>
                   </span>
                 </div>
                 {avgR > 0 && (
-                  <p className="mt-1.5 text-[12.5px] text-slate-500">
+                  <p className="mt-1.5 text-meta text-slate-500">
                     ΔR = |{fmt(avgR, DEC_R)} − {expectedR}| = <strong className="text-indigo-700">{fmt(absError, DEC_R)} Ω</strong>
                     {' · '}δ = {fmt(absError, DEC_R)} / {expectedR} × 100% ={' '}
                     <strong className="text-indigo-700">{fmt(relativeError, DEC_PCT)}%</strong>
@@ -346,8 +358,8 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
                 )}
               </div>
 
-              <p className="text-[12.5px] text-slate-500">
-                Bài đạt khi sai số tương đối không vượt quá {(module.maxErrorThreshold * 100).toFixed(0)}%.
+              <p className="text-meta text-slate-500">
+                Bài đạt khi sai số tương đối không vượt quá {(thresholdOf(module) * 100).toFixed(0)}%.
                 Muốn sai số nhỏ thì đo nhiều lần ở các vị trí biến trở khác nhau và đọc số thật cẩn thận.
               </p>
             </div>
@@ -361,15 +373,15 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
               ? 'bg-emerald-50 border-emerald-500 text-emerald-950 shadow-sm' 
               : 'bg-amber-50 border-amber-400 text-amber-950'
           }`}>
-            <div className="flex items-center gap-2 font-bold text-[clamp(13px,0.9vw,15.5px)] mb-1">
+            <div className="flex items-center gap-2 font-semibold text-body mb-1">
               {avgR === 0 && <HelpCircle className="w-4 h-4" />}
               {avgR > 0 && isPassed && <CheckCircle2 className="w-5 h-5 text-emerald-600" />}
               {avgR > 0 && !isPassed && <AlertTriangle className="w-5 h-5 text-amber-600" />}
-              <span className="uppercase font-extrabold">
+              <span className="font-semibold">
                 {avgR === 0 ? 'Chưa có số liệu' : isPassed ? 'ĐẠT YÊU CẦU THỰC HÀNH' : 'CHƯA ĐẠT (SAI SỐ LỚN)'}
               </span>
             </div>
-            <p className="text-[clamp(13px,0.9vw,15.5px)] leading-relaxed mt-1">
+            <p className="text-body leading-relaxed mt-1">
               {avgR === 0 
                 ? 'Hãy nhập ít nhất 1 lần đo hiệu điện thế và dòng điện.' 
                 : isPassed 
@@ -384,7 +396,7 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
           <button
             disabled={avgR === 0 || isExporting}
             onClick={handleExportPDF}
-            className="w-full py-2.5 px-4 bg-white hover:bg-slate-50 disabled:opacity-50 border border-slate-200 rounded-xl text-[clamp(13px,0.9vw,15.5px)] font-bold text-slate-700 flex items-center justify-center gap-2 transition-colors shadow-sm"
+            className="w-full py-2.5 px-4 bg-white hover:bg-slate-50 disabled:opacity-50 border border-slate-200 rounded-xl text-body font-semibold text-slate-700 flex items-center justify-center gap-2 transition-colors shadow-sm"
           >
             <Download className={`w-4 h-4 text-indigo-600 ${isExporting ? 'animate-bounce' : ''}`} />
             <span>{isExporting ? 'Đang xuất tệp PDF...' : 'Xuất Báo cáo ra tệp PDF'}</span>
@@ -394,11 +406,7 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
             <button
               disabled={avgR === 0}
               onClick={() => onSubmitReport(isPassed, { rAvg: avgR, deltaR: absError, relErr: relativeError / 100 })}
-              className={`w-full py-3 px-4 rounded-xl text-[clamp(14px,0.98vw,16.5px)] font-bold flex items-center justify-center gap-2 transition-colors ${
-                avgR > 0
-                  ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                  : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
-              }`}
+              className={`w-full py-3 px-4 rounded-xl text-body font-semibold flex items-center justify-center gap-2 transition-colors ${ avgR > 0 ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed' }`}
             >
               <Send className="w-4 h-4" />
               <span>Nộp báo cáo chính thức</span>
@@ -407,18 +415,18 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
 
           {isSubmitted && (
             <div className="space-y-2">
-              <div className="w-full py-2.5 px-4 rounded-xl bg-emerald-50 border border-emerald-200 text-[clamp(14px,0.98vw,16.5px)] font-bold text-emerald-800 flex items-center justify-center gap-2">
+              <div className="w-full py-2.5 px-4 rounded-xl bg-emerald-50 border border-emerald-200 text-body font-semibold text-emerald-800 flex items-center justify-center gap-2">
                 <CheckCircle2 className="w-4 h-4" />
                 <span>Đã gửi vào sổ điểm giáo viên</span>
               </div>
               <button
                 onClick={onNewReport}
-                className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[clamp(14px,0.98vw,16.5px)] font-bold flex items-center justify-center gap-2 transition-colors"
+                className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-body font-semibold flex items-center justify-center gap-2 transition-colors"
               >
                 <FilePlus className="w-4 h-4" />
                 <span>Làm bài báo cáo mới</span>
               </button>
-              <p className="text-[clamp(12.5px,0.86vw,15px)] text-slate-500 text-center leading-relaxed">
+              <p className="text-meta text-slate-500 text-center leading-relaxed">
                 Bản đã nộp vẫn được giữ trong sổ điểm; bài mới sẽ là một lượt đo khác.
               </p>
             </div>
@@ -432,15 +440,15 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-slate-200 max-h-[90vh] overflow-y-auto font-sans">
             <div className="flex justify-between items-center pb-3 border-b border-slate-200 mb-4">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
+                <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-semibold">
                   <Calculator className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">Chi tiết cách tính (Không là hộp đen)</h3>
-                  <p className="text-[clamp(12.5px,0.86vw,15px)] text-slate-400">Minh bạch công thức và từng bước thế số</p>
+                  <h3 className="text-h2">Chi tiết cách tính</h3>
+                  <p className="text-meta text-slate-400">Minh bạch công thức và từng bước thế số</p>
                 </div>
               </div>
-              <span className="text-[clamp(13px,0.9vw,15.5px)] bg-slate-100 px-2.5 py-1 rounded-lg font-bold text-slate-700">
+              <span className="text-body bg-slate-100 px-2.5 py-1 rounded-lg font-semibold text-slate-700">
                 Lần đo #0{selectedRowForFormula}
               </span>
             </div>
@@ -452,15 +460,15 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
               const uInVolts = r.uUnit === 'mV' ? r.u / 1000 : r.u;
 
               return (
-                <div className="space-y-4 text-[clamp(13px,0.9vw,15.5px)]">
+                <div className="space-y-4 text-body">
                   <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
                     <strong className="text-indigo-900 block mb-1">Bước 1: Nhận diện & Quy đổi đơn vị chuẩn SI</strong>
                     <p className="text-slate-600">
-                      • Hiệu điện thế đo được: <code className="font-bold text-slate-800">{r.u} {r.uUnit}</code>
+                      • Hiệu điện thế đo được: <code className="font-semibold text-slate-800">{r.u} {r.uUnit}</code>
                       {r.uUnit === 'mV' && ` = ${fmt(uInVolts, DEC_U)} V (chia 1000)`}
                     </p>
                     <p className="text-slate-600 mt-1">
-                      • Cường độ dòng đo được: <code className="font-bold text-slate-800">{r.i} {r.iUnit}</code>
+                      • Cường độ dòng đo được: <code className="font-semibold text-slate-800">{r.i} {r.iUnit}</code>
                       {r.iUnit === 'mA' ? ` ➔ Quy đổi: ${r.i} mA / 1000 = ${fmt(iInAmperes, DEC_I)} A` : ' (Đã ở chuẩn Ampe)'}
                     </p>
                   </div>
@@ -469,15 +477,15 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
                     <strong className="text-indigo-900 block mb-2">Bước 2: Áp dụng công thức Định luật Ôm</strong>
                     <div className="bg-white p-4 rounded-lg border border-slate-200 flex items-center justify-center gap-4 flex-wrap">
                       <Frac left="R" num="U" den="I" />
-                      <span className="text-slate-300 text-xl">=</span>
+                      <span className="text-slate-300 text-h2">=</span>
                       <Frac left="" num={fmt(uInVolts, DEC_U)} den={fmt(iInAmperes, DEC_I)} mono />
-                      <span className="text-slate-300 text-xl">=</span>
-                      <span className="text-[26px] font-bold text-indigo-700 leading-none">{fmt(r.rCalc, DEC_R)} Ω</span>
+                      <span className="text-slate-300 text-h2">=</span>
+                      <span className="text-h1 font-semibold text-indigo-700 leading-none">{fmt(r.rCalc, DEC_R)} Ω</span>
                     </div>
                   </div>
 
                   <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 font-medium leading-relaxed">
-                    ✓ <strong>Đảm bảo chữ số có nghĩa:</strong> Kết quả được làm tròn hợp lý theo quy tắc sai số dụng cụ đo và hiển thị chính xác <code className="font-extrabold">{fmt(r.rCalc, DEC_R)} Ω</code>, luôn giữ {DEC_R} chữ số sau dấu phẩy để các lần đo dễ so sánh với nhau.
+                    ✓ <strong>Đảm bảo chữ số có nghĩa:</strong> Kết quả được làm tròn hợp lý theo quy tắc sai số dụng cụ đo và hiển thị chính xác <code className="font-semibold">{fmt(r.rCalc, DEC_R)} Ω</code>, luôn giữ {DEC_R} chữ số sau dấu phẩy để các lần đo dễ so sánh với nhau.
                   </div>
                 </div>
               );
@@ -486,7 +494,7 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
             <div className="mt-6 flex justify-end">
               <button
                 onClick={() => setShowFormulaModal(false)}
-                className="px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl text-[clamp(13px,0.9vw,15.5px)] hover:bg-indigo-700 transition-colors shadow-sm"
+                className="px-5 py-2.5 bg-indigo-600 text-white font-semibold rounded-xl text-body hover:bg-indigo-700 transition-colors shadow-sm"
               >
                 Đóng lại
               </button>
@@ -506,13 +514,13 @@ const Frac: React.FC<{ left: string; num: string; den: string; mono?: boolean }>
       {left && (
         <>
           <span className="text-[26px] font-serif italic leading-none">{left}</span>
-          <span className="text-[22px] leading-none">=</span>
+          <span className="text-h1 leading-none">=</span>
         </>
       )}
       <span className="inline-flex flex-col items-center leading-none">
-        <span className={`text-[21px] px-2 ${face}`}>{num}</span>
+        <span className={`text-h2 px-2 ${face}`}>{num}</span>
         <span className="w-full h-[2px] bg-indigo-700 my-1" />
-        <span className={`text-[21px] px-2 ${face}`}>{den}</span>
+        <span className={`text-h2 px-2 ${face}`}>{den}</span>
       </span>
     </div>
   );

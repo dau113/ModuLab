@@ -7,7 +7,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { LabStep, LabReportRow, TeacherClassStats } from './types';
 import { api, isOffline } from './api/client';
 import type { ApiUser, Bootstrap } from './api/client';
-import { TopNav, Sidebar, Footer, WarningBadge, VersionBadge } from './components/common';
+import { TopNav, Sidebar, WarningBadge, VersionBadge } from './components/common';
 import { SettingsProvider, useSettings } from './settings';
 import { sfx, music } from './audio';
 import { HomeMenu } from './components/f0-home';
@@ -41,12 +41,39 @@ function Workspace() {
   }, []);
   const [currentStep, setCurrentStep] = useState<LabStep | 'teacher' | 'account'>('quiz');
   const { t, lang } = useSettings();
+
+  /** Tên vị trí hiện tại, hiện trên thanh trên để người dùng biết đang ở đâu */
+  const locationLabel = (() => {
+    switch (currentStep) {
+      case 'theory': return `${t('nav.theory')} — ${t('nav.theory.lesson')}`;
+      case 'tools': return `${t('nav.theory')} — ${t('nav.theory.tools')}`;
+      case 'quiz': return `${t('nav.quiz')} — ${t('nav.quiz.drill')}`;
+      case 'quest': return `${t('nav.quiz')} — ${t('nav.quest')}`;
+      case 'circuit': return t('nav.circuit');
+      case 'report': return t('nav.report');
+      case 'teacher': return t('nav.teacher');
+      default: return lang === 'vi' ? 'Tài khoản & Phân quyền' : 'Accounts & roles';
+    }
+  })();
   const [currentModuleId, setCurrentModuleId] = useState<string>('lab-1');
   const [reportRows, setReportRows] = useState<LabReportRow[]>([]);
   const [isCircuitPassed, setIsCircuitPassed] = useState<boolean>(false);
   const [isReportPassed, setIsReportPassed] = useState<boolean>(false);
   const [isReportSubmitted, setIsReportSubmitted] = useState<boolean>(false);
   const [isGuestMode, setIsGuestMode] = useState<boolean>(false);
+  const [guestNoteOpen, setGuestNoteOpen] = useState(true);
+  const [offlineNoteOpen, setOfflineNoteOpen] = useState(true);
+
+  /** Trạng thái lưu bảng số liệu — hiện đúng việc đang xảy ra, không ghi cứng */
+  const [syncState, setSyncState] = useState<'idle' | 'saving' | 'saved' | 'local' | 'error'>('idle');
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
+
+  /* Dòng nhắc chế độ khách chỉ hiện năm giây rồi tự ẩn, khỏi chiếm chỗ lâu dài */
+  useEffect(() => {
+    if (!isGuestMode || !guestNoteOpen) return;
+    const id = window.setTimeout(() => setGuestNoteOpen(false), 5000);
+    return () => window.clearTimeout(id);
+  }, [isGuestMode, guestNoteOpen]);
 
   const loadAll = useCallback(async () => {
     setLoadError(null);
@@ -111,7 +138,11 @@ function Workspace() {
 
   const handleUpdateRows = (rows: LabReportRow[]) => {
     setReportRows(rows);
-    if (currentUser) void api.saveReportRows(currentUser.id, currentModuleId, rows).catch(() => undefined);
+    if (!currentUser) return;
+    setSyncState('saving');
+    api.saveReportRows(currentUser.id, currentModuleId, rows)
+      .then(() => { setSyncState(isOffline() ? 'local' : 'saved'); setSavedAt(new Date()); })
+      .catch(() => setSyncState('error'));
   };
 
   /* Màn hình chờ và màn hình báo lỗi kết nối */
@@ -120,14 +151,14 @@ function Workspace() {
       <div className="w-full h-screen bg-slate-100 text-slate-900 grid place-items-center p-6 font-sans">
         <div className="max-w-md bg-white border border-slate-200 rounded-2xl shadow-sm p-6 text-center">
           <ShieldAlert className="w-10 h-10 text-rose-500 mx-auto mb-3" />
-          <h1 className="text-lg font-extrabold mb-2">Không kết nối được cơ sở dữ liệu</h1>
-          <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-600 mb-1">{loadError}</p>
-          <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-500 mb-4">
-            Hãy mở một cửa sổ dòng lệnh khác và chạy <code className="font-mono font-bold">npm run server</code>,
-            lần đầu chạy thêm <code className="font-mono font-bold">npm run db:seed</code>.
+          <h1 className="text-h2 font-semibold mb-2">Không kết nối được cơ sở dữ liệu</h1>
+          <p className="text-body text-slate-600 mb-1">{loadError}</p>
+          <p className="text-body text-slate-500 mb-4">
+            Hãy mở một cửa sổ dòng lệnh khác và chạy <code className="font-mono font-semibold">npm run server</code>,
+            lần đầu chạy thêm <code className="font-mono font-semibold">npm run db:seed</code>.
           </p>
           <button onClick={() => void loadAll()}
-            className="px-4 h-10 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[clamp(13px,0.9vw,15.5px)] font-bold">
+            className="px-4 h-10 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-body font-semibold">
             Thử kết nối lại
           </button>
         </div>
@@ -140,7 +171,7 @@ function Workspace() {
       <div className="w-full h-screen bg-slate-100 text-slate-900 grid place-items-center font-sans">
         <div className="text-center">
           <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-[clamp(13px,0.9vw,15.5px)] font-bold text-slate-500">Đang nạp dữ liệu từ cơ sở dữ liệu…</p>
+          <p className="text-body font-semibold text-slate-500">Đang nạp dữ liệu từ cơ sở dữ liệu…</p>
         </div>
       </div>
     );
@@ -158,6 +189,7 @@ function Workspace() {
           const u = data.users.find((x) => x.id === userId);
           if (u) setCurrentUser(u);
           setIsGuestMode(!!guest);
+          setGuestNoteOpen(true);
           setCurrentStep(u?.role === 'gv' ? 'teacher' : 'quiz');
           setAtHome(false);
         })}
@@ -176,17 +208,19 @@ function Workspace() {
         onSwitchUser={handleSwitchUser}
         availableUsers={data.users}
         onGoHome={() => navigate(() => setAtHome(true))}
+        location={locationLabel}
       />
 
       {/* Guest mode warning banner if triggered */}
-      {isGuestMode && (
-        <div className="bg-amber-400 text-slate-950 px-6 py-1.5 text-[clamp(13px,0.9vw,15.5px)] font-bold flex items-center justify-between shadow-sm z-10 animate-fadeIn">
-          <span>⚠️ Bạn đang truy cập ở Chế độ Khách (Chưa đăng nhập) — Kết quả Game ôn tập và Báo cáo sẽ không được ghi nhận vào điểm chính thức!</span>
-          <button 
-            onClick={() => setIsGuestMode(false)}
-            className="underline hover:text-indigo-900 text-[clamp(12.5px,0.86vw,15px)] ml-4 font-extrabold"
-          >
-            Đăng nhập ngay
+      {/* Chế độ khách: báo một lần rồi tự ẩn; nhắc lâu dài nằm trong thanh bên */}
+      {isGuestMode && guestNoteOpen && (
+        <div className="ml-rise px-6 py-2 bg-slate-50 border-b border-slate-200 flex items-center gap-3 text-body text-slate-600">
+          <span className="flex-1">
+            Đang xem ở chế độ khách — kết quả làm bài sẽ không được ghi vào sổ điểm.
+          </span>
+          <button onClick={() => setGuestNoteOpen(false)} title="Ẩn"
+            className="w-6 h-6 grid place-items-center rounded text-slate-400 hover:bg-slate-200 shrink-0">
+            ✕
           </button>
         </div>
       )}
@@ -200,40 +234,29 @@ function Workspace() {
           userRole={currentUser.role}
           labTitle={currentModule.title}
           isReportPassed={isReportPassed}
+          isGuest={isGuestMode}
         />
 
         {/* Main Bento Grid Content Area */}
         <main key={currentStep} className="ml-page flex-1 p-6 overflow-hidden flex flex-col">
-          {isOffline() && (
-            <div className="mb-3 shrink-0 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[clamp(12.5px,0.86vw,15px)] text-amber-900">
-              Đang chạy ở chế độ ngoại tuyến — bài làm được lưu trong trình duyệt của máy này.
+          {isOffline() && offlineNoteOpen && (
+            <div className="mb-3 shrink-0 flex items-center gap-3 border-b border-slate-200 pb-2
+              text-meta text-slate-500">
+              <span className="flex-1">
+                Đang chạy ngoại tuyến — bài làm được lưu trong trình duyệt của máy này.
+              </span>
+              <button onClick={() => setOfflineNoteOpen(false)} title="Ẩn"
+                className="w-6 h-6 grid place-items-center rounded text-slate-400 hover:bg-slate-200">
+                ✕
+              </button>
             </div>
           )}
-          {/* Quick breadcrumb & role check bar */}
-          <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-200/80 shrink-0 text-[clamp(13px,0.9vw,15.5px)]">
-            <div className="flex items-center gap-2 text-slate-500 font-medium">
-              <span>ModuLab Workspace</span>
-              <span>/</span>
-              <span className="font-bold text-slate-800">
-                {currentStep === 'theory' && `${t('nav.theory')} — ${t('nav.theory.lesson')}`}
-                {currentStep === 'tools' && `${t('nav.theory')} — ${t('nav.theory.tools')}`}
-                {currentStep === 'quiz' && `${t('nav.quiz')} — ${t('nav.quiz.drill')}`}
-                {currentStep === 'quest' && `${t('nav.quiz')} — ${t('nav.quest')}`}
-                {currentStep === 'circuit' && t('nav.circuit')}
-                {currentStep === 'report' && t('nav.report')}
-                {currentStep === 'teacher' && t('nav.teacher')}
-                {currentStep === 'account' && (lang === 'vi' ? 'Tài khoản & Phân quyền' : 'Accounts & roles')}
-              </span>
-            </div>
-
+          {/* Chỉ còn lối vào quản lý tài khoản; tên vị trí đã nằm trên thanh trên */}
+          <div className="flex items-center justify-end mb-4 pb-2 border-b border-slate-200/80 shrink-0 text-body">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setCurrentStep('account')}
-                className={`px-3 py-1 rounded-lg text-[clamp(13px,0.9vw,15.5px)] font-bold transition-all flex items-center gap-1.5 ${
-                  currentStep === 'account' 
-                    ? 'bg-indigo-600 text-white shadow-sm' 
-                    : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
-                }`}
+                className={`px-3 py-1 rounded-lg text-body font-semibold transition-all flex items-center gap-1.5 ${ currentStep === 'account' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' }`}
               >
                 <UserCheck className="w-3.5 h-3.5 text-indigo-600" />
                 <span>Tài khoản & Phân quyền (F1)</span>
@@ -317,6 +340,8 @@ function Workspace() {
                 module={currentModule}
                 rows={reportRows}
                 onUpdateRows={handleUpdateRows}
+                syncState={syncState}
+                savedAt={savedAt}
                 teamCode={currentUser.teamCode}
                 isSubmitted={isReportSubmitted}
                 onSubmitReport={(passed, summary) => {
@@ -335,7 +360,7 @@ function Workspace() {
             {currentStep === 'teacher' && (
               teacherStats
                 ? <TeacherDashboard stats={teacherStats} />
-                : <div className="h-full grid place-items-center text-[clamp(13px,0.9vw,15.5px)] text-slate-500">Đang nạp số liệu lớp…</div>
+                : <div className="h-full grid place-items-center text-body text-slate-500">Đang nạp số liệu lớp…</div>
             )}
 
             {currentStep === 'account' && (
@@ -350,8 +375,6 @@ function Workspace() {
         </main>
       </div>
 
-      {/* Footer Bar */}
-      <Footer />
     </div>
   );
 }

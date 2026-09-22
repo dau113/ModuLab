@@ -110,15 +110,13 @@ export const PracticeGuide: React.FC<{ onClose: () => void }> = ({ onClose }) =>
         onClick={(e) => e.stopPropagation()}>
 
         <header className="px-5 py-3.5 border-b border-slate-200 flex items-center gap-3 shrink-0">
-          <h2 className="text-[clamp(15px,1.05vw,17.5px)] font-extrabold text-slate-800 mr-auto">
+          <h2 className="text-h2 mr-auto">
             Hướng dẫn sử dụng phần Thực hành
           </h2>
           <div className="flex rounded-xl border border-slate-200 overflow-hidden">
             {([['tour', 'Làm theo từng bước'], ['ref', 'Tra nhanh']] as const).map(([id, label]) => (
               <button key={id} onClick={() => setTab(id)}
-                className={`h-9 px-3.5 text-[clamp(13px,0.9vw,15.5px)] font-bold transition-colors ${
-                  tab === id ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-50'
-                }`}>{label}</button>
+                className={`h-9 px-3.5 text-body font-semibold transition-colors ${ tab === id ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-50' }`}>{label}</button>
             ))}
           </div>
           <button onClick={onClose} title="Đóng"
@@ -142,34 +140,30 @@ export const PracticeGuide: React.FC<{ onClose: () => void }> = ({ onClose }) =>
               </div>
 
               <div key={step} className="ml-rise">
-                <p className="text-[12.5px] font-bold text-indigo-600 uppercase tracking-widest mb-1">
+                <p className="text-meta font-semibold text-indigo-600 mb-1">
                   Bước {step + 1} / {STEPS.length}
                 </p>
-                <h3 className="text-[clamp(17px,1.2vw,20px)] font-extrabold text-slate-900 mb-2">{s.title}</h3>
-                <p className="text-[clamp(14px,0.98vw,16.5px)] text-slate-700 leading-relaxed mb-3">{s.body}</p>
-                <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3
-                  text-[clamp(13px,0.9vw,15.5px)] text-amber-900 leading-relaxed">
+                <h3 className="text-h2 mb-2">{s.title}</h3>
+                <p className="text-body text-slate-700 leading-relaxed mb-3">{s.body}</p>
+                <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-body text-amber-900 leading-relaxed">
                   <strong>Mẹo:</strong> {s.hint}
                 </div>
               </div>
 
               <div className="flex items-center gap-2 mt-5">
                 <button onClick={() => setStep((n) => Math.max(0, n - 1))} disabled={step === 0}
-                  className="h-10 px-3.5 rounded-xl border border-slate-200 text-slate-600 font-bold
-                    text-[clamp(13px,0.9vw,15.5px)] flex items-center gap-1.5 disabled:opacity-40">
+                  className="h-10 px-3.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-body flex items-center gap-1.5 disabled:opacity-40">
                   <ChevronLeft className="w-4 h-4" /> Bước trước
                 </button>
 
                 {step < STEPS.length - 1 ? (
                   <button onClick={() => setStep((n) => n + 1)}
-                    className="h-10 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold
-                      text-[clamp(13px,0.9vw,15.5px)] flex items-center gap-1.5 ml-auto">
+                    className="h-10 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-body flex items-center gap-1.5 ml-auto">
                     Bước tiếp theo <ChevronRight className="w-4 h-4" />
                   </button>
                 ) : (
                   <button onClick={onClose}
-                    className="h-10 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold
-                      text-[clamp(13px,0.9vw,15.5px)] ml-auto">
+                    className="h-10 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-body ml-auto">
                     Bắt tay vào lắp
                   </button>
                 )}
@@ -178,7 +172,7 @@ export const PracticeGuide: React.FC<{ onClose: () => void }> = ({ onClose }) =>
           ) : (
             <div className="space-y-5">
               <section>
-                <h3 className="text-[12.5px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">
+                <h3 className="text-h3 mb-2.5">
                   Các công cụ trên thanh
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -188,8 +182,8 @@ export const PracticeGuide: React.FC<{ onClose: () => void }> = ({ onClose }) =>
                         <tl.icon className="w-4 h-4 text-indigo-600" />
                       </span>
                       <div className="min-w-0">
-                        <div className="text-[clamp(13px,0.9vw,15.5px)] font-bold text-slate-800">{tl.name}</div>
-                        <p className="text-[12.5px] text-slate-600 leading-snug mt-0.5">{tl.how}</p>
+                        <div className="text-body font-semibold text-slate-800">{tl.name}</div>
+                        <p className="text-meta text-slate-600 leading-snug mt-0.5">{tl.how}</p>
                       </div>
                     </div>
                   ))}
@@ -197,7 +191,7 @@ export const PracticeGuide: React.FC<{ onClose: () => void }> = ({ onClose }) =>
               </section>
 
               <section>
-                <h3 className="text-[12.5px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">
+                <h3 className="text-h3 mb-2.5">
                   Những điều dễ nhầm
                 </h3>
                 <div className="space-y-2.5">
@@ -205,8 +199,8 @@ export const PracticeGuide: React.FC<{ onClose: () => void }> = ({ onClose }) =>
                     <div key={tip.title} className="rounded-xl border border-slate-200 p-3.5 flex gap-3">
                       <tip.icon className="w-5 h-5 text-indigo-600 shrink-0 mt-0.5" />
                       <div>
-                        <div className="text-[clamp(13.5px,0.94vw,16px)] font-bold text-slate-800 mb-0.5">{tip.title}</div>
-                        <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-600 leading-relaxed">{tip.body}</p>
+                        <div className="text-body font-semibold text-slate-800 mb-0.5">{tip.title}</div>
+                        <p className="text-body text-slate-600 leading-relaxed">{tip.body}</p>
                       </div>
                     </div>
                   ))}

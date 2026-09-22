@@ -68,9 +68,10 @@ tx(() => {
 
   /* ---------- Bài thực hành ---------- */
   LAB_MODULES.forEach((m, i) => {
-    run(`INSERT INTO lab_modules (id, title, description, theory_content, status, owner_id, sort_order)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    run(`INSERT INTO lab_modules (id, title, description, theory_content, max_error, status, owner_id, sort_order)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       m.id, m.title, m.description ?? '', m.theoryContent ?? '',
+      m.maxErrorThreshold ?? 0.10,
       m.status ?? 'da_duyet', teacher?.id ?? null, i);
   });
   const mainModule = LAB_MODULES[0]?.id ?? null;
