@@ -1,17 +1,23 @@
 import React, { useState } from 'react';
 import { User, LabStep, UserRole } from '../../types';
 import { 
+  BookOpen, 
+  Wrench, 
   HelpCircle, 
+  Cpu, 
+  FileText, 
+  Users, 
   CheckCircle2, 
   AlertTriangle, 
   AlertCircle, 
   LogOut,
   LayoutGrid,
+  ChevronDown
 } from 'lucide-react';
 import { useTheme } from '../../theme';
 import { useSettings, ACCENTS } from '../../settings';
 import { APP_VERSION } from '../../version';
-import { Settings } from 'lucide-react';
+import { Home, Rocket, Swords, Settings } from 'lucide-react';
 import { music, isSfxEnabled, toggleSfx } from '../../audio';
 
 interface TopNavProps {
@@ -19,8 +25,6 @@ interface TopNavProps {
   onSwitchUser: (userId: string) => void;
   availableUsers: User[];
   onGoHome: () => void;
-  /** Vị trí hiện tại, ví dụ "Khởi động — Ôn tập nhanh" */
-  location?: string;
 }
 
 /**
@@ -39,7 +43,7 @@ export const SettingsMenu: React.FC = () => {
 
   const Row: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
     <div className="flex items-center justify-between gap-4 py-2.5">
-      <span className="text-body text-slate-600">{label}</span>
+      <span className="text-[clamp(13px,0.9vw,15.5px)] text-slate-600">{label}</span>
       {children}
     </div>
   );
@@ -47,7 +51,8 @@ export const SettingsMenu: React.FC = () => {
   const Toggle: React.FC<{ on: boolean; onClick: () => void; onLabel: string; offLabel: string }> =
     ({ on, onClick, onLabel, offLabel }) => (
       <button onClick={onClick}
-        className="h-8 px-3 rounded-lg border border-slate-200 text-body font-medium text-slate-700 hover:bg-slate-50 transition-colors">
+        className="h-8 px-3 rounded-lg border border-slate-200 text-[clamp(13px,0.9vw,15.5px)]
+          font-medium text-slate-700 hover:bg-slate-50 transition-colors">
         {on ? onLabel : offLabel}
       </button>
     );
@@ -69,7 +74,7 @@ export const SettingsMenu: React.FC = () => {
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute right-0 top-11 z-50 w-72 rounded-xl border border-slate-200
             bg-white shadow-lg p-4">
-            <p className="text-body font-semibold text-slate-900 mb-1">
+            <p className="text-[clamp(14px,0.98vw,16.5px)] font-semibold text-slate-900 mb-1">
               {t('app.settings')}
             </p>
 
@@ -90,7 +95,7 @@ export const SettingsMenu: React.FC = () => {
               </Row>
 
               <div className="pt-3">
-                <p className="text-body text-slate-600 mb-2">{t('app.accent')}</p>
+                <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-600 mb-2">{t('app.accent')}</p>
                 <div className="flex items-center gap-2">
                   {ACCENTS.map((a) => (
                     <button key={a.id} onClick={() => setAccent(a.id)}
@@ -114,67 +119,79 @@ export const SettingsMenu: React.FC = () => {
 /** Giữ tên cũ cho những chỗ đang dùng */
 export const SettingsBar = SettingsMenu;
 
-/**
- * Thanh trên của khu làm việc — đúng bốn thành phần.
- *
- * Trong lúc làm bài, học sinh chỉ cần biết ba điều: đang ở ứng dụng nào, đang
- * ở đâu trong ứng dụng, và mình là ai. Thứ tư là lối vào cài đặt. Mọi tuỳ chọn
- * đặt một lần như âm thanh, màu chủ đạo hay chế độ tối đều nằm trong đó.
- */
-export const TopNav: React.FC<TopNavProps> = ({
-  currentUser, onSwitchUser, availableUsers, onGoHome, location,
-}) => (
-  <header className="h-14 bg-white border-b border-slate-200 px-5 flex items-center gap-4 shrink-0 z-20">
-    {/* 1 — Tên ứng dụng, bấm để về trang chủ */}
-    <button onClick={onGoHome} title="Về trang chủ"
-      className="text-h3 font-medium tracking-tight text-slate-900 hover:text-slate-500 transition-colors shrink-0">
-      ModuLab
-    </button>
-
-    {/* 2 — Vị trí hiện tại */}
-    {/* Đường dẫn vị trí: mục cha nhạt, mục đang mở đậm hơn */}
-    {location && (
-      <nav aria-label="Vị trí hiện tại" className="flex items-center gap-1.5 text-body min-w-0">
-        {location.split(' — ').map((part, i, arr) => (
-          <React.Fragment key={part}>
-            {i > 0 && <span className="text-slate-300 shrink-0">/</span>}
-            <span className={`truncate ${i === arr.length - 1 ? 'text-slate-800' : 'text-slate-500'}`}
-              aria-current={i === arr.length - 1 ? 'page' : undefined}>
-              {part}
-            </span>
-          </React.Fragment>
-        ))}
-      </nav>
-    )}
-
-    <div className="ml-auto flex items-center gap-2">
-      {/* 3 — Tài khoản, bấm để đổi */}
-      <div className="relative group">
-        <button className="h-9 px-2.5 rounded-lg hover:bg-slate-50 text-body text-slate-700 transition-colors">
-          {currentUser.name}
+export const TopNav: React.FC<TopNavProps> = ({ currentUser, onSwitchUser, availableUsers, onGoHome }) => {
+  return (
+    <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0 shadow-sm z-20">
+      <div className="flex items-center gap-4">
+        <button onClick={onGoHome} title="Về trang chủ"
+          className="flex items-center gap-3 group">
+          <div className="w-9 h-9 bg-indigo-600 rounded-lg flex items-center justify-center group-hover:bg-indigo-700 transition-colors">
+            <div className="w-4 h-4 border-2 border-white rounded-sm"></div>
+          </div>
+          <h1 className="text-lg font-bold tracking-tight text-slate-800 uppercase font-sans">ModuLab</h1>
         </button>
 
-        <div className="absolute right-0 mt-1 w-56 bg-white rounded-lg shadow-lg border border-slate-200
-          p-1.5 hidden group-hover:block z-50">
-          <p className="text-body text-slate-500 px-2.5 py-1.5">Đổi tài khoản</p>
-          {availableUsers.map((u) => (
-            <button key={u.id} onClick={() => onSwitchUser(u.id)}
-              className={`w-full text-left px-2.5 py-2 rounded-md text-body flex items-center justify-between transition-colors ${ u.id === currentUser.id ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:bg-slate-50' }`}>
-              <span>
-                {u.name}
-                <span className="text-slate-400"> · {u.role === 'gv' ? 'Giáo viên' : u.teamCode}</span>
-              </span>
-              {u.id === currentUser.id && <CheckCircle2 className="w-4 h-4 text-slate-500" />}
-            </button>
-          ))}
-        </div>
+        <button onClick={onGoHome}
+          className="ml-1 h-8 px-2.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-600 text-[13px] font-bold flex items-center gap-1.5 transition-colors">
+          <Home className="w-3.5 h-3.5" />
+          <span className="hidden md:inline">Trang chủ</span>
+        </button>
       </div>
 
-      {/* 4 — Cài đặt */}
-      <SettingsMenu />
-    </div>
-  </header>
-);
+      <div className="flex items-center gap-6">
+        <SettingsBar />
+
+        {/* User / Team & Role Switcher */}
+        <div className="flex items-center gap-3 border-l border-slate-200 pl-4">
+          <div className="text-right hidden sm:block">
+            <div className="text-[clamp(13px,0.9vw,15.5px)] font-bold text-slate-800 flex items-center justify-end gap-1.5">
+              <span>{currentUser.name}</span>
+              <span className={`px-1.5 py-0.5 rounded text-[12.5px] font-extrabold uppercase ${
+                currentUser.role === 'gv' 
+                  ? 'bg-amber-100 text-amber-800 border border-amber-300' 
+                  : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+              }`}>
+                {currentUser.role === 'gv' ? 'Giáo viên' : 'Học sinh'}
+              </span>
+            </div>
+            <div className="text-[12.5px] text-slate-500 font-medium">
+              {currentUser.role === 'hs' ? `Lớp: ${currentUser.classCode} • ${currentUser.teamCode}` : `Lớp: ${currentUser.classCode} • Bảng quản lý`}
+            </div>
+          </div>
+
+          <div className="relative group">
+            <div className="w-9 h-9 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center text-indigo-700 font-bold text-[clamp(13px,0.9vw,15.5px)] cursor-pointer shadow-sm hover:ring-2 hover:ring-indigo-400 transition-all">
+              {currentUser.name.split(' ').slice(-1)[0][0]}
+            </div>
+            {/* Dropdown to switch accounts */}
+            <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-200 p-2 hidden group-hover:block z-50">
+              <div className="text-[12.5px] font-bold text-slate-400 uppercase tracking-widest px-2 py-1">
+                Chuyển đổi tài khoản mô phỏng
+              </div>
+              {availableUsers.map((u) => (
+                <button
+                  key={u.id}
+                  onClick={() => onSwitchUser(u.id)}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-[clamp(13px,0.9vw,15.5px)] flex items-center justify-between font-medium transition-colors ${
+                    u.id === currentUser.id 
+                      ? 'bg-indigo-50 text-indigo-700 font-bold' 
+                      : 'text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <div>
+                    <div>{u.name}</div>
+                    <div className="text-[12.5px] text-slate-400">{u.role === 'gv' ? 'Giáo viên Vật lí' : `HS - ${u.teamCode}`}</div>
+                  </div>
+                  {u.id === currentUser.id && <CheckCircle2 className="w-4 h-4 text-indigo-600" />}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+};
 
 interface SidebarProps {
   currentStep: LabStep | 'teacher';
@@ -182,8 +199,6 @@ interface SidebarProps {
   userRole: UserRole;
   labTitle: string;
   isReportPassed?: boolean;
-  /** Đang xem ở chế độ khách; nhắc ở cuối thanh bên cho khỏi chắn nội dung */
-  isGuest?: boolean;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
@@ -191,45 +206,60 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectStep, 
   userRole,
   labTitle,
-  isGuest,
   isReportPassed
 }) => {
   const { t } = useSettings();
+  const [expanded, setExpanded] = useState(false);
   const steps: {
     id: LabStep | 'teacher';
     label: string;
+    icon: React.ReactNode;
     roleOnly?: UserRole;
-    children?: { id: LabStep; label: string }[];
+    children?: { id: LabStep; label: string; icon: React.ReactNode }[];
   }[] = [
     {
       id: 'quiz',
       label: t('nav.quiz'),
+      icon: <Rocket className="w-4 h-4" />,
       children: [
-        { id: 'quiz', label: t('nav.quiz.drill') },
-        { id: 'quest', label: t('nav.quest') },
+        { id: 'quiz', label: t('nav.quiz.drill'), icon: <Rocket className="w-3.5 h-3.5" /> },
+        { id: 'quest', label: t('nav.quest'), icon: <Swords className="w-3.5 h-3.5" /> },
       ],
     },
-    { id: 'circuit', label: t('nav.circuit') },
-    { id: 'report', label: t('nav.report') },
+    { id: 'circuit', label: t('nav.circuit'), icon: <Cpu className="w-4 h-4" /> },
+    { id: 'report', label: t('nav.report'), icon: <FileText className="w-4 h-4" /> },
     {
       id: 'theory',
       label: t('nav.theory'),
+      icon: <BookOpen className="w-4 h-4" />,
       children: [
-        { id: 'theory', label: t('nav.theory.lesson') },
-        { id: 'tools', label: t('nav.theory.tools') },
+        { id: 'theory', label: t('nav.theory.lesson'), icon: <BookOpen className="w-3.5 h-3.5" /> },
+        { id: 'tools', label: t('nav.theory.tools'), icon: <Wrench className="w-3.5 h-3.5" /> },
       ],
     },
-    { id: 'teacher', label: t('nav.teacher'), roleOnly: 'gv' },
+    { id: 'teacher', label: t('nav.teacher'), icon: <Users className="w-4 h-4" />, roleOnly: 'gv' },
   ];
 
   return (
-    <aside className="w-56 bg-white border-r border-slate-200 py-4 flex flex-col gap-6 shrink-0 z-20">
+    <aside
+      onMouseEnter={() => setExpanded(true)}
+      onMouseLeave={() => setExpanded(false)}
+      className={`ml-sidebar bg-white border-r border-slate-200 p-3 flex flex-col gap-5 shrink-0 z-20 ${
+        expanded ? 'is-open' : ''
+      }`}
+    >
       <div>
-        <p className="px-5 mb-2 text-body text-slate-400">
-          Bài thực hành 01
-        </p>
+        <div className="flex items-center justify-between mb-4 px-1 h-6">
+          <p className="ml-side-label text-[12.5px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
+            {t('nav.progress')}
+          </p>
+          <span className="ml-side-label text-[12.5px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded whitespace-nowrap">
+            Module 01
+          </span>
+        </div>
 
-        <nav className="flex flex-col">
+
+        <nav className="flex flex-col gap-1">
           {steps.map((s) => {
             if (s.roleOnly && s.roleOnly !== userRole) return null;
             const childIds = s.children?.map((c) => c.id) ?? [];
@@ -239,27 +269,43 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             return (
               <div key={s.id}>
-                {/* Mục đang mở đánh dấu bằng vạch dọc bên trái, không tô nền cả ô */}
-                <button
+                <div
                   onClick={() => onSelectStep(s.children ? s.children[0].id : s.id)}
-                  className={`w-full text-left pl-5 pr-4 py-2.5 border-l-2 transition-colors text-body ${ isActive ? 'border-indigo-600 text-slate-900 font-medium' : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50' }`}
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl font-medium text-sm cursor-pointer transition-all select-none ${
+                    isActive
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200 font-bold'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  }`}
                 >
-                  {s.label}
-                </button>
+                  <div className="flex items-center gap-2.5">
+                    <span className={`${isActive ? 'text-white' : 'text-slate-400'}`}>{s.icon}</span>
+                    <span className="ml-side-label text-[clamp(13px,0.9vw,15.5px)] whitespace-nowrap">{s.label}</span>
+                  </div>
+                  {s.children && (
+                    <ChevronDown className={`ml-side-label w-3.5 h-3.5 transition-transform ${
+                      isActive ? 'text-white rotate-180' : 'text-slate-300'
+                    }`} />
+                  )}
+                </div>
 
-                {/* Mục con của phần Tài liệu, chỉ hiện khi đang ở phần này */}
+                {/* Hai mục nhỏ của phần Lý thuyết, chỉ hiện khi đang ở phần này */}
                 {s.children && isActive && (
-                  <div className="flex flex-col">
+                  <div className="mt-1 ml-4 pl-3 border-l-2 border-indigo-100 flex flex-col gap-0.5">
                     {s.children.map((c) => {
                       const childActive = currentStep === c.id;
                       return (
-                        <button
+                        <div
                           key={c.id}
                           onClick={() => onSelectStep(c.id)}
-                          className={`w-full text-left pl-9 pr-4 py-2 border-l-2 transition-colors text-body ${ childActive ? 'border-indigo-600 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50' }`}
+                          className={`flex items-center gap-2 px-2.5 py-2 rounded-lg cursor-pointer transition-all select-none ${
+                            childActive
+                              ? 'bg-indigo-50 text-indigo-700 font-bold'
+                              : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                          }`}
                         >
-                          {c.label}
-                        </button>
+                          <span className={`${childActive ? 'text-indigo-600' : 'text-slate-400'}`}>{c.icon}</span>
+                          <span className="ml-side-label text-[clamp(12.5px,0.86vw,15px)] whitespace-nowrap">{c.label}</span>
+                        </div>
                       );
                     })}
                   </div>
@@ -270,18 +316,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </nav>
       </div>
 
-      {isReportPassed && (
-        <p className="px-5 text-body text-emerald-700">
-          Mạch đã được xác nhận đạt.
-        </p>
-      )}
-
-      {isGuest && (
-        <p className="mt-auto px-5 pt-4 border-t border-slate-200 text-body text-slate-400 leading-relaxed">
-          Chế độ khách — kết quả không ghi vào sổ điểm.
-        </p>
-      )}
     </aside>
+  );
+};
+
+export const Footer: React.FC = () => {
+  return (
+    <footer className="h-10 bg-white border-t border-slate-200 px-6 flex items-center justify-between text-[12.5px] font-medium text-slate-400 uppercase tracking-widest shrink-0">
+      <div className="flex items-center gap-4">
+        <span className="flex items-center gap-1.5 font-bold text-slate-600">
+          <div className="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></div> 
+          ModuLab Engine Online
+        </span>
+      </div>
+      <div className="flex gap-4 items-center font-bold text-slate-500">
+        <span>Phiên bản v{APP_VERSION}</span>
+      </div>
+    </footer>
   );
 };
 
@@ -309,8 +360,8 @@ export const BentoCard: React.FC<BentoCardProps> = ({
           {title && (
             <div className="flex justify-between items-start mb-3">
               <div>
-                <h3 className="text-h3 opacity-90 mb-0.5">{title}</h3>
-                {subtitle && <p className="text-body opacity-90">{subtitle}</p>}
+                <h3 className="text-[clamp(13px,0.9vw,15.5px)] font-bold opacity-80 uppercase tracking-widest mb-0.5">{title}</h3>
+                {subtitle && <p className="text-sm font-semibold opacity-90">{subtitle}</p>}
               </div>
               {action && <div>{action}</div>}
             </div>
@@ -327,8 +378,8 @@ export const BentoCard: React.FC<BentoCardProps> = ({
       {(title || action) && (
         <div className="flex justify-between items-start mb-4 gap-2">
           <div>
-            {title && <h3 className="text-h3 mb-1">{title}</h3>}
-            {subtitle && <p className="text-body text-slate-600">{subtitle}</p>}
+            {title && <h3 className="text-[clamp(13px,0.9vw,15.5px)] font-bold text-slate-400 uppercase tracking-widest mb-1">{title}</h3>}
+            {subtitle && <p className="text-base font-bold text-slate-800 leading-snug">{subtitle}</p>}
           </div>
           {action && <div className="shrink-0">{action}</div>}
         </div>
@@ -351,8 +402,8 @@ export const WarningBadge: React.FC<WarningBadgeProps> = ({
 }) => {
   const styles = {
     warning: 'bg-amber-50 text-amber-800 border-amber-300',
-    danger: 'bg-rose-50 text-rose-800 border-rose-300 animate-pulse font-semibold',
-    success: 'bg-emerald-50 text-emerald-800 border-emerald-300 font-semibold',
+    danger: 'bg-rose-50 text-rose-800 border-rose-300 animate-pulse font-bold',
+    success: 'bg-emerald-50 text-emerald-800 border-emerald-300 font-bold',
     info: 'bg-blue-50 text-blue-800 border-blue-300',
   };
 
@@ -364,7 +415,7 @@ export const WarningBadge: React.FC<WarningBadgeProps> = ({
   };
 
   return (
-    <div className={`flex items-center gap-2.5 px-3.5 py-2 rounded-xl border text-body leading-relaxed ${styles[type]} ${className}`}>
+    <div className={`flex items-center gap-2.5 px-3.5 py-2 rounded-xl border text-[clamp(13px,0.9vw,15.5px)] leading-relaxed ${styles[type]} ${className}`}>
       {icons[type]}
       <span className="flex-1">{text}</span>
     </div>
@@ -376,7 +427,8 @@ export const WarningBadge: React.FC<WarningBadgeProps> = ({
  * Không chắn thao tác vì không nhận sự kiện chuột.
  */
 export const VersionBadge: React.FC = () => (
-  <div className="fixed bottom-2 left-2 z-50 pointer-events-none select-none px-2 py-1 rounded-md bg-slate-900/70 text-white text-meta font-semibold tracking-wide">
+  <div className="fixed bottom-2 left-2 z-50 pointer-events-none select-none
+    px-2 py-1 rounded-md bg-slate-900/70 text-white text-[11.5px] font-bold tracking-wide">
     ModuLab v{APP_VERSION}
   </div>
 );

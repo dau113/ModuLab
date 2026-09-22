@@ -43,8 +43,6 @@ CREATE TABLE IF NOT EXISTS lab_modules (
   title          TEXT NOT NULL,
   description    TEXT NOT NULL DEFAULT '',
   theory_content TEXT NOT NULL DEFAULT '',
-  -- Ngưỡng sai số tương đối để bài được tính là đạt, ví dụ 0.10 là 10%
-  max_error      REAL NOT NULL DEFAULT 0.10,
   status         TEXT NOT NULL DEFAULT 'da_duyet'
                  CHECK (status IN ('nhap', 'cho_duyet', 'da_duyet')),
   owner_id       TEXT REFERENCES users(id) ON DELETE SET NULL,

@@ -1,12 +1,15 @@
 /**
- * F0 — Trang chủ, dựng theo lối trang giới thiệu môn học của các nền tảng học
- * thuật: chữ dẫn dắt, không dùng thẻ trang trí.
+ * F0 — Trang chủ.
  *
- * Bốn nguyên tắc áp dụng ở đây:
- *   · Phân cấp do cỡ chữ và độ đậm, không do màu hay khung thẻ.
- *   · Biểu tượng chỉ dùng khi nó làm được việc, không dùng để trang trí.
- *   · Màu nhấn mang nghĩa "đây là hành động chính", không phải màu thương hiệu.
- *   · Số liệu nằm trong câu văn, không tách thành ô riêng.
+ * Nguyên tắc về màu: màu chàm chỉ dành cho MỘT việc là hành động chính (nút vào
+ * phòng thực hành, dòng đang chọn, viền khi bấm phím). Mọi thứ còn lại dùng
+ * thang xám: phân cấp do cỡ chữ và độ đậm quyết định, không phải do màu. Trước
+ * đây tiêu đề, biểu tượng, số liệu, nút bấm đều cùng một màu chàm nên không có
+ * gì nổi bật hơn gì.
+ *
+ * Về bố cục: khối chọn tài khoản là thao tác đăng nhập nên trình bày như một
+ * danh sách chọn, còn khối giới thiệu các phần là thông tin nên trình bày như
+ * một danh sách có đánh số. Hai mục đích khác nhau thì hình thức phải khác nhau.
  */
 import React, { useState } from 'react';
 import { ArrowRight } from 'lucide-react';
@@ -21,10 +24,26 @@ interface HomeMenuProps {
   currentUserId?: string;
 }
 
-type Role = 'hs' | 'gv';
+type Role = 'hs' | 'gv' | 'khach';
 
-/** Bốn phần của ứng dụng, viết thành một hàng chữ chứ không phải bốn thẻ */
-const SECTIONS = ['Khởi động', 'Thực hành', 'Báo cáo thực hành', 'Tài liệu'];
+const SECTIONS = [
+  {
+    name: 'Khởi động',
+    desc: 'Trắc nghiệm nhanh hoặc trò chơi phiêu lưu, lấy câu hỏi từ ngân hàng 75 câu chia ba chủ đề.',
+  },
+  {
+    name: 'Thực hành',
+    desc: 'Lắp mạch trên bảng lắp ráp ảo. Bộ giải mạch tính đúng dòng và thế, nối sai thì báo ngay chỗ sai.',
+  },
+  {
+    name: 'Báo cáo thực hành',
+    desc: 'Nhập số liệu từng lần đo, tự tính điện trở trung bình và sai số, rồi nộp cho giáo viên.',
+  },
+  {
+    name: 'Tài liệu',
+    desc: 'Lý thuyết bốn bài từ định luật Ohm tới nguồn điện, kèm tra cứu từng dụng cụ trong bộ thí nghiệm.',
+  },
+];
 
 export const HomeMenu: React.FC<HomeMenuProps> = ({ users, onEnter }) => {
   const { t } = useSettings();
@@ -32,97 +51,166 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({ users, onEnter }) => {
 
   const students = users.filter((u) => u.role === 'hs');
   const teachers = users.filter((u) => u.role === 'gv');
-  const list = role === 'hs' ? students : teachers;
+  const list = role === 'hs' ? students : role === 'gv' ? teachers : [];
+
+  const [picked, setPicked] = useState<string | null>(null);
+  const chosen = picked ?? list[0]?.id ?? null;
+
+  const enter = () => {
+    if (role === 'khach') onEnter(students[0]?.id ?? users[0]?.id, true);
+    else if (chosen) onEnter(chosen);
+  };
 
   return (
-    <div className="ml-scroll h-screen overflow-y-auto bg-[#fafaf9] text-slate-900">
-      <header className="h-14 border-b border-slate-200 px-6 md:px-10 flex items-center justify-between">
-        <span className="text-h3 font-medium tracking-tight">ModuLab</span>
+    <div className="ml-scroll h-screen overflow-y-auto bg-white text-slate-900">
+      {/* Thanh trên: chỉ tên ứng dụng và một nút cài đặt */}
+      <header className="h-16 border-b border-slate-200 px-6 md:px-10 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-md bg-slate-900 grid place-items-center">
+            <div className="w-3 h-3 border-2 border-white rounded-[2px]" />
+          </div>
+          <span className="text-[clamp(15px,1.05vw,17.5px)] font-semibold tracking-tight">ModuLab</span>
+        </div>
         <SettingsMenu />
       </header>
 
-      <div className="max-w-2xl mx-auto px-6 md:px-10">
+      <div className="max-w-4xl mx-auto px-6 md:px-10">
 
-        {/* Giới thiệu — số liệu nằm trong câu văn */}
-        <section className="pt-10 pb-8">
-          <h1 className="text-h1 tracking-tight">
-            ModuLab — trợ lý số hỗ trợ giờ học thực hành cho học sinh THPT
+        {/* Giới thiệu */}
+        <section className="pt-14 pb-12">
+          <h1 className="text-[clamp(28px,3.4vw,42px)] font-bold leading-[1.15] tracking-tight max-w-3xl">
+            “ModuLab” — trợ lý số hỗ trợ giờ học thực hành cho học sinh THPT
           </h1>
 
-          <p className="mt-6 text-h3 text-slate-700 leading-[1.75]">
+          <p className="mt-5 text-[clamp(15px,1.15vw,18px)] text-slate-600 leading-relaxed max-w-2xl">
             {t('home.hero.intro')}
           </p>
 
-          <p className="mt-4 text-h3 text-slate-700 leading-[1.75]">
-            Ứng dụng có <strong className="font-semibold">75 câu hỏi</strong> chia ba chủ đề,{' '}
-            <strong className="font-semibold">13 linh kiện</strong> mô phỏng theo bộ dụng cụ thật và{' '}
-            <strong className="font-semibold">4 bài lý thuyết</strong> từ định luật Ohm tới nguồn điện.
-          </p>
+          <dl className="mt-8 flex flex-wrap gap-x-12 gap-y-4">
+            {[
+              ['75', 'câu hỏi'],
+              ['14', 'linh kiện mô phỏng'],
+              ['4', 'bài lý thuyết'],
+            ].map(([n, label]) => (
+              <div key={label}>
+                <dt className="text-[clamp(22px,1.9vw,28px)] font-semibold leading-none tabular-nums">{n}</dt>
+                <dd className="text-[clamp(13px,0.9vw,15.5px)] text-slate-500 mt-1.5">{label}</dd>
+              </div>
+            ))}
+          </dl>
         </section>
 
-        {/* Bốn phần — một hàng chữ, không phải bốn thẻ */}
-        <section className="py-6 border-t border-slate-200">
-          <h2 className="text-h2 mb-2">Bốn phần của ứng dụng</h2>
-          <p className="text-h3 text-slate-700 leading-[1.75]">
-            {SECTIONS.map((s, i) => (
-              <React.Fragment key={s}>
-                {i > 0 && <span className="text-slate-300"> · </span>}
-                <span>{s}</span>
-              </React.Fragment>
-            ))}
-          </p>
-          <p className="mt-2 text-body text-slate-500 leading-relaxed">
+        {/* Đăng nhập — đây là thao tác, nên trình bày như một danh sách chọn */}
+        <section className="pb-14">
+          <div className="rounded-xl border border-slate-200 overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-200">
+              <h2 className="text-[clamp(16px,1.2vw,19px)] font-semibold">Vào phòng thực hành</h2>
+              <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-500 mt-0.5">
+                Chọn tài khoản của em, hoặc vào xem thử với tư cách khách.
+              </p>
+            </div>
+
+            {/* Chọn vai trò */}
+            <div className="px-5 pt-4">
+              <div className="inline-flex rounded-lg border border-slate-200 overflow-hidden">
+                {([
+                  ['hs', `Học sinh (${students.length})`],
+                  ['gv', `Giáo viên (${teachers.length})`],
+                  ['khach', 'Khách'],
+                ] as [Role, string][]).map(([id, label]) => (
+                  <button key={id}
+                    onClick={() => { setRole(id); setPicked(null); }}
+                    className={`h-9 px-4 text-[clamp(13px,0.9vw,15.5px)] transition-colors ${
+                      role === id
+                        ? 'bg-slate-900 text-white font-medium'
+                        : 'text-slate-600 hover:bg-slate-50'
+                    }`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Danh sách tài khoản */}
+            <div className="px-5 py-4">
+              {role === 'khach' ? (
+                <p className="text-[clamp(14px,0.98vw,16.5px)] text-slate-600 py-2">
+                  Vào xem toàn bộ ứng dụng mà không ghi lại kết quả. Bài làm và số liệu sẽ không được lưu.
+                </p>
+              ) : (
+                <ul className="divide-y divide-slate-100 border border-slate-200 rounded-lg">
+                  {list.map((u) => (
+                    <li key={u.id}>
+                      <button
+                        onClick={() => setPicked(u.id)}
+                        onDoubleClick={enter}
+                        className={`w-full text-left px-4 py-3 flex items-center gap-3 transition-colors ${
+                          chosen === u.id ? 'bg-indigo-50' : 'hover:bg-slate-50'
+                        }`}>
+                        <span className={`w-4 h-4 rounded-full border-2 shrink-0 grid place-items-center ${
+                          chosen === u.id ? 'border-indigo-600' : 'border-slate-300'
+                        }`}>
+                          {chosen === u.id && <span className="w-2 h-2 rounded-full bg-indigo-600" />}
+                        </span>
+                        <span className="text-[clamp(14px,0.98vw,16.5px)] truncate">{u.name}</span>
+                        {u.teamCode && (
+                          <span className="ml-auto text-[clamp(13px,0.9vw,15.5px)] text-slate-400 shrink-0">
+                            {u.teamCode}
+                          </span>
+                        )}
+                      </button>
+                    </li>
+                  ))}
+                  {list.length === 0 && (
+                    <li className="px-4 py-3 text-[clamp(14px,0.98vw,16.5px)] text-slate-500">
+                      Chưa có tài khoản nào.
+                    </li>
+                  )}
+                </ul>
+              )}
+
+              <button
+                onClick={enter}
+                disabled={role !== 'khach' && !chosen}
+                className="mt-4 h-11 px-5 rounded-lg bg-indigo-600 hover:bg-indigo-700
+                  disabled:bg-slate-200 disabled:text-slate-400
+                  text-white text-[clamp(14px,0.98vw,16.5px)] font-medium
+                  flex items-center gap-2 transition-colors">
+                Vào phòng thực hành
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Giới thiệu các phần — đây là thông tin, nên trình bày như một danh sách */}
+        <section className="pb-16 border-t border-slate-200 pt-10">
+          <h2 className="text-[clamp(16px,1.2vw,19px)] font-semibold mb-1">Ứng dụng gồm bốn phần</h2>
+          <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-500 mb-6">
             Làm theo thứ tự này là hợp lý nhất, nhưng em vào phần nào trước cũng được.
           </p>
-        </section>
 
-        {/* Chọn tài khoản — danh sách tên, mỗi dòng một mũi tên */}
-        <section className="py-6 border-t border-slate-200">
-          <h2 className="text-h2 mb-1">Vào phòng thực hành</h2>
-          <p className="text-body text-slate-500 mb-5">
-            Chọn tài khoản của em để bắt đầu.
-          </p>
-
-          <div className="flex gap-5 mb-3 text-body">
-            {([['hs', 'Học sinh'], ['gv', 'Giáo viên']] as [Role, string][]).map(([id, label]) => (
-              <button key={id} onClick={() => setRole(id)}
-                className={`pb-1 border-b-2 transition-colors ${
-                  role === id
-                    ? 'border-indigo-600 text-slate-900'
-                    : 'border-transparent text-slate-500 hover:text-slate-800'
-                }`}>
-                {label}
-              </button>
-            ))}
-          </div>
-
-          <ul className="border-t border-slate-200">
-            {list.map((u) => (
-              <li key={u.id} className="border-b border-slate-200">
-                <button onClick={() => onEnter(u.id)}
-                  className="w-full text-left py-3 flex items-center gap-3 group">
-                  <span className="text-h3 text-slate-800">{u.name}</span>
-                  {u.teamCode && (
-                    <span className="text-body text-slate-400">{u.teamCode}</span>
-                  )}
-                  <ArrowRight className="w-4 h-4 text-slate-300 ml-auto shrink-0
-                    group-hover:text-indigo-600 group-hover:translate-x-0.5 transition-all" />
-                </button>
+          <ol className="space-y-5">
+            {SECTIONS.map((s, i) => (
+              <li key={s.name} className="flex gap-4">
+                <span className="shrink-0 w-7 text-[clamp(14px,0.98vw,16.5px)] text-slate-400 tabular-nums pt-0.5">
+                  {i + 1}.
+                </span>
+                <div>
+                  <h3 className="text-[clamp(15px,1.05vw,17.5px)] font-medium">{s.name}</h3>
+                  <p className="text-[clamp(14px,0.98vw,16.5px)] text-slate-600 leading-relaxed mt-1 max-w-2xl">
+                    {s.desc}
+                  </p>
+                </div>
               </li>
             ))}
-          </ul>
-
-          <button
-            onClick={() => onEnter(students[0]?.id ?? users[0]?.id, true)}
-            className="mt-4 text-body text-slate-500 underline underline-offset-4 hover:text-slate-800 transition-colors">
-            Hoặc vào xem thử với tư cách khách
-          </button>
+          </ol>
         </section>
       </div>
 
       <footer className="border-t border-slate-200 py-5 px-6 md:px-10">
-        <p className="max-w-2xl mx-auto text-body text-slate-400">
-          ModuLab v{APP_VERSION}
+        <p className="max-w-4xl mx-auto text-[clamp(13px,0.9vw,15.5px)] text-slate-400">
+          ModuLab v{APP_VERSION} · Phòng thực hành Vật lí điện học
         </p>
       </footer>
     </div>

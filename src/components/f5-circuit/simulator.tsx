@@ -919,13 +919,15 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
       <div className="ml-scroll flex flex-col gap-3 lg:min-h-0 lg:overflow-y-auto lg:pr-2">
         <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden shrink-0">
           <header className="px-4 py-2.5 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between gap-2">
-            <h2 className="text-h3">
+            <h2 className="text-[clamp(12.5px,0.86vw,15px)] font-extrabold tracking-widest text-slate-700 uppercase">
               Hệ thống kiểm tra
             </h2>
             <button
               onClick={() => setChecked((v) => !v)}
               disabled={parts.length === 0}
-              className={`h-8 px-3 rounded-lg text-meta font-semibold flex items-center gap-1.5 transition-colors disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed ${ checked ? 'bg-slate-700 hover:bg-slate-800 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white' }`}>
+              className={`h-8 px-3 rounded-lg text-[clamp(12.5px,0.86vw,15px)] font-bold flex items-center gap-1.5 transition-colors disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed ${
+                checked ? 'bg-slate-700 hover:bg-slate-800 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+              }`}>
               <SearchCheck className="w-4 h-4" /> {checked ? 'Ẩn kết quả' : 'Kiểm tra'}
             </button>
           </header>
@@ -933,19 +935,19 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
           {/* Chỗ hỏng cụ thể luôn hiện, không cần bấm Kiểm tra */}
           {damages.length > 0 && (
             <div className="ml-rise p-3 space-y-2 border-b border-rose-200 bg-rose-50">
-              <div className="flex items-center gap-2 text-rose-800 font-semibold text-body">
+              <div className="flex items-center gap-2 text-rose-800 font-extrabold text-[clamp(13px,0.9vw,15.5px)]">
                 <AlertTriangle className="w-4 h-4 shrink-0" />
                 Nguy hiểm — ngắt điện ngay
               </div>
               {damages.map((d) => (
                 <div key={d.compId} className="rounded-lg bg-white border border-rose-200 px-3 py-2">
-                  <div className="text-meta font-semibold text-rose-700 mb-0.5">
+                  <div className="text-[12.5px] font-bold text-rose-700 mb-0.5">
                     Vị trí: {PART_CATALOG[parts.find((p) => p.id === d.compId)?.kind ?? 'resistor'].short} ({d.compId})
                   </div>
-                  <p className="text-meta text-rose-900 leading-snug">{d.reason}</p>
+                  <p className="text-[clamp(12.5px,0.86vw,15px)] text-rose-900 leading-snug">{d.reason}</p>
                 </div>
               ))}
-              <p className="text-meta text-rose-700">
+              <p className="text-[12.5px] text-rose-700">
                 Số đọc trên các đồng hồ đã bị khoá vì mạch hỏng — sửa lại mạch rồi bấm Kiểm tra.
               </p>
             </div>
@@ -953,11 +955,18 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
 
           {checked && (
             <div className="ml-scroll p-3 space-y-2 max-h-[280px] overflow-y-auto">
-              <div className={`ml-rise rounded-xl px-3 py-2 text-meta font-semibold text-center ${ report.level === 'ok' ? 'bg-emerald-100 text-emerald-800' : report.level === 'warn' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800' }`}>{report.title}</div>
+              <div className={`ml-rise rounded-xl px-3 py-2 text-[clamp(12.5px,0.86vw,15px)] font-bold text-center ${
+                report.level === 'ok' ? 'bg-emerald-100 text-emerald-800'
+                  : report.level === 'warn' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'
+              }`}>{report.title}</div>
 
               {report.messages.map((m, i) => (
                 <div key={i}
-                  className={`ml-rise flex gap-2 rounded-xl px-3 py-2 text-meta leading-relaxed border ${ m.level === 'ok' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : m.level === 'warn' ? 'bg-amber-50 border-amber-200 text-amber-900' : 'bg-rose-50 border-rose-200 text-rose-800' }`}
+                  className={`ml-rise flex gap-2 rounded-xl px-3 py-2 text-[clamp(12.5px,0.86vw,15px)] leading-relaxed border ${
+                    m.level === 'ok' ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                      : m.level === 'warn' ? 'bg-amber-50 border-amber-200 text-amber-900'
+                        : 'bg-rose-50 border-rose-200 text-rose-800'
+                  }`}
                   style={{ animationDelay: `${i * 50}ms` }}>
                   {m.level === 'ok' ? <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
                     : m.level === 'warn' ? <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -967,7 +976,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
               ))}
 
               {isPassed && (
-                <p className="text-meta text-slate-400 pt-1">
+                <p className="text-[12.5px] text-slate-400 pt-1">
                   Bản lắp này đã được xác nhận đạt — bước Báo cáo thực hành đã mở khoá.
                 </p>
               )}
@@ -977,15 +986,17 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
 
         <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden shrink-0">
           <header className="px-4 py-2.5 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between">
-            <h2 className="text-h3">{t('sim.tray')}</h2>
-            <span className="text-meta text-slate-400 font-semibold">{visibleParts.length}/{PART_ORDER.length}</span>
+            <h2 className="text-[clamp(12.5px,0.86vw,15px)] font-extrabold tracking-widest text-slate-700 uppercase">{t('sim.tray')}</h2>
+            <span className="text-[12.5px] text-slate-400 font-semibold">{visibleParts.length}/{PART_ORDER.length}</span>
           </header>
 
           <div className="p-3">
             <div className="flex gap-2 mb-3">
               {(['hot', 'cold'] as const).map((side) => (
                 <button key={side} onClick={() => setWireSide(side)}
-                  className={`flex-1 h-9 rounded-lg border text-body font-semibold flex items-center justify-center gap-2 transition-colors ${ wireSide === side ? 'border-slate-700 bg-slate-50' : 'border-slate-200 hover:border-slate-400' }`}>
+                  className={`flex-1 h-9 rounded-lg border text-[clamp(13px,0.9vw,15.5px)] font-bold flex items-center justify-center gap-2 transition-colors ${
+                    wireSide === side ? 'border-slate-700 bg-slate-50' : 'border-slate-200 hover:border-slate-400'
+                  }`}>
                   <span className="w-3.5 h-3.5 rounded-full" style={{ background: WIRE_COLORS[side] }} />
                   {side === 'hot' ? 'Dây đỏ (+)' : 'Dây xanh (−)'}
                 </button>
@@ -995,12 +1006,12 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
             {/* Bảng lắp ráp: thêm bao nhiêu tấm cũng được */}
             <button
               onClick={addBoard}
-              className="w-full h-10 mb-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-body font-semibold flex items-center justify-center gap-2 transition-colors"
+              className="w-full h-10 mb-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[clamp(13px,0.9vw,15.5px)] font-bold flex items-center justify-center gap-2 transition-colors"
             >
               <Plus className="w-4 h-4" />
               Thêm bảng lắp ráp
               {boards.length > 0 && (
-                <span className="ml-1 px-1.5 h-5 rounded-full bg-white/20 text-meta grid place-items-center">
+                <span className="ml-1 px-1.5 h-5 rounded-full bg-white/20 text-[12px] grid place-items-center">
                   {boards.length}
                 </span>
               )}
@@ -1013,7 +1024,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={t('sim.search')}
-                className="w-full h-9 pl-8 pr-8 rounded-xl bg-slate-50 border border-slate-200 text-meta outline-none focus:border-indigo-400 focus:bg-white transition-colors"
+                className="w-full h-9 pl-8 pr-8 rounded-xl bg-slate-50 border border-slate-200 text-[clamp(12.5px,0.86vw,15px)] outline-none focus:border-indigo-400 focus:bg-white transition-colors"
               />
               {query && (
                 <button onClick={() => setQuery('')}
@@ -1025,7 +1036,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
 
             <div className="ml-scroll grid grid-cols-2 gap-2 max-h-[300px] overflow-y-auto pr-1.5">
               {visibleParts.length === 0 && (
-                <p className="col-span-2 text-center text-meta text-slate-400 py-6">{t('sim.noResult')}</p>
+                <p className="col-span-2 text-center text-[clamp(12.5px,0.86vw,15px)] text-slate-400 py-6">{t('sim.noResult')}</p>
               )}
               {visibleParts.map((k) => {
                 const used = usedOf(k);
@@ -1038,7 +1049,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
                 >
                   {/* Số cái đang dùng trên bàn lắp */}
                   {used > 0 && (
-                    <span className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 rounded-full text-meta font-semibold grid place-items-center bg-indigo-600 text-white">
+                    <span className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 rounded-full text-[11px] font-extrabold grid place-items-center bg-indigo-600 text-white">
                       {used}
                     </span>
                   )}
@@ -1047,8 +1058,8 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
                     <PartThumb kind={k} size={k === 'multimeter' ? 26 : 60}
                       live={{ closed: true, knob: 0.4, needle: 0.55, func: 'V', unit: 'V', auto: true, reading: '12.0' }} />
                   </div>
-                  <span className="text-meta font-semibold text-slate-600 text-center leading-tight">{PART_CATALOG[k].short}</span>
-                  <span className="text-meta font-semibold flex items-center gap-0.5 text-indigo-600 opacity-0 group-hover:opacity-100">
+                  <span className="text-[12px] font-bold text-slate-600 text-center leading-tight">{PART_CATALOG[k].short}</span>
+                  <span className="text-[11.5px] font-bold flex items-center gap-0.5 text-indigo-600 opacity-0 group-hover:opacity-100">
                     <Plus className="w-2.5 h-2.5" /> Thêm
                   </span>
                 </button>
@@ -1061,7 +1072,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
           <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden shrink-0">
             <header className="px-4 py-2.5 border-b border-slate-200 bg-slate-50/80 flex items-center gap-2">
               <Gauge className="w-3.5 h-3.5 text-indigo-600" />
-              <h2 className="text-h3">Đồng hồ vạn năng</h2>
+              <h2 className="text-[clamp(12.5px,0.86vw,15px)] font-extrabold tracking-widest text-slate-700 uppercase">Đồng hồ vạn năng</h2>
             </header>
             <div className="p-3 space-y-3">
               {parts.filter((p) => p.kind === 'multimeter').map((p, mi) => {
@@ -1073,16 +1084,20 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
                 return (
                   <div key={p.id} className="border border-slate-200 rounded-xl p-2.5 bg-slate-50/60">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-meta font-semibold text-slate-700">Đồng hồ {mi + 1}</span>
-                      <span className="font-mono font-semibold text-body text-slate-900">
-                        {v.text || '– – –'} <span className="text-meta text-slate-500">{v.unit}</span>
+                      <span className="text-[clamp(12.5px,0.86vw,15px)] font-extrabold text-slate-700">Đồng hồ {mi + 1}</span>
+                      <span className="font-mono font-extrabold text-[clamp(13px,0.9vw,15.5px)] text-slate-900">
+                        {v.text || '– – –'} <span className="text-[12.5px] text-slate-500">{v.unit}</span>
                       </span>
                     </div>
 
                     <div className="grid grid-cols-4 gap-1">
                       {DMM_FUNCS.map((fn) => (
                         <button key={fn.id} title={fn.name} onClick={() => setDmmFunc(p.id, fn.id)}
-                          className={`h-6 rounded-md text-meta font-semibold border transition-colors ${ (p.func ?? 'V') === fn.id ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100' }`}>{fn.label}</button>
+                          className={`h-6 rounded-md text-[12px] font-extrabold border transition-colors ${
+                            (p.func ?? 'V') === fn.id
+                              ? 'bg-indigo-600 border-indigo-600 text-white'
+                              : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
+                          }`}>{fn.label}</button>
                       ))}
                     </div>
 
@@ -1109,7 +1124,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
                 <CircuitBoard className="w-4 h-4 text-indigo-600" />
-                <h2 className="text-h3">
+                <h2 className="text-[clamp(12.5px,0.86vw,15px)] font-extrabold tracking-widest text-slate-700 uppercase">
                   Bảng lắp ráp mạch điện
                 </h2>
               </div>
@@ -1117,7 +1132,8 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
               <button
                 onClick={() => setGuideOpen(true)}
                 title="Mở hướng dẫn sử dụng phần Thực hành"
-                className="h-9 px-3.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-body font-semibold flex items-center gap-1.5 transition-colors">
+                className="h-9 px-3.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white
+                  text-[clamp(13px,0.9vw,15.5px)] font-bold flex items-center gap-1.5 transition-colors">
                 <HelpCircle className="w-4 h-4" /> Hướng dẫn
               </button>
 
@@ -1129,7 +1145,9 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
                 ] as [boolean, string, React.ElementType][]).map(([mode, label, Icon]) => (
                   <button key={label} onClick={() => setSchematic(mode)}
                     title={mode ? 'Vẽ lại mạch bằng ký hiệu quy ước như sơ đồ trên giấy' : 'Xem hình dạng thật của bộ dụng cụ'}
-                    className={`h-9 px-3.5 text-body font-semibold flex items-center gap-1.5 transition-colors ${ schematic === mode ? 'bg-indigo-600 text-white' : 'bg-white text-slate-500 hover:bg-indigo-50' }`}>
+                    className={`h-9 px-3.5 text-[clamp(13px,0.9vw,15.5px)] font-bold flex items-center gap-1.5 transition-colors ${
+                      schematic === mode ? 'bg-indigo-600 text-white' : 'bg-white text-slate-500 hover:bg-indigo-50'
+                    }`}>
                     <Icon className="w-4 h-4" /> {label}
                   </button>
                 ))}
@@ -1137,16 +1155,19 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
             </div>
             <div className="flex items-center gap-1.5">
               <button onClick={toggleK}
-                className={`h-7 px-2.5 rounded-lg text-meta font-semibold flex items-center gap-1.5 border transition-colors ${ kClosed ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100' }`}>
+                className={`h-7 px-2.5 rounded-lg text-[clamp(12.5px,0.86vw,15px)] font-bold flex items-center gap-1.5 border transition-colors ${
+                  kClosed ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
+                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                }`}>
                 <Power className="w-3.5 h-3.5" />
                 {kClosed ? 'Khóa K: đóng' : 'Khóa K: mở'}
               </button>
               <button onClick={() => { setWires((p) => p.map((w) => ({ ...w, points: [] }))); setHint('Đã duỗi thẳng lại toàn bộ dây nối.'); }}
-                className="h-7 px-2.5 rounded-lg text-meta font-semibold bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center gap-1.5">
+                className="h-7 px-2.5 rounded-lg text-[clamp(12.5px,0.86vw,15px)] font-bold bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center gap-1.5">
                 <Spline className="w-3.5 h-3.5" /> Duỗi dây
               </button>
               <button onClick={() => { setWires([]); setPending(null); setHint('Đã tháo toàn bộ dây nối. Lắp lại mạch từ đầu.'); }}
-                className="h-7 px-2.5 rounded-lg text-meta font-semibold bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center gap-1.5">
+                className="h-7 px-2.5 rounded-lg text-[clamp(12.5px,0.86vw,15px)] font-bold bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center gap-1.5">
                 <RotateCcw className="w-3.5 h-3.5" /> Tháo dây
               </button>
             </div>
@@ -1175,7 +1196,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
                 className="w-8 h-8 grid place-items-center rounded-lg text-slate-500 hover:bg-slate-100">
                 <ZoomOut className="w-4 h-4" />
               </button>
-              <span className="w-11 text-center text-meta font-semibold text-slate-600 tabular-nums">
+              <span className="w-11 text-center text-[clamp(12.5px,0.86vw,15px)] font-extrabold text-slate-600 tabular-nums">
                 {Math.round(view.z * 100)}%
               </span>
               <button title="Phóng to" onClick={() => zoomAt(view.z * 1.2)}
@@ -1617,7 +1638,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
           </div>
 
           <footer className="px-4 py-2 border-t border-slate-200 bg-slate-50/70 flex items-center gap-3">
-            <span className="text-meta text-slate-500 flex-1 truncate">{hint}</span>
+            <span className="text-[clamp(12.5px,0.86vw,15px)] text-slate-500 flex-1 truncate">{hint}</span>
             <button onClick={() => {
                 const stamp = new Date().toLocaleTimeString('vi-VN');
                 const payload = { name: `Bản lắp ${stamp}`, data: { parts, wires }, isValid: report.safeToPower };
@@ -1626,7 +1647,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
                   .then(() => { setSavedAt(stamp); setHint('Đã lưu bản lắp vào cơ sở dữ liệu.'); })
                   .catch(() => setHint('Không lưu được bản lắp — kiểm tra lại máy chủ dữ liệu.'));
               }}
-              className="h-8 px-3 rounded-xl text-meta font-semibold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center gap-1.5 shrink-0">
+              className="h-8 px-3 rounded-xl text-[clamp(12.5px,0.86vw,15px)] font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center gap-1.5 shrink-0">
               <Save className="w-3.5 h-3.5 text-emerald-600" />
               {savedAt ? `Đã lưu ${savedAt}` : 'Lưu bản lắp'}
             </button>
@@ -1644,7 +1665,9 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
 
 const DmmChip: React.FC<{ label: string; active: boolean; onClick: () => void }> = ({ label, active, onClick }) => (
   <button onClick={onClick}
-    className={`h-6 px-2 rounded-md text-meta font-semibold border transition-colors ${ active ? 'bg-cyan-600 border-cyan-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100' }`}>{label}</button>
+    className={`h-6 px-2 rounded-md text-[12px] font-extrabold border transition-colors ${
+      active ? 'bg-cyan-600 border-cyan-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
+    }`}>{label}</button>
 );
 
 /** Núm xoay biến trở — kéo lên/xuống hoặc dùng thanh trượt */
@@ -1683,14 +1706,16 @@ const RheostatKnob: React.FC<{
           <div className="flex gap-1 mb-1.5">
             {items.map((it, i) => (
               <button key={it.id} onClick={() => onPick(it.id)}
-                className={`h-6 px-2 rounded-md text-meta font-semibold border transition-colors ${ it.id === activeId ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-200 text-slate-500 hover:bg-slate-100' }`}>#{i + 1}</button>
+                className={`h-6 px-2 rounded-md text-[12px] font-bold border transition-colors ${
+                  it.id === activeId ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-200 text-slate-500 hover:bg-slate-100'
+                }`}>#{i + 1}</button>
             ))}
           </div>
         )}
-        <div className="text-meta font-semibold text-slate-500">
+        <div className="text-[12px] font-bold uppercase tracking-wide text-slate-500">
           {items.find((i) => i.id === activeId)?.label ?? 'Núm biến trở'}
         </div>
-        <div className="font-mono font-semibold text-slate-800 text-body">{Math.round(value * 120)} Ω</div>
+        <div className="font-mono font-extrabold text-slate-800 text-sm">{Math.round(value * 120)} Ω</div>
         <input type="range" min={0} max={100} value={Math.round(value * 100)}
           onChange={(e) => onChange(Number(e.target.value) / 100)}
           className="w-24 accent-indigo-600 mt-1" />

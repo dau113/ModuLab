@@ -217,7 +217,7 @@ export const QuestionArt: React.FC<{ questionId: string }> = ({ questionId }) =>
                       auto: true, reading: '12.00', ...spec.live }} />
           : spec.node ?? <BoardArt />}
       </div>
-      <figcaption className="text-meta text-slate-500 text-center mt-2 leading-snug">
+      <figcaption className="text-[12.5px] text-slate-500 text-center mt-2 leading-snug">
         {spec.caption}
       </figcaption>
     </figure>

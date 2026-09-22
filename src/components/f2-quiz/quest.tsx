@@ -114,21 +114,21 @@ export const PhysicsQuest: React.FC<PhysicsQuestProps> = ({ userRole, onFinishQu
             <Rocket className="w-4 h-4 text-white" />
           </span>
           <div>
-            <div className="text-h3 font-semibold leading-tight">
+            <div className="text-[clamp(15px,1.05vw,17.5px)] font-extrabold leading-tight">
               Physics Quest — Electric City
             </div>
-            <div className="text-meta text-slate-500">
+            <div className="text-[12.5px] text-slate-500">
               Trả lời đúng để đánh bại quái vật và giải cứu công chúa Ohmia
             </div>
           </div>
         </div>
 
         <label className="flex items-center gap-2">
-          <span className="text-meta font-semibold text-slate-500">Chủ đề</span>
+          <span className="text-[12.5px] font-bold text-slate-500 uppercase">Chủ đề</span>
           <select
             value={topic ?? 'all'}
             onChange={(e) => setTopic(e.target.value === 'all' ? null : e.target.value)}
-            className="h-9 px-2.5 rounded-lg bg-slate-50 border border-slate-200 text-body font-semibold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500"
+            className="h-9 px-2.5 rounded-lg bg-slate-50 border border-slate-200 text-[clamp(13px,0.9vw,15.5px)] font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <option value="all">Tổng hợp ({counts.all} câu)</option>
             {QUIZ_TOPICS.map((t) => (
@@ -138,27 +138,31 @@ export const PhysicsQuest: React.FC<PhysicsQuestProps> = ({ userRole, onFinishQu
         </label>
 
         <label className="flex items-center gap-2">
-          <span className="text-meta font-semibold text-slate-500">Số câu</span>
+          <span className="text-[12.5px] font-bold text-slate-500 uppercase">Số câu</span>
           <div className="flex rounded-lg border border-slate-200 overflow-hidden">
             {ROUND_SIZES.map((n) => (
               <button key={n} onClick={() => setRoundSize(n)}
-                className={`h-9 w-10 text-body font-semibold transition-colors ${ roundSize === n ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-50' }`}>{n}</button>
+                className={`h-9 w-10 text-[clamp(13px,0.9vw,15.5px)] font-bold transition-colors ${
+                  roundSize === n ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-50'
+                }`}>{n}</button>
             ))}
           </div>
         </label>
 
         <button
           onClick={() => { setLastResult(null); setRunId((n) => n + 1); }}
-          className="h-9 px-3.5 rounded-lg bg-slate-700 hover:bg-slate-800 text-white text-body font-semibold flex items-center gap-2 transition-colors"
+          className="h-9 px-3.5 rounded-lg bg-slate-700 hover:bg-slate-800 text-white text-[clamp(13px,0.9vw,15.5px)] font-bold flex items-center gap-2 transition-colors"
         >
           <Shuffle className="w-4 h-4" /> Vào màn mới
         </button>
       </div>
 
       {lastResult && (
-        <div className={`ml-rise shrink-0 rounded-xl border px-4 py-2.5 flex items-center gap-2.5 text-body ${ lastResult.won ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-amber-50 border-amber-200 text-amber-900' }`}>
+        <div className={`ml-rise shrink-0 rounded-xl border px-4 py-2.5 flex items-center gap-2.5 text-[clamp(13px,0.9vw,15.5px)] ${
+          lastResult.won ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-amber-50 border-amber-200 text-amber-900'
+        }`}>
           <Trophy className="w-4 h-4 shrink-0" />
-          <span className="font-semibold">
+          <span className="font-bold">
             {lastResult.won ? 'Giải cứu thành công!' : 'Pháp sư đã gục ngã.'}
           </span>
           <span>Đúng {lastResult.correct}/{lastResult.total} câu — kết quả đã ghi vào sổ điểm.</span>
@@ -177,7 +181,7 @@ export const PhysicsQuest: React.FC<PhysicsQuestProps> = ({ userRole, onFinishQu
       </div>
 
       {userRole === 'gv' && (
-        <p className="shrink-0 text-meta text-slate-400 flex items-center gap-1.5">
+        <p className="shrink-0 text-[12.5px] text-slate-400 flex items-center gap-1.5">
           <Info className="w-3.5 h-3.5" />
           Trò chơi bốc ngẫu nhiên câu hỏi từ ngân hàng của ModuLab; các câu cần xem hình linh kiện nằm ở phần Khởi động.
         </p>
