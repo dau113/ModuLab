@@ -13,7 +13,6 @@
  */
 import React, { useState } from 'react';
 import { ArrowRight } from 'lucide-react';
-import { useSettings } from '../../settings';
 import { SettingsMenu } from '../common';
 import { APP_VERSION } from '../../version';
 import type { ApiUser } from '../../api/client';
@@ -46,7 +45,6 @@ const SECTIONS = [
 ];
 
 export const HomeMenu: React.FC<HomeMenuProps> = ({ users, onEnter }) => {
-  const { t } = useSettings();
   const [role, setRole] = useState<Role>('hs');
 
   const students = users.filter((u) => u.role === 'hs');
@@ -82,14 +80,32 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({ users, onEnter }) => {
             “ModuLab” — trợ lý số hỗ trợ giờ học thực hành cho học sinh THPT
           </h1>
 
-          <p className="mt-5 text-[clamp(15px,1.15vw,18px)] text-slate-600 leading-relaxed max-w-2xl">
-            {t('home.hero.intro')}
-          </p>
+          <div className="mt-5 space-y-4 text-[clamp(15px,1.15vw,18px)] text-slate-600 leading-relaxed max-w-2xl">
+            <p>
+              Lắp xong một mạch điện, phần lớn học sinh không biết mình lắp đúng hay sai. Sợ hỏng
+              thiết bị nên không dám đóng điện, đành ngồi chờ giáo viên tới kiểm tra. Giáo viên thì
+              phải đi hết nhóm này sang nhóm khác, nên thời gian thật sự dành cho việc đo đạc chẳng
+              còn lại bao nhiêu. Dụng cụ đo cũng chỉ được giới thiệu qua từ trước, tới tiết thực hành
+              mới cầm vào tay thì nhiều em đã quên cách dùng.
+            </p>
+            <p>
+              Khi được giao đọc bài trước ở nhà, việc tra cứu cũng không dễ. Tài liệu trên mạng thì
+              nhiều nhưng khó biết nguồn nào đáng tin, nội dung hay lan man ngoài trọng tâm, phần lớn
+              chỉ có chữ nên đọc mau chán, và không phải chỗ nào cũng khớp với sách giáo khoa đang học.
+            </p>
+            <p>
+              ModuLab dựng lại phòng thực hành Vật lí điện học ngay trên máy. Em tự chọn linh kiện,
+              nối dây, đóng khoá và đọc số đo; lắp sai thì hệ thống chỉ đúng chỗ sai và giải thích vì
+              sao, nên thử lại bao nhiêu lần cũng được mà không hỏng gì. Lý thuyết bám theo chương
+              trình, gom về một chỗ cùng phần tra cứu từng dụng cụ, để em nắm được cách dùng trước
+              khi bước vào phòng thí nghiệm thật.
+            </p>
+          </div>
 
           <dl className="mt-8 flex flex-wrap gap-x-12 gap-y-4">
             {[
               ['75', 'câu hỏi'],
-              ['14', 'linh kiện mô phỏng'],
+              ['13', 'linh kiện mô phỏng'],
               ['4', 'bài lý thuyết'],
             ].map(([n, label]) => (
               <div key={label}>
@@ -209,9 +225,15 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({ users, onEnter }) => {
       </div>
 
       <footer className="border-t border-slate-200 py-5 px-6 md:px-10">
-        <p className="max-w-4xl mx-auto text-[clamp(13px,0.9vw,15.5px)] text-slate-400">
-          ModuLab v{APP_VERSION} · Phòng thực hành Vật lí điện học
-        </p>
+        <div className="max-w-4xl mx-auto space-y-2">
+          <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-500 max-w-2xl leading-relaxed">
+            Sản phẩm hướng theo chủ trương của Chính phủ và Bộ Giáo dục và Đào tạo về dạy học phát
+            triển năng lực, trong đó có yêu cầu tăng cường thực hành và thí nghiệm ở môn Vật lí.
+          </p>
+          <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-400">
+            ModuLab v{APP_VERSION} · Phòng thực hành Vật lí điện học
+          </p>
+        </div>
       </footer>
     </div>
   );

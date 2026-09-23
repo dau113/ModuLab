@@ -48,6 +48,14 @@ function Workspace() {
   const [isReportSubmitted, setIsReportSubmitted] = useState<boolean>(false);
   const [isGuestMode, setIsGuestMode] = useState<boolean>(false);
 
+  /* Hai dòng nhắc này đóng được; đóng rồi thì thôi không hiện lại trong phiên */
+  const [guestNoteOpen, setGuestNoteOpen] = useState(true);
+  const [offlineNoteOpen, setOfflineNoteOpen] = useState(true);
+
+  /** Trạng thái lưu bảng số liệu — phản ánh đúng việc đang xảy ra */
+  const [syncState, setSyncState] = useState<'idle' | 'saving' | 'saved' | 'local' | 'error'>('idle');
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
+
   const loadAll = useCallback(async () => {
     setLoadError(null);
     try {
@@ -111,7 +119,11 @@ function Workspace() {
 
   const handleUpdateRows = (rows: LabReportRow[]) => {
     setReportRows(rows);
-    if (currentUser) void api.saveReportRows(currentUser.id, currentModuleId, rows).catch(() => undefined);
+    if (!currentUser) return;
+    setSyncState('saving');
+    api.saveReportRows(currentUser.id, currentModuleId, rows)
+      .then(() => { setSyncState(isOffline() ? 'local' : 'saved'); setSavedAt(new Date()); })
+      .catch(() => setSyncState('error'));
   };
 
   /* Màn hình chờ và màn hình báo lỗi kết nối */
@@ -158,6 +170,7 @@ function Workspace() {
           const u = data.users.find((x) => x.id === userId);
           if (u) setCurrentUser(u);
           setIsGuestMode(!!guest);
+          setGuestNoteOpen(true);
           setCurrentStep(u?.role === 'gv' ? 'teacher' : 'quiz');
           setAtHome(false);
         })}
@@ -179,14 +192,19 @@ function Workspace() {
       />
 
       {/* Guest mode warning banner if triggered */}
-      {isGuestMode && (
-        <div className="bg-amber-400 text-slate-950 px-6 py-1.5 text-[clamp(13px,0.9vw,15.5px)] font-bold flex items-center justify-between shadow-sm z-10 animate-fadeIn">
-          <span>⚠️ Bạn đang truy cập ở Chế độ Khách (Chưa đăng nhập) — Kết quả Game ôn tập và Báo cáo sẽ không được ghi nhận vào điểm chính thức!</span>
-          <button 
-            onClick={() => setIsGuestMode(false)}
-            className="underline hover:text-indigo-900 text-[clamp(12.5px,0.86vw,15px)] ml-4 font-extrabold"
-          >
-            Đăng nhập ngay
+      {isGuestMode && guestNoteOpen && (
+        <div className="bg-amber-100 border-b border-amber-300 text-amber-900 px-6 py-1.5
+          text-[clamp(13px,0.9vw,15.5px)] flex items-center gap-3 z-10 animate-fadeIn">
+          <span className="flex-1">
+            Đang xem ở chế độ khách — kết quả làm bài sẽ không được ghi vào sổ điểm.
+          </span>
+          <button onClick={() => setAtHome(true)}
+            className="underline underline-offset-2 hover:text-amber-950 shrink-0">
+            Chọn tài khoản
+          </button>
+          <button onClick={() => setGuestNoteOpen(false)} title="Ẩn dòng nhắc này"
+            className="w-6 h-6 grid place-items-center rounded hover:bg-amber-200 shrink-0">
+            ✕
           </button>
         </div>
       )}
@@ -204,9 +222,16 @@ function Workspace() {
 
         {/* Main Bento Grid Content Area */}
         <main key={currentStep} className="ml-page flex-1 p-6 overflow-hidden flex flex-col">
-          {isOffline() && (
-            <div className="mb-3 shrink-0 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[clamp(12.5px,0.86vw,15px)] text-amber-900">
-              Đang chạy ở chế độ ngoại tuyến — bài làm được lưu trong trình duyệt của máy này.
+          {isOffline() && offlineNoteOpen && (
+            <div className="mb-3 shrink-0 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2
+              text-[clamp(12.5px,0.86vw,15px)] text-amber-900 flex items-center gap-3">
+              <span className="flex-1">
+                Đang chạy ở chế độ ngoại tuyến — bài làm được lưu trong trình duyệt của máy này.
+              </span>
+              <button onClick={() => setOfflineNoteOpen(false)} title="Ẩn dòng nhắc này"
+                className="w-5 h-5 grid place-items-center rounded hover:bg-amber-200 shrink-0">
+                ✕
+              </button>
             </div>
           )}
           {/* Quick breadcrumb & role check bar */}
@@ -317,6 +342,8 @@ function Workspace() {
                 module={currentModule}
                 rows={reportRows}
                 onUpdateRows={handleUpdateRows}
+                syncState={syncState}
+                savedAt={savedAt}
                 teamCode={currentUser.teamCode}
                 isSubmitted={isReportSubmitted}
                 onSubmitReport={(passed, summary) => {

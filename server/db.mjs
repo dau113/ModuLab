@@ -60,7 +60,8 @@ export const listUsers = () => all(`
 `);
 
 export const listModules = () => all(`
-  SELECT id, title, description, theory_content AS theoryContent, status
+  SELECT id, title, description, theory_content AS theoryContent,
+         max_error AS maxErrorThreshold, status
   FROM lab_modules ORDER BY sort_order, title
 `);
 

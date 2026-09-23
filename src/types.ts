@@ -17,7 +17,9 @@ export interface LabModule {
   description: string;
   theoryContent: string;
   videoUrl?: string;
-  maxErrorThreshold: number; // e.g. 0.10 for 10%
+  /** Ngưỡng sai số tương đối để bài đạt, ví dụ 0.10 là 10%. Có thể thiếu nếu
+   *  máy chủ chạy bản cũ chưa có cột này. */
+  maxErrorThreshold?: number;
   verifiedBy: string;
   verifiedDate: string;
   referenceSource: string;

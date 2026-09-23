@@ -29,6 +29,13 @@ const DEC_PCT = 2; // sai số tương đối
 const fmt = (value: number, digits: number) =>
   Number.isFinite(value) ? value.toFixed(digits) : (0).toFixed(digits);
 
+/**
+ * Ngưỡng sai số của bài. Nếu dữ liệu trả về thiếu trường này thì lấy mặc định
+ * 10% — trước đây phép nhân với undefined cho ra NaN và hiện thẳng lên màn hình.
+ */
+const thresholdOf = (m: { maxErrorThreshold?: number }) =>
+  Number.isFinite(m.maxErrorThreshold) ? (m.maxErrorThreshold as number) : 0.10;
+
 interface LabReportViewProps {
   module: LabModule;
   rows: LabReportRow[];
@@ -38,6 +45,9 @@ interface LabReportViewProps {
   isSubmitted: boolean;
   /** Mở một bản báo cáo mới, xoá sạch số liệu cũ để làm lại từ đầu */
   onNewReport: () => void;
+  /** Trạng thái lưu bảng số liệu lên máy chủ */
+  syncState?: 'idle' | 'saving' | 'saved' | 'local' | 'error';
+  savedAt?: Date | null;
 }
 
 export const LabReportView: React.FC<LabReportViewProps> = ({
@@ -48,6 +58,8 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
   onSubmitReport,
   isSubmitted,
   onNewReport,
+  syncState = 'idle',
+  savedAt = null,
 }) => {
   const [showFormulaModal, setShowFormulaModal] = useState<boolean>(false);
   const [selectedRowForFormula, setSelectedRowForFormula] = useState<number | null>(1);
@@ -108,7 +120,7 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
   const expectedR = 20.0;
   const absError = Math.round(Math.abs(avgR - expectedR) * 100) / 100;
   const relativeError = expectedR > 0 ? Math.round((absError / expectedR) * 10000) / 100 : 0;
-  const isPassed = relativeError <= module.maxErrorThreshold * 100;
+  const isPassed = relativeError <= thresholdOf(module) * 100;
 
   const handleExportPDF = () => {
     setIsExporting(true);
@@ -126,12 +138,16 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
         title="Biểu mẫu Báo cáo thực hành nhóm (Dùng chung)" 
         subtitle={`${module.title} • ${teamCode || 'Nhóm 3 - Bàn 5'}`}
         action={
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg text-[clamp(13px,0.9vw,15.5px)] font-bold border border-blue-200 flex items-center gap-1">
-              <Users className="w-3.5 h-3.5" />
-              <span>Đang đồng bộ realtime (4 thành viên)</span>
-            </span>
-          </div>
+          /* Trạng thái lưu thật, thay cho dòng "đồng bộ realtime" ghi cứng trước đây */
+          <span className={`text-[clamp(12.5px,0.86vw,15px)] ${
+            syncState === 'error' ? 'text-rose-600' : 'text-slate-500'
+          }`}>
+            {syncState === 'saving' && 'Đang lưu…'}
+            {syncState === 'saved' && `Đã lưu lúc ${savedAt?.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) ?? ''}`}
+            {syncState === 'local' && 'Đã lưu trên máy này'}
+            {syncState === 'error' && 'Chưa lưu được — kiểm tra kết nối'}
+            {syncState === 'idle' && 'Số liệu tự lưu khi em nhập'}
+          </span>
         }
       >
         <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-500 mt-1 mb-4">
@@ -277,7 +293,7 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
             <div className="flex justify-between items-center pt-2 border-t border-slate-200">
               <span className="text-slate-700 font-bold">Sai số tương đối:</span>
               <span className={`font-mono font-extrabold text-sm px-2 py-0.5 rounded ${isPassed ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
-                {fmt(relativeError, DEC_PCT)}% (Ngưỡng ≤ {(module.maxErrorThreshold * 100).toFixed(0)}%)
+                {fmt(relativeError, DEC_PCT)}% (Ngưỡng ≤ {(thresholdOf(module) * 100).toFixed(0)}%)
               </span>
             </div>
           </div>
@@ -347,7 +363,7 @@ export const LabReportView: React.FC<LabReportViewProps> = ({
               </div>
 
               <p className="text-[12.5px] text-slate-500">
-                Bài đạt khi sai số tương đối không vượt quá {(module.maxErrorThreshold * 100).toFixed(0)}%.
+                Bài đạt khi sai số tương đối không vượt quá {(thresholdOf(module) * 100).toFixed(0)}%.
                 Muốn sai số nhỏ thì đo nhiều lần ở các vị trí biến trở khác nhau và đọc số thật cẩn thận.
               </p>
             </div>
