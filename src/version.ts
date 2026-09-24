@@ -4,4 +4,4 @@
  * Trước đây số này được chép tay ở chân trang nên nhiều lần cập nhật bị bỏ sót
  * và nhãn kẹt lại ở một bản cũ. Giờ mọi nơi hiển thị đều lấy từ đây.
  */
-export const APP_VERSION = '1.50';
+export const APP_VERSION = '1.51';

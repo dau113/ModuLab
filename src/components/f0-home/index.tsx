@@ -82,25 +82,29 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({ users, onEnter }) => {
 
           <div className="mt-5 space-y-4 text-[clamp(15px,1.15vw,18px)] text-slate-600 leading-relaxed max-w-2xl">
             <p>
-              Lắp xong một mạch điện, phần lớn học sinh không biết mình lắp đúng hay sai. Sợ hỏng
-              thiết bị nên không dám đóng điện, đành ngồi chờ giáo viên tới kiểm tra. Giáo viên thì
-              phải đi hết nhóm này sang nhóm khác, nên thời gian thật sự dành cho việc đo đạc chẳng
-              còn lại bao nhiêu. Dụng cụ đo cũng chỉ được giới thiệu qua từ trước, tới tiết thực hành
-              mới cầm vào tay thì nhiều em đã quên cách dùng.
+              Trong các tiết thực hành, học sinh thường gặp khó khăn khi không biết mạch đã lắp đúng
+              hay chưa, không dám cấp nguồn vì lo hư hỏng, hoặc quên cách sử dụng các dụng cụ đo.
+              Trong khi đó, giáo viên phải dành nhiều thời gian kiểm tra từng nhóm, khiến quá trình
+              thực hành bị gián đoạn.
             </p>
             <p>
-              Khi được giao đọc bài trước ở nhà, việc tra cứu cũng không dễ. Tài liệu trên mạng thì
-              nhiều nhưng khó biết nguồn nào đáng tin, nội dung hay lan man ngoài trọng tâm, phần lớn
-              chỉ có chữ nên đọc mau chán, và không phải chỗ nào cũng khớp với sách giáo khoa đang học.
+              Việc tự học cũng không dễ dàng hơn. Quá nhiều nguồn tài liệu khiến học sinh khó chọn
+              lọc thông tin đáng tin cậy; nội dung thường nặng lý thuyết, thiếu trực quan và chưa gắn
+              kết với thực tế.
+            </p>
+            <p className="text-slate-900 font-medium">
+              ModuLab được xây dựng để giải quyết những khoảng cách đó.
             </p>
             <p>
-              ModuLab dựng lại phòng thực hành Vật lí điện học ngay trên máy. Em tự chọn linh kiện,
-              nối dây, đóng khoá và đọc số đo; lắp sai thì hệ thống chỉ đúng chỗ sai và giải thích vì
-              sao, nên thử lại bao nhiêu lần cũng được mà không hỏng gì. Lý thuyết bám theo chương
-              trình, gom về một chỗ cùng phần tra cứu từng dụng cụ, để em nắm được cách dùng trước
-              khi bước vào phòng thí nghiệm thật.
+              Một nền tảng hỗ trợ học sinh kiểm tra mạch trước khi cấp nguồn, làm quen với dụng cụ đo
+              và tiếp cận kiến thức thực hành trực quan hơn — giúp việc học không chỉ dừng lại ở lý
+              thuyết mà trở thành trải nghiệm thử, hiểu và làm được.
             </p>
           </div>
+
+          <p className="mt-6 text-[clamp(17px,1.2vw,20px)] text-slate-900 tracking-tight">
+            Learn it. Build it. Verify it.
+          </p>
 
           <dl className="mt-8 flex flex-wrap gap-x-12 gap-y-4">
             {[
