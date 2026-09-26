@@ -6,7 +6,7 @@ declare module '*.html?raw' {
   export default content;
 }
 
-/** Ảnh nhập trực tiếp trong mã; Vite trả về đường dẫn tệp sau khi đóng gói */
+/** Ảnh chụp thật dùng trong trang chủ */
 declare module '*.jpg' {
   const src: string;
   export default src;
@@ -16,10 +16,6 @@ declare module '*.png' {
   export default src;
 }
 declare module '*.webp' {
-  const src: string;
-  export default src;
-}
-declare module '*.svg' {
   const src: string;
   export default src;
 }

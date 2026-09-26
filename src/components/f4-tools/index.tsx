@@ -100,10 +100,10 @@ export const ToolExplorer: React.FC<ToolExplorerProps> = ({ tools }) => {
                   {artOf(t.id, 58) ?? getToolIcon(t.iconName)}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h4 className={`text-[clamp(13px,0.9vw,15.5px)] font-bold truncate leading-snug ${isSelected ? 'text-indigo-950 font-extrabold' : 'text-slate-800'}`}>
+                  <h4 className={`text-body font-semibold truncate leading-snug ${isSelected ? 'text-indigo-950 font-semibold' : 'text-slate-800'}`}>
                     {t.name}
                   </h4>
-                  <p className="text-[clamp(12.5px,0.86vw,15px)] text-slate-500 line-clamp-2 mt-0.5 leading-relaxed">
+                  <p className="text-meta text-slate-500 line-clamp-2 mt-0.5 leading-relaxed">
                     {t.shortDesc}
                   </p>
                 </div>
@@ -123,11 +123,11 @@ export const ToolExplorer: React.FC<ToolExplorerProps> = ({ tools }) => {
                 {artOf(selectedTool.id, 168)}
               </div>
               <div className="min-w-0">
-                <p className="text-[clamp(13px,0.9vw,15.5px)] font-bold text-slate-400 uppercase tracking-wider mb-1">Hình dạng thực tế</p>
-                <h5 className="text-[clamp(15px,1.05vw,17.5px)] font-extrabold text-slate-800 mb-1">
+                <p className="text-body font-semibold text-slate-400 mb-1">Hình dạng thực tế</p>
+                <h5 className="text-h3 font-semibold text-slate-800 mb-1">
                   {partOf(selectedTool.id) ? PART_CATALOG[partOf(selectedTool.id)!].name : selectedTool.name}
                 </h5>
-                <p className="text-[clamp(14px,0.98vw,16.5px)] text-slate-600 leading-relaxed">
+                <p className="text-body text-slate-600 leading-relaxed">
                   {partOf(selectedTool.id) ? PART_CATALOG[partOf(selectedTool.id)!].desc : selectedTool.detailedDesc}
                 </p>
               </div>
@@ -136,8 +136,8 @@ export const ToolExplorer: React.FC<ToolExplorerProps> = ({ tools }) => {
 
           {/* Detailed description */}
           <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
-            <h5 className="text-[clamp(13px,0.9vw,15.5px)] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Cấu tạo & Nguyên lý</h5>
-            <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-700 leading-relaxed font-medium">
+            <h5 className="text-body font-semibold text-slate-500 mb-1.5">Cấu tạo & Nguyên lý</h5>
+            <p className="text-body text-slate-700 leading-relaxed font-medium">
               {selectedTool.detailedDesc}
             </p>
           </div>
@@ -149,9 +149,9 @@ export const ToolExplorer: React.FC<ToolExplorerProps> = ({ tools }) => {
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <RotateCw className="w-4 h-4 text-indigo-300 animate-spin" style={{ animationDuration: '10s' }} />
-                    <span className="text-[clamp(13px,0.9vw,15.5px)] font-bold uppercase tracking-wider text-indigo-200">Núm xoay thang đo DMM (Tương tác)</span>
+                    <span className="text-body font-semibold text-indigo-200">Núm xoay thang đo DMM (Tương tác)</span>
                   </div>
-                  <span className="text-[12.5px] bg-indigo-700 px-2 py-0.5 rounded border border-indigo-600">
+                  <span className="text-meta bg-indigo-700 px-2 py-0.5 rounded border border-indigo-600">
                     Chạm để xoay núm
                   </span>
                 </div>
@@ -163,14 +163,10 @@ export const ToolExplorer: React.FC<ToolExplorerProps> = ({ tools }) => {
                       <button
                         key={m.id}
                         onClick={() => setSelectedModeId(isModeSelected ? null : m.id)}
-                        className={`py-2.5 px-3 rounded-xl text-[clamp(13px,0.9vw,15.5px)] font-bold flex flex-col items-center justify-center gap-1 transition-all ${
-                          isModeSelected 
-                            ? 'bg-amber-400 text-slate-950 shadow-lg scale-[1.02] ring-2 ring-white/50' 
-                            : 'bg-indigo-800/80 text-indigo-200 hover:bg-indigo-700 border border-indigo-700'
-                        }`}
+                        className={`py-2.5 px-3 rounded-xl text-body font-semibold flex flex-col items-center justify-center gap-1 transition-all ${ isModeSelected ? 'bg-amber-400 text-slate-950 shadow-lg scale-[1.02] ring-2 ring-white/50' : 'bg-indigo-800/80 text-indigo-200 hover:bg-indigo-700 border border-indigo-700' }`}
                       >
-                        <span className="text-sm font-mono">{m.name}</span>
-                        <span className="text-[12.5px] opacity-90 font-sans">{m.label.split(' ')[0]}</span>
+                        <span className="text-body font-mono">{m.name}</span>
+                        <span className="text-meta opacity-90 font-sans">{m.label.split(' ')[0]}</span>
                       </button>
                     );
                   })}
@@ -178,25 +174,25 @@ export const ToolExplorer: React.FC<ToolExplorerProps> = ({ tools }) => {
 
                 {!selectedMode && (
                   <div className="bg-indigo-950/80 border border-indigo-800/80 p-4 rounded-xl text-center">
-                    <p className="text-[clamp(13px,0.9vw,15.5px)] text-indigo-200 font-medium">
+                    <p className="text-body text-indigo-200 font-medium">
                       Hãy chọn một vị trí núm xoay ở trên để xem phần lý thuyết và cách mắc của chế độ đo đó.
                     </p>
                   </div>
                 )}
 
                 {selectedMode && (
-                  <div className="bg-indigo-950/80 border border-indigo-800/80 p-3.5 rounded-xl text-[clamp(13px,0.9vw,15.5px)] space-y-2">
-                    <div className="font-bold text-amber-300 flex items-center gap-1.5">
+                  <div className="bg-indigo-950/80 border border-indigo-800/80 p-3.5 rounded-xl text-body space-y-2">
+                    <div className="font-semibold text-amber-300 flex items-center gap-1.5">
                       <span>📌 Chế độ được chọn:</span>
-                      <span className="uppercase">{selectedMode.label}</span>
+                      <span className="">{selectedMode.label}</span>
                     </div>
-                    <p className="text-indigo-100 text-[clamp(13px,0.9vw,15.5px)] leading-relaxed">{selectedMode.desc}</p>
+                    <p className="text-indigo-100 text-body leading-relaxed">{selectedMode.desc}</p>
                     <div className="pt-2 border-t border-indigo-800 flex items-start gap-2 text-emerald-300 font-medium">
                       <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
                       <span><strong>Cách mắc chuẩn:</strong> {selectedMode.safeUsage}</span>
                     </div>
                     {selectedMode.warning && (
-                      <div className="pt-2 border-t border-indigo-800 flex items-start gap-2 text-rose-300 font-bold">
+                      <div className="pt-2 border-t border-indigo-800 flex items-start gap-2 text-rose-300 font-semibold">
                         <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5 animate-pulse" />
                         <span>{selectedMode.warning}</span>
                       </div>
@@ -211,21 +207,21 @@ export const ToolExplorer: React.FC<ToolExplorerProps> = ({ tools }) => {
           {/* Error reading instructions */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
-              <h5 className="text-[clamp(13px,0.9vw,15.5px)] font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <h5 className="text-body font-semibold text-slate-500 mb-2 flex items-center gap-1.5">
                 <HelpCircle className="w-4 h-4 text-blue-500" />
                 <span>Quy tắc đọc sai số</span>
               </h5>
-              <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-600 leading-relaxed font-medium">
+              <p className="text-body text-slate-600 leading-relaxed font-medium">
                 {selectedTool.errorReading}
               </p>
             </div>
 
             <div className="p-4 bg-rose-50/80 border border-rose-200 rounded-xl shadow-sm">
-              <h5 className="text-[clamp(13px,0.9vw,15.5px)] font-bold text-rose-800 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <h5 className="text-body font-semibold text-rose-800 mb-2 flex items-center gap-1.5">
                 <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" />
                 <span>Cảnh báo nguy hiểm / Phòng tránh</span>
               </h5>
-              <p className="text-[clamp(13px,0.9vw,15.5px)] text-rose-900 leading-relaxed font-bold">
+              <p className="text-body text-rose-900 leading-relaxed font-semibold">
                 {selectedTool.safetyWarning || 'Luôn thao tác cẩn thận, ngắt khóa K trước khi nối hoặc tháo dây dẫn để đảm bảo an toàn tuyệt đối.'}
               </p>
             </div>
