@@ -44,6 +44,22 @@ const SECTIONS = ['Khởi động', 'Thực hành', 'Báo cáo thực hành', 'T
 const HERO_BG = photoClass;
 
 /**
+ * Các lớp phủ tối viết thẳng bằng mã màu, không mượn thang màu của Tailwind.
+ *
+ * Giao diện tối của ModuLab đảo ngược cả thang xám ở cấp biến CSS: `slate-950`
+ * ở chế độ tối hoá ra màu trắng. Nếu lớp phủ dùng `from-slate-950` thì khi bật
+ * chế độ tối nó sẽ phủ TRẮNG lên ảnh, chữ trắng nằm trên nền trắng và mất hút.
+ * Ảnh chụp thì lúc nào cũng cần nền tối để chữ trắng đọc được, nên ba lớp phủ
+ * dưới đây cố định màu, không đổi theo giao diện.
+ */
+const OVERLAY_SIDE =
+  'linear-gradient(to right, rgba(2,6,23,0.92) 0%, rgba(2,6,23,0.70) 50%, rgba(2,6,23,0.40) 100%)';
+const OVERLAY_VERT =
+  'linear-gradient(to top, rgba(2,6,23,0.75) 0%, rgba(2,6,23,0) 50%, rgba(2,6,23,0.45) 100%)';
+const CARD_SCRIM =
+  'linear-gradient(to top, rgba(2,6,23,0.85) 0%, rgba(2,6,23,0.15) 55%, rgba(2,6,23,0) 100%)';
+
+/**
  * Băng ảnh bên phải, xếp theo đúng trình tự một buổi thực hành: xem bộ dụng cụ,
  * lắp thử trên phần mềm, để phần mềm bắt lỗi, rồi đối chiếu với số đo thật.
  */
@@ -149,7 +165,7 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({ users, onEnter }) => {
   } as React.CSSProperties;
 
   return (
-    <div className="ml-scroll h-screen overflow-y-auto bg-[#fafaf9] text-slate-900">
+    <div className="ml-scroll ml-page h-screen overflow-y-auto text-slate-900">
 
       {/* ---------------------------------------------------------------- */}
       {/* Khung hình lớn: ảnh chụp phủ kín, chữ và băng ảnh đặt đè lên trên  */}
@@ -166,8 +182,8 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({ users, onEnter }) => {
           className="absolute inset-0 w-full h-full object-cover"
         />
         {/* Hai lớp phủ tối: một lớp ngang cho cột chữ bên trái, một lớp dọc cho hàng nút bên dưới */}
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/92 via-slate-950/70 to-slate-950/40" />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-transparent to-slate-950/45" />
+        <div className="absolute inset-0" style={{ backgroundImage: OVERLAY_SIDE }} />
+        <div className="absolute inset-0" style={{ backgroundImage: OVERLAY_VERT }} />
 
         <div className="relative lg:h-full flex flex-col">
           <header className="h-16 shrink-0 px-6 md:px-10 flex items-center justify-between">
@@ -221,8 +237,7 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({ users, onEnter }) => {
                       <img src={s.src} alt={s.caption}
                         className="absolute inset-0 w-full h-full object-cover
                           transition-transform duration-500 group-hover:scale-105" />
-                      <div className="absolute inset-0 bg-gradient-to-t
-                        from-slate-950/85 via-slate-950/15 to-transparent" />
+                      <div className="absolute inset-0" style={{ backgroundImage: CARD_SCRIM }} />
                       <span className="absolute left-4 right-4 bottom-4 text-white
                         text-h3 font-semibold leading-tight">
                         {s.label}
@@ -353,7 +368,8 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({ users, onEnter }) => {
       {/* Ảnh phóng to: chỗ duy nhất hiện đủ lời chú thích của từng ảnh */}
       {zoom !== null && (
         <div
-          className="fixed inset-0 z-50 bg-slate-950/90 p-6 grid place-items-center"
+          className="fixed inset-0 z-50 p-6 grid place-items-center"
+          style={{ backgroundColor: 'rgba(2,6,23,0.92)' }}
           onClick={() => setZoom(null)}>
           <div className="max-w-3xl w-full" onClick={(e) => e.stopPropagation()}>
             <img src={SLIDES[zoom].src} alt={SLIDES[zoom].caption}

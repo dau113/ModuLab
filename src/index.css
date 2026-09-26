@@ -501,3 +501,14 @@ button:not(:disabled):active { transform: scale(0.975); }
 .dark .text-indigo-900.font-bold {
   color: var(--color-slate-400);
 }
+
+/* ==================================================================
+   NỀN TRANG CHỦ
+   Trước đây trang chủ ghi thẳng mã màu #fafaf9 vào lớp nền, trong khi
+   chữ lại dùng thang xám của Tailwind. Thang xám đó bị đảo ở giao diện
+   tối, nên chữ hoá sáng còn nền vẫn trắng — cả khối chữ biến mất.
+   Tách riêng thành một lớp để hai giao diện có nền của riêng mình:
+   giao diện sáng giữ đúng màu cũ, giao diện tối lấy nền của <body>.
+   ================================================================== */
+.ml-page { background-color: #fafaf9; }
+.dark .ml-page { background-color: #131e33; }
