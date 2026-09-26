@@ -17,6 +17,14 @@ import { SettingsMenu } from '../common';
 import { APP_VERSION } from '../../version';
 import type { ApiUser } from '../../api/client';
 
+/* Ảnh chụp tại phòng thí nghiệm trường, dùng đúng bộ dụng cụ mà phần mềm mô phỏng */
+import photoKit from '../../assets/photos/bo-dung-cu-that.jpg';
+import photoHandsOn from '../../assets/photos/lap-mach-that.jpg';
+import photoApp from '../../assets/photos/dung-modulab.jpg';
+import photoWarning from '../../assets/photos/canh-bao-doan-mach.jpg';
+import photoCompare from '../../assets/photos/doi-chieu-ao-that.jpg';
+import photoClass from '../../assets/photos/tiet-hoc.jpg';
+
 interface HomeMenuProps {
   users: ApiUser[];
   onEnter: (userId: string, guest?: boolean) => void;
@@ -24,6 +32,42 @@ interface HomeMenuProps {
 }
 
 type Role = 'hs' | 'gv' | 'khach';
+
+/**
+ * Ảnh thật chụp trong tiết thực hành. Xếp theo mạch kể: bộ dụng cụ thật, học
+ * sinh lắp tay, chuyển sang phần mềm, phần mềm bắt lỗi, đối chiếu hai bên, và
+ * cả lớp cùng dùng.
+ */
+const PHOTOS: { src: string; caption: string; wide?: boolean }[] = [
+  {
+    src: photoKit,
+    caption: 'Bộ dụng cụ thật ở phòng thí nghiệm — bảng lắp ráp Edison, đồng hồ vạn năng và biến áp nguồn. '
+      + 'Phần mềm dựng lại đúng những dụng cụ này.',
+    wide: true,
+  },
+  {
+    src: photoHandsOn,
+    caption: 'Học sinh lắp mạch bằng bộ dụng cụ thật trong tiết thực hành.',
+  },
+  {
+    src: photoApp,
+    caption: 'Lắp thử trên ModuLab trước khi chạm vào thiết bị thật.',
+  },
+  {
+    src: photoWarning,
+    caption: 'Nối tắt hai cực nguồn, hệ thống báo đoản mạch và chỉ rõ chỗ sai kèm lý do, '
+      + 'thay vì để cháy thiết bị.',
+    wide: true,
+  },
+  {
+    src: photoCompare,
+    caption: 'Đối chiếu số đo giữa mạch ảo và mạch thật đặt cạnh nhau.',
+  },
+  {
+    src: photoClass,
+    caption: 'Một tiết thực hành có ModuLab tại Trường THPT Lương Thế Vinh.',
+  },
+];
 
 const SECTIONS = [
   {
@@ -118,6 +162,30 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({ users, onEnter }) => {
               </div>
             ))}
           </dl>
+        </section>
+
+        {/* Ảnh chụp thực tế — đặt ngay sau phần giới thiệu để người đọc thấy bối cảnh */}
+        <section className="pb-14 border-t border-slate-200 pt-10">
+          <h2 className="text-[clamp(17px,1.2vw,20px)] font-bold mb-1">ModuLab trong giờ thực hành</h2>
+          <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-500 mb-6">
+            Ảnh chụp tại tiết thực hành đo điện trở, lớp 11A2.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-8">
+            {PHOTOS.map((p) => (
+              <figure key={p.src} className={p.wide ? 'sm:col-span-2' : ''}>
+                <img
+                  src={p.src}
+                  alt={p.caption}
+                  loading="lazy"
+                  className="w-full rounded-lg border border-slate-200 bg-slate-100"
+                />
+                <figcaption className="mt-2 text-[clamp(13px,0.9vw,15.5px)] text-slate-500 leading-relaxed">
+                  {p.caption}
+                </figcaption>
+              </figure>
+            ))}
+          </div>
         </section>
 
         {/* Đăng nhập — đây là thao tác, nên trình bày như một danh sách chọn */}
