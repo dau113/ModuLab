@@ -91,7 +91,7 @@ const SLIDES: { src: string; label: string; caption: string }[] = [
   },
   {
     src: photoWarning,
-    label: 'Phần mềm bắt lỗi',
+    label: 'Hỗ trợ tìm lỗi',
     caption:
       'Nối tắt hai cực nguồn, hệ thống báo đoản mạch, chỉ đúng chỗ sai kèm lý do '
       + 'thay vì để thiết bị cháy.',
@@ -180,7 +180,12 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({ users, onEnter }) => {
       {/* Khung hình lớn: ảnh chụp tiết thực hành phủ kín, tiêu đề và băng   */}
       {/* ảnh đặt đè lên trên. Thanh tên ứng dụng nằm luôn trong khung này.  */}
       {/* ---------------------------------------------------------------- */}
-      <section className="relative overflow-hidden lg:min-h-[600px] lg:h-[82vh]">
+      {/*
+        Chiều cao dùng min-height chứ không cố định: khối đăng nhập nằm trong
+        khung hình nên ở màn thấp nội dung có thể cao hơn một màn hình, ép chiều
+        cao thì nút bấm cuối khối bị cắt mất.
+      */}
+      <section className="relative overflow-hidden lg:min-h-[max(600px,86vh)]">
         <img
           src={HERO_BG}
           alt="Một tiết thực hành Vật lí điện học tại phòng thí nghiệm của trường"
@@ -189,7 +194,7 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({ users, onEnter }) => {
         <div className="absolute inset-0" style={{ backgroundImage: OVERLAY_SIDE }} />
         <div className="absolute inset-0" style={{ backgroundImage: OVERLAY_VERT }} />
 
-        <div className="relative lg:h-full flex flex-col">
+        <div className="relative flex flex-col lg:min-h-[max(600px,86vh)]">
           <header className="h-16 shrink-0 px-6 md:px-10 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="w-7 h-7 rounded-md grid place-items-center"
@@ -208,9 +213,102 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({ users, onEnter }) => {
 
             {/* Cột chữ — nguyên văn tiêu đề của bản 1.51 */}
             <div className="pt-4 lg:pt-0">
-              <h1 className="text-[clamp(28px,3.4vw,42px)] font-bold leading-[1.15] tracking-tight text-white">
+              <h1 className="text-[clamp(26px,3vw,38px)] font-bold leading-[1.15] tracking-tight text-white">
                 “ModuLab” — trợ lý số hỗ trợ giờ học thực hành cho học sinh THPT
               </h1>
+
+              {/*
+                Khối đăng nhập đặt luôn trong khung hình để vừa mở trang đã thấy,
+                không phải cuộn xuống mới vào được phòng thực hành.
+
+                Vì nằm đè lên ảnh nên khối này phải có nền riêng, không mượn được
+                nền trắng của trang như trước. Dùng `bg-white` thì giao diện tối
+                vẫn đúng: trong index.css đã có sẵn luật `.dark .bg-white` đổi nền
+                sang màu tối, nên chữ và nền vẫn đổi cùng nhịp với nhau.
+              */}
+              <div className="mt-6 rounded-xl border border-slate-200 bg-white text-slate-900
+                overflow-hidden shadow-2xl shadow-slate-950/40">
+                <div className="px-5 py-4 border-b border-slate-200">
+                  <h2 className="text-[clamp(16px,1.2vw,19px)] font-semibold">Vào phòng thực hành</h2>
+                  <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-500 mt-0.5">
+                    Chọn tài khoản của em, hoặc vào xem thử với tư cách khách.
+                  </p>
+                </div>
+
+                {/* Chọn vai trò */}
+                <div className="px-5 pt-4">
+                  <div className="inline-flex rounded-lg border border-slate-200 overflow-hidden">
+                    {([
+                      ['hs', `Học sinh (${students.length})`],
+                      ['gv', `Giáo viên (${teachers.length})`],
+                      ['khach', 'Khách'],
+                    ] as [Role, string][]).map(([id, label]) => (
+                      <button key={id}
+                        onClick={() => { setRole(id); setPicked(null); }}
+                        className={`h-9 px-4 text-[clamp(13px,0.9vw,15.5px)] transition-colors ${
+                          role === id
+                            ? 'bg-slate-900 text-white font-medium'
+                            : 'text-slate-600 hover:bg-slate-100'
+                        }`}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Danh sách tài khoản */}
+                <div className="px-5 py-4">
+                  {role === 'khach' ? (
+                    <p className="text-[clamp(14px,0.98vw,16.5px)] text-slate-600 py-2">
+                      Vào xem toàn bộ ứng dụng mà không ghi lại kết quả. Bài làm và số liệu sẽ không được lưu.
+                    </p>
+                  ) : (
+                    /* Giới hạn chiều cao rồi cho cuộn: lớp đông thì danh sách dài,
+                       để tràn ra là khối này cao quá một màn hình. */
+                    <ul className="ml-scroll max-h-[13.5rem] overflow-y-auto
+                      divide-y divide-slate-100 border border-slate-200 rounded-lg">
+                      {list.map((u) => (
+                        <li key={u.id}>
+                          <button
+                            onClick={() => setPicked(u.id)}
+                            onDoubleClick={enter}
+                            className={`w-full text-left px-4 py-3 flex items-center gap-3 transition-colors ${
+                              chosen === u.id ? 'bg-indigo-50' : 'hover:bg-slate-100'
+                            }`}>
+                            <span className={`w-4 h-4 rounded-full border-2 shrink-0 grid place-items-center ${
+                              chosen === u.id ? 'border-indigo-600' : 'border-slate-300'
+                            }`}>
+                              {chosen === u.id && <span className="w-2 h-2 rounded-full bg-indigo-600" />}
+                            </span>
+                            <span className="text-[clamp(14px,0.98vw,16.5px)] truncate">{u.name}</span>
+                            {u.teamCode && (
+                              <span className="ml-auto text-[clamp(13px,0.9vw,15.5px)] text-slate-400 shrink-0">
+                                {u.teamCode}
+                              </span>
+                            )}
+                          </button>
+                        </li>
+                      ))}
+                      {list.length === 0 && (
+                        <li className="px-4 py-3 text-[clamp(14px,0.98vw,16.5px)] text-slate-500">
+                          Chưa có tài khoản nào.
+                        </li>
+                      )}
+                    </ul>
+                  )}
+
+                  <button
+                    onClick={enter}
+                    disabled={role !== 'khach' && !chosen}
+                    className="mt-4 h-11 px-5 rounded-lg bg-indigo-600 hover:bg-indigo-700
+                      disabled:bg-slate-200 disabled:text-slate-400
+                      text-white text-[clamp(14px,0.98vw,16.5px)] font-medium
+                      flex items-center gap-2 transition-colors">
+                    Vào phòng thực hành
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* Băng ảnh */}
@@ -306,101 +404,6 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({ users, onEnter }) => {
             Learn it. Build it. Verify it.
           </p>
 
-          <dl className="mt-8 flex flex-wrap gap-x-12 gap-y-4">
-            {[
-              ['75', 'câu hỏi'],
-              ['13', 'linh kiện mô phỏng'],
-              ['4', 'bài lý thuyết'],
-            ].map(([n, label]) => (
-              <div key={label}>
-                <dt className="text-[clamp(22px,1.9vw,28px)] font-semibold leading-none tabular-nums">{n}</dt>
-                <dd className="text-[clamp(13px,0.9vw,15.5px)] text-slate-500 mt-1.5">{label}</dd>
-              </div>
-            ))}
-          </dl>
-        </section>
-
-        {/* Đăng nhập — đây là thao tác, nên trình bày như một danh sách chọn */}
-        <section className="pb-14">
-          <div className="rounded-xl border border-slate-200 overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-200">
-              <h2 className="text-[clamp(16px,1.2vw,19px)] font-semibold">Vào phòng thực hành</h2>
-              <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-500 mt-0.5">
-                Chọn tài khoản của em, hoặc vào xem thử với tư cách khách.
-              </p>
-            </div>
-
-            {/* Chọn vai trò */}
-            <div className="px-5 pt-4">
-              <div className="inline-flex rounded-lg border border-slate-200 overflow-hidden">
-                {([
-                  ['hs', `Học sinh (${students.length})`],
-                  ['gv', `Giáo viên (${teachers.length})`],
-                  ['khach', 'Khách'],
-                ] as [Role, string][]).map(([id, label]) => (
-                  <button key={id}
-                    onClick={() => { setRole(id); setPicked(null); }}
-                    className={`h-9 px-4 text-[clamp(13px,0.9vw,15.5px)] transition-colors ${
-                      role === id
-                        ? 'bg-slate-900 text-white font-medium'
-                        : 'text-slate-600 hover:bg-slate-50'
-                    }`}>
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Danh sách tài khoản */}
-            <div className="px-5 py-4">
-              {role === 'khach' ? (
-                <p className="text-[clamp(14px,0.98vw,16.5px)] text-slate-600 py-2">
-                  Vào xem toàn bộ ứng dụng mà không ghi lại kết quả. Bài làm và số liệu sẽ không được lưu.
-                </p>
-              ) : (
-                <ul className="divide-y divide-slate-100 border border-slate-200 rounded-lg">
-                  {list.map((u) => (
-                    <li key={u.id}>
-                      <button
-                        onClick={() => setPicked(u.id)}
-                        onDoubleClick={enter}
-                        className={`w-full text-left px-4 py-3 flex items-center gap-3 transition-colors ${
-                          chosen === u.id ? 'bg-indigo-50' : 'hover:bg-slate-50'
-                        }`}>
-                        <span className={`w-4 h-4 rounded-full border-2 shrink-0 grid place-items-center ${
-                          chosen === u.id ? 'border-indigo-600' : 'border-slate-300'
-                        }`}>
-                          {chosen === u.id && <span className="w-2 h-2 rounded-full bg-indigo-600" />}
-                        </span>
-                        <span className="text-[clamp(14px,0.98vw,16.5px)] truncate">{u.name}</span>
-                        {u.teamCode && (
-                          <span className="ml-auto text-[clamp(13px,0.9vw,15.5px)] text-slate-400 shrink-0">
-                            {u.teamCode}
-                          </span>
-                        )}
-                      </button>
-                    </li>
-                  ))}
-                  {list.length === 0 && (
-                    <li className="px-4 py-3 text-[clamp(14px,0.98vw,16.5px)] text-slate-500">
-                      Chưa có tài khoản nào.
-                    </li>
-                  )}
-                </ul>
-              )}
-
-              <button
-                onClick={enter}
-                disabled={role !== 'khach' && !chosen}
-                className="mt-4 h-11 px-5 rounded-lg bg-indigo-600 hover:bg-indigo-700
-                  disabled:bg-slate-200 disabled:text-slate-400
-                  text-white text-[clamp(14px,0.98vw,16.5px)] font-medium
-                  flex items-center gap-2 transition-colors">
-                Vào phòng thực hành
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
         </section>
 
         {/* Giới thiệu các phần — đây là thông tin, nên trình bày như một danh sách */}
