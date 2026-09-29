@@ -34,7 +34,13 @@ interface TopNavProps {
  * năm bề ngang và kéo mắt về phía nó mỗi lần nhìn lên — không hợp với một công
  * cụ học tập. Giờ chúng nằm trong bảng cài đặt, mở khi cần.
  */
-export const SettingsMenu: React.FC = () => {
+/**
+ * Nút cài đặt.
+ *
+ * `tone` chỉ đổi kiểu của nút bấm: mặc định đặt trên nền sáng, còn `onDark`
+ * dùng khi nút nằm đè lên ảnh chụp ở trang chủ.
+ */
+export const SettingsMenu: React.FC<{ tone?: 'onLight' | 'onDark' }> = ({ tone = 'onLight' }) => {
   const { lang, accent, setAccent, t } = useSettings();
   const { theme, setTheme } = useTheme();
   const [open, setOpen] = useState(false);
@@ -63,8 +69,11 @@ export const SettingsMenu: React.FC = () => {
         onClick={() => setOpen((v) => !v)}
         title={t('app.settings')}
         aria-expanded={open}
-        className="h-9 w-9 grid place-items-center rounded-lg border border-slate-200
-          text-slate-500 hover:bg-slate-50 transition-colors"
+        className={`h-9 w-9 grid place-items-center rounded-lg border transition-colors ${
+          tone === 'onDark'
+            ? 'border-white/30 text-white/80 hover:bg-white/15'
+            : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+        }`}
       >
         <Settings className="w-4 h-4" />
       </button>
