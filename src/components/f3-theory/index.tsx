@@ -55,8 +55,8 @@ const Eq = ({ size = 22 }: { size?: number }) => (
 /* ------------------------------------------------------------------ */
 
 const SectionTitle: React.FC<{ n: number | string; children: React.ReactNode }> = ({ n, children }) => (
-  <h4 className="text-h3 mb-3 flex items-center gap-2">
-    <span className="w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-body font-semibold shrink-0">
+  <h4 className="text-[clamp(14px,0.98vw,16.5px)] font-bold text-indigo-900 mb-3 flex items-center gap-2">
+    <span className="w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-[clamp(13px,0.9vw,15.5px)] font-bold shrink-0">
       {n}
     </span>
     {children}
@@ -68,7 +68,7 @@ const Card: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 );
 
 const Bullets: React.FC<{ items: React.ReactNode[] }> = ({ items }) => (
-  <ul className="text-body space-y-2 text-slate-600 list-disc pl-4 leading-relaxed">
+  <ul className="text-[clamp(13px,0.9vw,15.5px)] space-y-2 text-slate-600 list-disc pl-4 leading-relaxed">
     {items.map((it, i) => <li key={i}>{it}</li>)}
   </ul>
 );
@@ -76,10 +76,10 @@ const Bullets: React.FC<{ items: React.ReactNode[] }> = ({ items }) => (
 /** Bảng chú thích các ký hiệu trong công thức */
 const Where: React.FC<{ rows: [React.ReactNode, string][] }> = ({ rows }) => (
   <div className="mt-3">
-    <p className="text-meta font-semibold text-slate-400 mb-1.5">Trong đó</p>
+    <p className="text-[12.5px] font-bold text-slate-400 uppercase tracking-wide mb-1.5">Trong đó</p>
     <ul className="space-y-1.5">
       {rows.map(([sym, desc], i) => (
-        <li key={i} className="flex gap-2.5 text-body text-slate-600 leading-snug">
+        <li key={i} className="flex gap-2.5 text-[clamp(13px,0.9vw,15.5px)] text-slate-600 leading-snug">
           <span className="shrink-0 w-8 text-indigo-700 font-serif italic text-[17px] leading-tight">{sym}</span>
           <span>{desc}</span>
         </li>
@@ -107,9 +107,9 @@ const QuantityCard: React.FC<{
         </span>
         <span className={`text-[26px] font-serif italic leading-none ${c.text}`}>{symbol}</span>
       </div>
-      <div className="text-body font-semibold text-slate-800">{name}</div>
-      <div className={`text-meta font-semibold ${c.text}`}>{unit}</div>
-      <p className="text-meta text-slate-500 leading-snug mt-1">{note}</p>
+      <div className="text-[clamp(13px,0.9vw,15.5px)] font-bold text-slate-800">{name}</div>
+      <div className={`text-[12.5px] font-bold ${c.text}`}>{unit}</div>
+      <p className="text-[12.5px] text-slate-500 leading-snug mt-1">{note}</p>
     </div>
   );
 };
@@ -173,12 +173,14 @@ const LiveCircuitDiagram: React.FC = () => {
       <div className="flex items-center justify-center gap-3 mt-2 flex-wrap">
         <button
           onClick={() => setClosed((v) => !v)}
-          className={`h-10 px-4 rounded-xl text-body font-semibold flex items-center gap-2 transition-colors ${ closed ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-slate-700 hover:bg-slate-800 text-white' }`}
+          className={`h-10 px-4 rounded-xl text-[clamp(13px,0.9vw,15.5px)] font-bold flex items-center gap-2 transition-colors ${
+            closed ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-slate-700 hover:bg-slate-800 text-white'
+          }`}
         >
           <Power className="w-4 h-4" />
           {closed ? 'Khoá K đang đóng — bấm để ngắt' : 'Bấm để đóng khoá K'}
         </button>
-        <span className="text-meta text-slate-500">
+        <span className="text-[12.5px] text-slate-500">
           {closed
             ? 'Dòng điện chạy từ cực dương qua khoá K, ampe kế rồi qua Rx về cực âm.'
             : 'Mạch đang hở nên chưa có dòng điện.'}
@@ -239,7 +241,7 @@ const CircuitFigure: React.FC<{
   const [closed, setClosed] = useState(false);
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-4">
-      <p className="text-meta font-semibold text-slate-400 mb-2">{title}</p>
+      <p className="text-[12.5px] font-bold text-slate-400 uppercase tracking-wide mb-2">{title}</p>
 
       <svg viewBox={viewBox} className="w-full max-w-lg mx-auto block">
         {paths.map((d, i) => (
@@ -256,12 +258,14 @@ const CircuitFigure: React.FC<{
       <div className="flex items-center justify-center gap-3 mt-2 flex-wrap">
         <button
           onClick={() => setClosed((v) => !v)}
-          className={`h-9 px-3.5 rounded-lg text-body font-semibold flex items-center gap-2 transition-colors ${ closed ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-slate-700 hover:bg-slate-800 text-white' }`}
+          className={`h-9 px-3.5 rounded-lg text-[clamp(13px,0.9vw,15.5px)] font-bold flex items-center gap-2 transition-colors ${
+            closed ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-slate-700 hover:bg-slate-800 text-white'
+          }`}
         >
           <Power className="w-4 h-4" />
           {closed ? 'Khoá K đang đóng — bấm để ngắt' : 'Bấm để đóng khoá K'}
         </button>
-        <span className="text-meta text-slate-500 flex-1 min-w-[200px]">{note(closed)}</span>
+        <span className="text-[12.5px] text-slate-500 flex-1 min-w-[200px]">{note(closed)}</span>
       </div>
     </div>
   );
@@ -365,23 +369,23 @@ const LessonOhm: React.FC = () => (
     <Card>
       <SectionTitle n="III">Định luật Ohm</SectionTitle>
 
-      <p className="text-body font-semibold text-slate-700 mb-2">1. Điện trở của đoạn dây dẫn</p>
+      <p className="text-[clamp(13px,0.9vw,15.5px)] font-bold text-slate-700 mb-2">1. Điện trở của đoạn dây dẫn</p>
       <Bullets items={[
         <>Giá trị thương số <Frac num="U" den="I" size="sm" /> không đổi đối với mỗi đoạn dây dẫn, gọi là điện trở của đoạn dây dẫn đó (kí hiệu <V size={17}>R</V>).</>,
         <>Với các đoạn dây dẫn khác nhau, giá trị <Frac num="U" den="I" size="sm" /> khác nhau. Cùng một hiệu điện thế, đoạn dây nào cho dòng điện nhỏ hơn thì <Frac num="U" den="I" size="sm" /> lớn hơn.</>,
         <>Giá trị <Frac num="U" den="I" size="sm" /> đặc trưng cho sự cản trở dòng điện đi qua đoạn dây dẫn.</>,
       ]} />
 
-      <p className="text-body font-semibold text-slate-700 mt-4 mb-2">2. Đơn vị điện trở</p>
+      <p className="text-[clamp(13px,0.9vw,15.5px)] font-bold text-slate-700 mt-4 mb-2">2. Đơn vị điện trở</p>
       <FormulaLine>
         <V>R</V><Eq /><Frac num="U" den="I" size="lg" />
       </FormulaLine>
-      <p className="text-body text-slate-600 mt-2">
+      <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-600 mt-2">
         Đơn vị: 1 Ω = 1 V / 1 A.
       </p>
 
-      <p className="text-body font-semibold text-slate-700 mt-4 mb-2">3. Định luật Ohm</p>
-      <p className="text-body text-slate-600 mb-2 leading-relaxed">
+      <p className="text-[clamp(13px,0.9vw,15.5px)] font-bold text-slate-700 mt-4 mb-2">3. Định luật Ohm</p>
+      <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-600 mb-2 leading-relaxed">
         Cường độ dòng điện chạy qua một đoạn dây dẫn tỉ lệ thuận với hiệu điện thế giữa hai đầu đoạn dây
         và tỉ lệ nghịch với điện trở của nó.
       </p>
@@ -406,7 +410,7 @@ const LessonOhm: React.FC = () => (
 
     <Card>
       <SectionTitle n="IV">Điện trở phụ thuộc kích thước và bản chất dây dẫn</SectionTitle>
-      <p className="text-body text-slate-600 mb-3 leading-relaxed">
+      <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-600 mb-3 leading-relaxed">
         Điện trở của một đoạn dây dẫn tỉ lệ thuận với chiều dài của đoạn dây, tỉ lệ nghịch với tiết diện
         của dây và phụ thuộc vào bản chất của chất làm dây dẫn.
       </p>
@@ -427,7 +431,7 @@ const LessonMach: React.FC = () => (
   <>
     <Card>
       <SectionTitle n="I">Đoạn mạch nối tiếp</SectionTitle>
-      <p className="text-body text-slate-600 mb-3 leading-relaxed">
+      <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-600 mb-3 leading-relaxed">
         Điện trở tương đương của đoạn mạch là điện trở có thể thay thế các điện trở của đoạn mạch, sao cho
         với cùng hiệu điện thế đặt vào hai đầu đoạn mạch thì cường độ dòng điện chạy qua vẫn có giá trị như trước.
       </p>
@@ -435,15 +439,15 @@ const LessonMach: React.FC = () => (
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
         <div className="bg-white rounded-xl border border-slate-200 p-3">
-          <p className="text-meta font-semibold text-slate-400 mb-1.5">Điện trở tương đương</p>
+          <p className="text-[12.5px] font-bold text-slate-400 uppercase mb-1.5">Điện trở tương đương</p>
           <p className="font-serif italic text-[17px] text-indigo-700">R<sub>tđ</sub> = R₁ + R₂ + … + R<sub>n</sub></p>
         </div>
         <div className="bg-white rounded-xl border border-slate-200 p-3">
-          <p className="text-meta font-semibold text-slate-400 mb-1.5">Cường độ dòng điện</p>
+          <p className="text-[12.5px] font-bold text-slate-400 uppercase mb-1.5">Cường độ dòng điện</p>
           <p className="font-serif italic text-[17px] text-indigo-700">I = I₁ = I₂ = … = I<sub>n</sub></p>
         </div>
         <div className="bg-white rounded-xl border border-slate-200 p-3">
-          <p className="text-meta font-semibold text-slate-400 mb-1.5">Hiệu điện thế</p>
+          <p className="text-[12.5px] font-bold text-slate-400 uppercase mb-1.5">Hiệu điện thế</p>
           <p className="font-serif italic text-[17px] text-indigo-700">U = U₁ + U₂ + … + U<sub>n</sub></p>
         </div>
       </div>
@@ -456,27 +460,27 @@ const LessonMach: React.FC = () => (
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
         <div className="bg-white rounded-xl border border-slate-200 p-3">
-          <p className="text-meta font-semibold text-slate-400 mb-1.5">Điện trở tương đương</p>
+          <p className="text-[12.5px] font-bold text-slate-400 uppercase mb-1.5">Điện trở tương đương</p>
           <div className="flex items-center flex-wrap text-indigo-700">
             <Frac num={<>1</>} den={<>R<sub>tđ</sub></>} size="sm" />
             <Eq size={17} />
             <Frac num="1" den="R₁" size="sm" />
-            <span className="text-h2">+</span>
+            <span className="text-[17px]">+</span>
             <Frac num="1" den="R₂" size="sm" />
-            <span className="text-h2">+ … +</span>
+            <span className="text-[17px]">+ … +</span>
             <Frac num={<>1</>} den={<>R<sub>n</sub></>} size="sm" />
           </div>
         </div>
         <div className="bg-white rounded-xl border border-slate-200 p-3">
-          <p className="text-meta font-semibold text-slate-400 mb-1.5">Cường độ dòng điện</p>
+          <p className="text-[12.5px] font-bold text-slate-400 uppercase mb-1.5">Cường độ dòng điện</p>
           <p className="font-serif italic text-[17px] text-indigo-700">I = I₁ + I₂ + … + I<sub>n</sub></p>
         </div>
         <div className="bg-white rounded-xl border border-slate-200 p-3">
-          <p className="text-meta font-semibold text-slate-400 mb-1.5">Hiệu điện thế</p>
+          <p className="text-[12.5px] font-bold text-slate-400 uppercase mb-1.5">Hiệu điện thế</p>
           <p className="font-serif italic text-[17px] text-indigo-700">U = U₁ = U₂ = … = U<sub>n</sub></p>
         </div>
       </div>
-      <p className="text-meta text-slate-500 mt-3">
+      <p className="text-[12.5px] text-slate-500 mt-3">
         Riêng trường hợp hai điện trở mắc song song, có thể tính nhanh bằng tích chia tổng.
       </p>
       <FormulaLine>
@@ -492,7 +496,7 @@ const LessonCddd: React.FC = () => (
   <>
     <Card>
       <SectionTitle n="I">Cường độ dòng điện</SectionTitle>
-      <p className="text-body text-slate-600 mb-3 leading-relaxed">
+      <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-600 mb-3 leading-relaxed">
         Cường độ dòng điện là đại lượng đặc trưng cho tác dụng mạnh, yếu của dòng điện.
       </p>
       <FormulaLine>
@@ -509,15 +513,15 @@ const LessonCddd: React.FC = () => (
       <SectionTitle n="II">Liên hệ với mật độ và tốc độ hạt mang điện</SectionTitle>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
         <div className="bg-white rounded-xl border border-slate-200 p-3 text-center">
-          <p className="text-meta font-semibold text-slate-400 mb-1.5">Cường độ dòng điện</p>
+          <p className="text-[12.5px] font-bold text-slate-400 uppercase mb-1.5">Cường độ dòng điện</p>
           <p className="font-serif italic text-[20px] text-indigo-700">I = Snve</p>
         </div>
         <div className="bg-white rounded-xl border border-slate-200 p-3 text-center">
-          <p className="text-meta font-semibold text-slate-400 mb-1.5">Số electron qua tiết diện</p>
+          <p className="text-[12.5px] font-bold text-slate-400 uppercase mb-1.5">Số electron qua tiết diện</p>
           <p className="font-serif italic text-[20px] text-indigo-700">N = nSv · Δt</p>
         </div>
         <div className="bg-white rounded-xl border border-slate-200 p-3 text-center">
-          <p className="text-meta font-semibold text-slate-400 mb-1.5">Điện lượng chuyển qua</p>
+          <p className="text-[12.5px] font-bold text-slate-400 uppercase mb-1.5">Điện lượng chuyển qua</p>
           <p className="font-serif italic text-[20px] text-indigo-700">Δq = Ne = Snve · Δt</p>
         </div>
       </div>
@@ -535,7 +539,7 @@ const LessonNguon: React.FC = () => (
   <>
     <Card>
       <SectionTitle n="I">Điện trở và Định luật Ohm</SectionTitle>
-      <p className="text-body text-slate-600 mb-3 leading-relaxed">
+      <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-600 mb-3 leading-relaxed">
         Điện trở <V size={17}>R</V> là đại lượng đặc trưng cho mức độ cản trở dòng điện của vật dẫn.
         Cường độ dòng điện qua vật dẫn tỉ lệ thuận với hiệu điện thế hai đầu vật dẫn và tỉ lệ nghịch với điện trở.
       </p>
@@ -553,7 +557,7 @@ const LessonNguon: React.FC = () => (
 
     <Card>
       <SectionTitle n="II">Suất điện động của nguồn điện</SectionTitle>
-      <p className="text-body text-slate-600 mb-3 leading-relaxed">
+      <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-600 mb-3 leading-relaxed">
         Suất điện động <V size={17}>E</V> đặc trưng cho khả năng thực hiện công của nguồn điện, đo bằng thương số
         giữa công <V size={17}>A</V> của lực lạ khi dịch chuyển điện tích dương <V size={17}>q</V> bên trong nguồn
         từ cực âm sang cực dương và độ lớn điện tích đó.
@@ -561,7 +565,7 @@ const LessonNguon: React.FC = () => (
       <FormulaLine>
         <V>E</V><Eq /><Frac num="A" den="q" size="lg" />
       </FormulaLine>
-      <p className="text-body text-slate-600 mt-3 leading-relaxed">
+      <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-600 mt-3 leading-relaxed">
         Số vôn ghi trên mỗi nguồn điện cho biết trị số suất điện động của nguồn. Đó cũng là hiệu điện thế
         giữa hai cực của nguồn khi mạch hở.
       </p>
@@ -581,15 +585,15 @@ const LessonNguon: React.FC = () => (
       </div>
       <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
         <div className="bg-white rounded-xl border border-slate-200 p-3 text-center">
-          <p className="text-meta font-semibold text-slate-400 mb-1.5">Công của nguồn điện</p>
+          <p className="text-[12.5px] font-bold text-slate-400 uppercase mb-1.5">Công của nguồn điện</p>
           <p className="font-serif italic text-[19px] text-indigo-700">A = qE = EIt</p>
         </div>
         <div className="bg-white rounded-xl border border-slate-200 p-3 text-center">
-          <p className="text-meta font-semibold text-slate-400 mb-1.5">Hiệu điện thế mạch ngoài</p>
+          <p className="text-[12.5px] font-bold text-slate-400 uppercase mb-1.5">Hiệu điện thế mạch ngoài</p>
           <p className="font-serif italic text-[19px] text-indigo-700">U = E − Ir</p>
         </div>
         <div className="bg-white rounded-xl border border-slate-200 p-3 text-center">
-          <p className="text-meta font-semibold text-slate-400 mb-1.5">Hiệu điện thế mạch ngoài</p>
+          <p className="text-[12.5px] font-bold text-slate-400 uppercase mb-1.5">Hiệu điện thế mạch ngoài</p>
           <p className="font-serif italic text-[19px] text-indigo-700">U = IR</p>
         </div>
       </div>
@@ -603,8 +607,8 @@ const LessonNguon: React.FC = () => (
     <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 flex gap-3">
       <AlertTriangle className="w-6 h-6 text-rose-600 shrink-0 mt-0.5" />
       <div>
-        <h4 className="text-h3 text-rose-800 mb-1">Cảnh báo nguy hiểm</h4>
-        <p className="text-body text-rose-900 leading-relaxed">
+        <h4 className="text-[clamp(14px,0.98vw,16.5px)] font-bold text-rose-800 mb-1">Cảnh báo nguy hiểm</h4>
+        <p className="text-[clamp(13px,0.9vw,15.5px)] text-rose-900 leading-relaxed">
           Không mắc ampe kế song song với nguồn hoặc với điện trở. Điện trở trong của ampe kế gần bằng 0
           nên sẽ gây đoản mạch, làm cháy đồng hồ đo và hỏng nguồn.
         </p>
@@ -628,12 +632,12 @@ export const TheoryView: React.FC<TheoryViewProps> = ({
       <div className="md:col-span-6 bg-white rounded-xl border border-slate-200 px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2">
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
           <BookOpen className="w-4 h-4 text-indigo-600 shrink-0" />
-          <span className="text-h3 font-semibold text-slate-800 truncate">{module.title}</span>
+          <span className="text-[clamp(15px,1.05vw,17.5px)] font-bold text-slate-800 truncate">{module.title}</span>
         </div>
         <select
           value={module.id}
           onChange={(e) => onSwitchModule(e.target.value)}
-          className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-body font-semibold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500"
+          className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[clamp(14px,0.98vw,16.5px)] font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500"
         >
           {availableModules.map((m) => (
             <option key={m.id} value={m.id}>{m.title}</option>
@@ -650,8 +654,10 @@ export const TheoryView: React.FC<TheoryViewProps> = ({
                 ? 'border-indigo-500 bg-indigo-50'
                 : 'border-slate-200 bg-white hover:border-indigo-300'
             }`}>
-            <div className={`text-body font-semibold leading-tight ${ lesson === l.id ? 'text-indigo-700' : 'text-slate-700' }`}>{l.label}</div>
-            <div className="text-meta text-slate-400 mt-0.5">{l.sub}</div>
+            <div className={`text-[clamp(13.5px,0.94vw,16px)] font-bold leading-tight ${
+              lesson === l.id ? 'text-indigo-700' : 'text-slate-700'
+            }`}>{l.label}</div>
+            <div className="text-[12.5px] text-slate-400 mt-0.5">{l.sub}</div>
           </button>
         ))}
       </div>

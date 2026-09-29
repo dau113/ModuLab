@@ -123,88 +123,108 @@ export const QuizGame: React.FC<QuizGameProps> = ({ userRole, onFinishQuiz, extr
   /* ---------------- Màn hình chọn chủ đề ---------------- */
   if (phase === 'setup') {
     return (
-      <div className="ml-scroll h-full overflow-y-auto pr-1 pb-6">
-        <div className="max-w-2xl">
-          <h1 className="text-h1 pb-2 border-b border-slate-300">
-            Khởi động — Ôn tập nhanh
-          </h1>
-
-          <div className="mt-6 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-x-10 gap-y-8">
-
-            {/* Chủ đề — chọn được nhiều cái */}
-            <div>
-              <h2 className="text-h3 pb-1.5 border-b border-slate-200 mb-2">
-                Chủ đề
-              </h2>
-
-              <label className="flex items-center gap-2.5 py-1.5 cursor-pointer group">
-                <input type="checkbox" checked={topics.length === 0}
-                  onChange={() => setTopics([])}
-                  className="w-4 h-4 accent-indigo-600" />
-                <span className="text-body text-slate-800 group-hover:text-slate-900">
-                  Tổng hợp cả ba chủ đề
-                </span>
-                <span className="text-body text-slate-400">({counts.all} câu)</span>
-              </label>
-
-              {QUIZ_TOPICS.map((tp) => (
-                <label key={tp.id} className="flex items-center gap-2.5 py-1.5 cursor-pointer group">
-                  <input type="checkbox" checked={topics.includes(tp.id)}
-                    onChange={() => setTopics((prev) => (prev.includes(tp.id)
-                      ? prev.filter((x) => x !== tp.id)
-                      : [...prev, tp.id]))}
-                    className="w-4 h-4 accent-indigo-600" />
-                  <span className="text-body text-slate-800 group-hover:text-slate-900">
-                    {lang === 'en' ? tp.nameEn : tp.name}
-                  </span>
-                  <span className="text-body text-slate-400">({counts[tp.id]} câu)</span>
-                </label>
-              ))}
-            </div>
-
-            {/* Số câu mỗi lượt */}
-            <div className="sm:w-56">
-              <h2 className="text-h3 pb-1.5 border-b border-slate-200 mb-2">
-                Số câu mỗi lượt
-              </h2>
-
-              <div className="flex items-center gap-1 py-1.5">
-                {ROUND_SIZES.filter((n) => n <= available).map((n) => (
-                  <button key={n} onClick={() => setRoundSize(n)}
-                    className={`h-9 w-11 text-body border-b-2 transition-colors ${ roundSize === n ? 'border-indigo-600 text-slate-900 font-medium' : 'border-transparent text-slate-500 hover:text-slate-800' }`}>
-                    {n}
-                  </button>
-                ))}
-              </div>
-
-              <label className="flex items-center gap-2 mt-2 text-body text-slate-600">
-                hoặc nhập số:
-                <input type="number" min={1} max={available} value={roundSize}
-                  onChange={(e) => {
-                    const v = Number(e.target.value);
-                    if (Number.isFinite(v)) setRoundSize(Math.max(1, Math.min(available, Math.round(v))));
-                  }}
-                  className="w-16 h-8 px-2 border-b border-slate-300 bg-transparent
-                    text-slate-900 outline-none focus:border-indigo-600" />
-              </label>
-
-              <p className="mt-2 text-body text-slate-400">
-                Kho hiện có {available} câu. Mỗi câu 30 giây.
-              </p>
+      <div className="ml-scroll grid grid-cols-1 lg:grid-cols-6 gap-4 h-full overflow-y-auto pr-1 pb-4">
+        <section className="lg:col-span-6 rounded-2xl bg-indigo-600 text-white px-5 py-4 flex flex-wrap items-center gap-x-6 gap-y-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="w-11 h-11 rounded-xl bg-white/15 grid place-items-center shrink-0">
+              <Rocket className="w-5 h-5" />
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-[clamp(17px,1.2vw,20px)] font-extrabold leading-tight">{t('quiz.title')}</h2>
+              <p className="text-[clamp(13px,0.9vw,15.5px)] text-white/85 leading-snug">{t('quiz.pickTopic')}</p>
             </div>
           </div>
 
-          <button onClick={start}
-            className="mt-8 h-10 px-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-body font-medium transition-colors">
-            Bắt đầu lượt ôn
-          </button>
+          <div className="flex items-center gap-5 ml-auto">
+            {[
+              [String(QUIZ_BANK.length), bi('câu hỏi', 'questions')],
+              ['3', bi('chủ đề', 'topics')],
+              ['30s', bi('mỗi câu', 'per question')],
+            ].map(([n, label]) => (
+              <div key={label} className="text-center">
+                <div className="text-[clamp(17px,1.2vw,20px)] font-extrabold leading-none">{n}</div>
+                <div className="text-[12.5px] text-white/75 mt-0.5">{label}</div>
+              </div>
+            ))}
+          </div>
 
+          <p className="w-full text-[clamp(13px,0.9vw,15.5px)] text-white/85 leading-relaxed border-t border-white/15 pt-3">
+            {bi('Trả lời nhanh và đúng liên tiếp để cộng thêm điểm thưởng.',
+                'Answer fast and keep your streak for bonus points.')}
+          </p>
+        </section>
+
+        <BentoCard className="lg:col-span-4" title={bi('Chủ đề', 'Topic')}
+          subtitle={bi('Bấm để chọn, ghép bao nhiêu chủ đề cũng được',
+                       'Tap to select — combine as many topics as you like')}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <TopicButton
+              active={topics.length === 0}
+              onClick={() => setTopics([])}
+              icon={Target} title={t('quiz.allTopics')} count={counts.all} />
+            {QUIZ_TOPICS.map((tp) => (
+              <TopicButton key={tp.id}
+                active={topics.includes(tp.id)}
+                onClick={() => setTopics((prev) => (prev.includes(tp.id)
+                  ? prev.filter((x) => x !== tp.id)
+                  : [...prev, tp.id]))}
+                icon={TOPIC_ICON[tp.id]}
+                title={lang === 'en' ? tp.nameEn : tp.name} count={counts[tp.id]} />
+            ))}
+          </div>
+
+          <p className="mt-3 text-[clamp(13px,0.9vw,15.5px)] text-slate-600">
+            {topics.length === 0
+              ? bi(`Đang lấy cả ba chủ đề — ${counts.all} câu.`, `Using all three topics — ${counts.all} questions.`)
+              : bi(`Đã chọn ${topics.length} chủ đề, tổng cộng ${available} câu để bốc.`,
+                   `${topics.length} topics selected — ${available} questions in the pool.`)}
+          </p>
+        </BentoCard>
+
+        <BentoCard className="lg:col-span-2" title={t('quiz.questionCount')}
+          subtitle={bi('Càng nhiều câu, điểm tối đa càng cao', 'More questions, higher ceiling')}>
+          <div className="grid grid-cols-2 gap-2">
+            {ROUND_SIZES.filter((n) => n <= available).map((n) => (
+              <button key={n} onClick={() => setRoundSize(n)}
+                className={`h-14 rounded-xl border font-bold text-lg transition-colors ${
+                  roundSize === n
+                    ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                    : 'border-slate-200 text-slate-500 hover:border-indigo-300'
+                }`}>{n}</button>
+            ))}
+          </div>
+
+          {/* Tự nhập số câu nếu không thích các mức có sẵn */}
+          <label className="mt-3 block">
+            <span className="text-[12.5px] font-bold text-slate-500 uppercase">
+              {bi('Hoặc tự nhập', 'Or type a number')}
+            </span>
+            <div className="flex items-center gap-2 mt-1">
+              <input
+                type="number" min={1} max={available}
+                value={roundSize}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  if (Number.isFinite(v)) setRoundSize(Math.max(1, Math.min(available, Math.round(v))));
+                }}
+                className="w-24 h-10 px-3 rounded-xl border border-slate-200 text-[clamp(14px,0.98vw,16.5px)] font-bold
+                  outline-none focus:border-indigo-400"
+              />
+              <span className="text-[clamp(13px,0.9vw,15.5px)] text-slate-500">
+                {bi(`câu, tối đa ${available}`, `questions, max ${available}`)}
+              </span>
+            </div>
+          </label>
+          <button onClick={start}
+            className="mt-4 w-full h-12 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[clamp(14px,0.98vw,16.5px)] flex items-center justify-center gap-2">
+            <Rocket className="w-5 h-5" /> {t('quiz.begin')}
+          </button>
           {userRole === 'gv' && (
-            <p className="mt-3 text-body text-slate-400">
-              Giáo viên có thể bổ sung câu hỏi ở Bảng quản lý.
+            <p className="mt-2 text-[12.5px] text-slate-400 text-center">
+              {bi('Giáo viên có thể bổ sung câu hỏi ở Bảng quản lý.', 'Teachers can add questions from the dashboard.')}
             </p>
           )}
-        </div>
+        </BentoCard>
       </div>
     );
   }
@@ -226,13 +246,13 @@ export const QuizGame: React.FC<QuizGameProps> = ({ userRole, onFinishQuiz, extr
             {medal ? <Medal className="w-8 h-8" /> : <Award className="w-8 h-8" />}
           </div>
 
-          <h2 className="text-h2 mb-1">
+          <h2 className="text-2xl font-extrabold mb-1">
             {ratio >= 0.85 ? bi('Xuất sắc!', 'Outstanding!')
               : ratio >= 0.6 ? bi('Làm tốt lắm!', 'Well done!')
                 : bi('Cố lên nhé!', 'Keep going!')}
           </h2>
           {medal && (
-            <p className="text-body text-slate-500 mb-4">
+            <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-500 mb-4">
               {bi(`Bạn đạt huy chương ${medal} của lượt này.`, `You earned a ${medalEn} medal this round.`)}
             </p>
           )}
@@ -245,11 +265,11 @@ export const QuizGame: React.FC<QuizGameProps> = ({ userRole, onFinishQuiz, extr
 
           <div className="flex gap-2">
             <button onClick={() => setPhase('setup')}
-              className="flex-1 h-11 rounded-2xl border border-slate-200 text-slate-600 font-semibold text-body hover:bg-slate-50">
+              className="flex-1 h-11 rounded-2xl border border-slate-200 text-slate-600 font-bold text-[clamp(13px,0.9vw,15.5px)] hover:bg-slate-50">
               {bi('Đổi chủ đề', 'Change topic')}
             </button>
             <button onClick={start}
-              className="flex-1 h-11 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-body flex items-center justify-center gap-2">
+              className="flex-1 h-11 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[clamp(13px,0.9vw,15.5px)] flex items-center justify-center gap-2">
               <RotateCcw className="w-4 h-4" /> {t('quiz.again')}
             </button>
           </div>
@@ -268,7 +288,7 @@ export const QuizGame: React.FC<QuizGameProps> = ({ userRole, onFinishQuiz, extr
     <div className="h-full flex flex-col gap-3 min-h-0">
       {/* Thanh trạng thái */}
       <div className="flex items-center gap-3 shrink-0">
-        <div className={`px-3 h-9 rounded-lg ${style.chip} text-white text-meta font-semibold flex items-center gap-1.5`}>
+        <div className={`px-3 h-9 rounded-lg ${style.chip} text-white text-[clamp(12.5px,0.86vw,15px)] font-bold flex items-center gap-1.5`}>
           {React.createElement(TOPIC_ICON[tp] ?? Sigma, { className: 'w-3.5 h-3.5' })}
           {lang === 'en'
             ? QUIZ_TOPICS.find((x) => x.id === tp)?.nameEn
@@ -280,17 +300,17 @@ export const QuizGame: React.FC<QuizGameProps> = ({ userRole, onFinishQuiz, extr
             style={{ width: `${((idx + (answered ? 1 : 0)) / deck.length) * 100}%` }} />
         </div>
 
-        <span className="text-meta font-semibold text-slate-500 tabular-nums">
+        <span className="text-[clamp(12.5px,0.86vw,15px)] font-bold text-slate-500 tabular-nums">
           {t('quiz.question')} {idx + 1}/{deck.length}
         </span>
 
         {streak >= 2 && (
-          <span className="ml-pop px-2.5 h-9 rounded-lg bg-amber-100 border border-amber-300 text-amber-700 text-meta font-semibold flex items-center gap-1">
+          <span className="ml-pop px-2.5 h-9 rounded-lg bg-amber-100 border border-amber-300 text-amber-700 text-[clamp(12.5px,0.86vw,15px)] font-extrabold flex items-center gap-1">
             <Flame className="w-3.5 h-3.5" /> ×{streak}
           </span>
         )}
 
-        <span className="px-3 h-9 rounded-lg bg-indigo-600 text-white text-body font-semibold flex items-center gap-1.5 tabular-nums">
+        <span className="px-3 h-9 rounded-lg bg-indigo-600 text-white text-[clamp(13px,0.9vw,15.5px)] font-extrabold flex items-center gap-1.5 tabular-nums">
           <Trophy className="w-3.5 h-3.5" /> {score}
         </span>
       </div>
@@ -309,12 +329,14 @@ export const QuizGame: React.FC<QuizGameProps> = ({ userRole, onFinishQuiz, extr
               timeLeft <= 5 ? 'bg-rose-500' : timeLeft <= 12 ? 'bg-amber-500' : 'bg-emerald-500'
             }`} style={{ width: `${Math.max(0, timePct)}%` }} />
           </div>
-          <span className={`text-body font-semibold tabular-nums w-9 text-right ${ timeLeft <= 5 && !answered ? 'text-rose-600' : 'text-slate-500' }`}>{Math.max(0, timeLeft)}s</span>
+          <span className={`text-[clamp(13px,0.9vw,15.5px)] font-extrabold tabular-nums w-9 text-right ${
+            timeLeft <= 5 && !answered ? 'text-rose-600' : 'text-slate-500'
+          }`}>{Math.max(0, timeLeft)}s</span>
         </div>
 
         {/* Đề bài, kèm hình minh hoạ nếu câu hỏi có nhắc tới hình */}
         <div key={current?.id} className={`ml-rise shrink-0 mb-5 ${hasArt ? 'flex flex-col sm:flex-row gap-4 items-start' : ''}`}>
-          <h2 className="text-h2 flex-1">
+          <h2 className="text-[clamp(15px,1.05vw,17.5px)] md:text-xl font-extrabold leading-snug flex-1">
             {current?.question}
           </h2>
           {hasArt && <QuestionArt questionId={current.id} />}
@@ -334,10 +356,14 @@ export const QuizGame: React.FC<QuizGameProps> = ({ userRole, onFinishQuiz, extr
                         : 'border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/60'
                 }`}
                 style={{ animationDelay: `${i * 55}ms` }}>
-                <span className={`w-7 h-7 shrink-0 rounded-xl grid place-items-center text-body font-semibold ${ reveal ? 'bg-emerald-500 text-white' : wrong ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-500' }`}>
+                <span className={`w-7 h-7 shrink-0 rounded-xl grid place-items-center text-[clamp(13px,0.9vw,15.5px)] font-extrabold ${
+                  reveal ? 'bg-emerald-500 text-white'
+                    : wrong ? 'bg-rose-500 text-white'
+                      : 'bg-slate-100 text-slate-500'
+                }`}>
                   {reveal ? <CheckCircle2 className="w-4 h-4" /> : wrong ? <XCircle className="w-4 h-4" /> : LETTERS[i]}
                 </span>
-                <span className="text-body leading-snug pt-0.5">{o.text}</span>
+                <span className="text-[clamp(13.5px,0.94vw,16px)] leading-snug pt-0.5">{o.text}</span>
               </button>
             );
           })}
@@ -352,14 +378,14 @@ export const QuizGame: React.FC<QuizGameProps> = ({ userRole, onFinishQuiz, extr
               {isRight
                 ? <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                 : <Lightbulb className="w-5 h-5 text-amber-600" />}
-              <span className={`text-body font-semibold ${isRight ? 'text-emerald-800' : 'text-amber-800'}`}>
+              <span className={`text-[clamp(14px,0.98vw,16.5px)] font-extrabold ${isRight ? 'text-emerald-800' : 'text-amber-800'}`}>
                 {picked === '__timeout__' ? t('quiz.timeUp') : isRight ? t('quiz.correct') : t('quiz.wrong')}
               </span>
-              <span className="ml-auto text-meta font-semibold text-slate-500">{t('quiz.explain')}</span>
+              <span className="ml-auto text-[12.5px] font-bold text-slate-500">{t('quiz.explain')}</span>
             </div>
-            <p className="text-body text-slate-700 leading-relaxed">{current?.explanation}</p>
+            <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-700 leading-relaxed">{current?.explanation}</p>
             <button onClick={next}
-              className="mt-3 w-full h-11 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-body flex items-center justify-center gap-2">
+              className="mt-3 w-full h-11 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[clamp(13.5px,0.94vw,16px)] flex items-center justify-center gap-2">
               {idx + 1 >= deck.length ? t('quiz.finish') : t('quiz.next')}
               <ArrowRight className="w-4 h-4" />
             </button>
@@ -380,15 +406,15 @@ const TopicButton: React.FC<{
       active ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200 hover:border-indigo-300'
     }`}>
     <Icon className={`w-5 h-5 mb-2.5 ${active ? 'text-indigo-600' : 'text-slate-400'}`} />
-    <div className="text-body font-semibold leading-tight">{title}</div>
-    <div className="text-meta text-slate-500 mt-0.5">{count} câu</div>
+    <div className="text-[clamp(14px,0.98vw,16.5px)] font-bold leading-tight">{title}</div>
+    <div className="text-[12.5px] text-slate-500 mt-0.5">{count} câu</div>
   </button>
 );
 
 const Stat: React.FC<{ label: string; value: string; tone: string }> = ({ label, value, tone }) => (
   <div className="rounded-2xl bg-slate-50 border border-slate-200 py-3">
-    <div className={`text-h1 font-semibold ${tone}`}>{value}</div>
-    <div className="text-meta text-slate-500 font-semibold mt-0.5">{label}</div>
+    <div className={`text-2xl font-extrabold ${tone}`}>{value}</div>
+    <div className="text-[12.5px] text-slate-500 font-bold uppercase tracking-wide mt-0.5">{label}</div>
   </div>
 );
 
