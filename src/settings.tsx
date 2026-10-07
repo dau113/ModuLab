@@ -45,14 +45,14 @@ const DICT = {
   /* Điều hướng */
   'nav.progress': ['Tiến trình bài học', 'Lesson progress'],
   'nav.current': ['Thực hành hiện tại:', 'Current lab:'],
-  'nav.theory': ['Tài liệu', 'Reference'],
+  'nav.theory': ['ModuDoc', 'ModuDoc'],
   'nav.theory.lesson': ['Lý thuyết ôn tập', 'Lesson notes'],
   'nav.theory.tools': ['Khám phá dụng cụ', 'Explore instruments'],
-  'nav.quiz': ['Khởi động', 'Warm-up'],
+  'nav.quiz': ['ModuStart', 'ModuStart'],
   'nav.quiz.drill': ['Ôn tập nhanh', 'Quick drill'],
   'nav.quest': ['Trò chơi phiêu lưu', 'Adventure game'],
-  'nav.circuit': ['Thực hành', 'Lab practice'],
-  'nav.report': ['Báo cáo thực hành', 'Lab report'],
+  'nav.circuit': ['ModuSim', 'ModuSim'],
+  'nav.report': ['ModuLog', 'ModuLog'],
   'nav.teacher': ['Bảng quản lý', 'Class dashboard'],
 
   /* Trang chủ */
@@ -85,7 +85,7 @@ const DICT = {
   'home.stat.safe': ['an toàn tuyệt đối', 'completely safe'],
 
   /* Khởi động */
-  'quiz.title': ['Khởi động', 'Warm-up'],
+  'quiz.title': ['ModuStart', 'ModuStart'],
   'quiz.pickTopic': ['Chọn chủ đề để khởi động', 'Choose a topic to warm up'],
   'quiz.allTopics': ['Tổng hợp cả ba chủ đề', 'All three topics'],
   'quiz.questionCount': ['Số câu mỗi lượt', 'Questions per round'],

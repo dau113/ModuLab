@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ToolItem, ToolMode } from '../../types';
 import { BentoCard, WarningBadge } from '../common';
 import { PartThumb, PART_CATALOG } from '../f5-circuit';
+import { PartAnatomy } from './anatomy-view';
 import type { PartKind } from '../f5-circuit';
 import { 
   Gauge, 
@@ -132,6 +133,11 @@ export const ToolExplorer: React.FC<ToolExplorerProps> = ({ tools }) => {
                 </p>
               </div>
             </div>
+          )}
+
+          {/* Hình tương tác: bấm vào từng bộ phận để biết nó làm gì */}
+          {partOf(selectedTool.id) && (
+            <PartAnatomy kind={partOf(selectedTool.id)!} name={selectedTool.name} />
           )}
 
           {/* Detailed description */}
