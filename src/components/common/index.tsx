@@ -54,12 +54,45 @@ export const SettingsMenu: React.FC<{ tone?: 'onLight' | 'onDark' }> = ({ tone =
     </div>
   );
 
+  /** Nút hai trạng thái có chữ, dùng cho lựa chọn không phải bật/tắt như sáng – tối */
   const Toggle: React.FC<{ on: boolean; onClick: () => void; onLabel: string; offLabel: string }> =
     ({ on, onClick, onLabel, offLabel }) => (
       <button onClick={onClick}
         className="h-8 px-3 rounded-lg border border-slate-200 text-[clamp(13px,0.9vw,15.5px)]
           font-medium text-slate-700 hover:bg-slate-50 transition-colors">
         {on ? onLabel : offLabel}
+      </button>
+    );
+
+  /**
+   * Công tắc gạt cho những mục chỉ có bật hoặc tắt.
+   *
+   * Dùng `role="switch"` kèm `aria-checked` để trình đọc màn hình đọc đúng là công
+   * tắc đang bật hay tắt — nếu chỉ vẽ hình thì người dùng khiếm thị không biết trạng
+   * thái. Vẫn là thẻ button nên bấm được bằng phím Enter và phím cách như thường.
+   */
+  const Switch: React.FC<{ on: boolean; onClick: () => void; label: string }> =
+    ({ on, onClick, label }) => (
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        aria-label={`${label} — ${on ? 'đang bật' : 'đang tắt'}`}
+        title={on ? 'Đang bật, bấm để tắt' : 'Đang tắt, bấm để bật'}
+        onClick={onClick}
+        className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full
+          border transition-colors focus:outline-none
+          focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 ${
+            on ? 'bg-indigo-600 border-indigo-600' : 'bg-slate-200 border-slate-300'
+          }`}>
+        {/*
+          Màu núm ghi thẳng bằng mã màu, không dùng lớp `bg-white`: ở giao diện tối
+          index.css có luật `.dark .bg-white` đổi nền trắng thành màu tối, núm gạt sẽ
+          chìm hẳn vào rãnh. Núm thì phải trắng ở cả hai giao diện mới thấy rõ.
+        */}
+        <span
+          className="inline-block h-[18px] w-[18px] rounded-full shadow transition-transform"
+          style={{ backgroundColor: '#FFFFFF', transform: `translateX(${on ? 21 : 3}px)` }} />
       </button>
     );
 
@@ -94,13 +127,11 @@ export const SettingsMenu: React.FC<{ tone?: 'onLight' | 'onDark' }> = ({ tone =
               </Row>
 
               <Row label="Nhạc nền">
-                <Toggle on={musicOn} onClick={() => setMusicOn(music.toggle())}
-                  onLabel="Đang bật" offLabel="Đang tắt" />
+                <Switch on={musicOn} onClick={() => setMusicOn(music.toggle())} label="Nhạc nền" />
               </Row>
 
               <Row label="Tiếng thao tác">
-                <Toggle on={sfxOn} onClick={() => setSfxOn(toggleSfx())}
-                  onLabel="Đang bật" offLabel="Đang tắt" />
+                <Switch on={sfxOn} onClick={() => setSfxOn(toggleSfx())} label="Tiếng thao tác" />
               </Row>
 
               <div className="pt-3">
@@ -164,7 +195,7 @@ export const TopNav: React.FC<TopNavProps> = ({ currentUser, onSwitchUser, avail
               </span>
             </div>
             <div className="text-[12.5px] text-slate-500 font-medium">
-              {currentUser.role === 'hs' ? `Lớp: ${currentUser.classCode} • ${currentUser.teamCode}` : `Lớp: ${currentUser.classCode} • Bảng quản lý`}
+              {currentUser.role === 'hs' ? `Lớp: ${currentUser.classCode} • ${currentUser.teamCode}` : `Lớp: ${currentUser.classCode} • ModuManage`}
             </div>
           </div>
 

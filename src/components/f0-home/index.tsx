@@ -214,7 +214,8 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({ users, onEnter }) => {
             {/* Cột chữ — nguyên văn tiêu đề của bản 1.51 */}
             <div className="pt-4 lg:pt-0">
               <h1 className="text-[clamp(26px,3vw,38px)] font-bold leading-[1.15] tracking-tight text-white">
-                “ModuLab” — trợ lý số hỗ trợ giờ học thực hành cho học sinh THPT
+                {/* Dấu cách không ngắt (\u00A0) giữ "Vật lí" không bị tách đôi khi xuống dòng */}
+                “ModuLab” — trợ lý số hỗ trợ giờ thực hành Vật lí cấp THPT
               </h1>
 
               {/*

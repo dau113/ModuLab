@@ -221,7 +221,7 @@ export const QuizGame: React.FC<QuizGameProps> = ({ userRole, onFinishQuiz, extr
           </button>
           {userRole === 'gv' && (
             <p className="mt-2 text-[12.5px] text-slate-400 text-center">
-              {bi('Giáo viên có thể bổ sung câu hỏi ở Bảng quản lý.', 'Teachers can add questions from the dashboard.')}
+              {bi('Giáo viên có thể bổ sung câu hỏi ở ModuManage.', 'Teachers can add questions from ModuManage.')}
             </p>
           )}
         </BentoCard>

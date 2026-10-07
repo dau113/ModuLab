@@ -53,7 +53,7 @@ const DICT = {
   'nav.quest': ['Trò chơi phiêu lưu', 'Adventure game'],
   'nav.circuit': ['ModuSim', 'ModuSim'],
   'nav.report': ['ModuLog', 'ModuLog'],
-  'nav.teacher': ['Bảng quản lý', 'Class dashboard'],
+  'nav.teacher': ['ModuManage', 'ModuManage'],
 
   /* Trang chủ */
   'home.hero.title': ['Học Vật lí điện học bằng cách tự tay lắp mạch', 'Learn electricity by wiring circuits yourself'],

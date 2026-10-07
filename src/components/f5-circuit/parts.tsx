@@ -120,10 +120,12 @@ export const PART_CATALOG: Record<PartKind, PartSpec> = {
     onBoard: true,
   },
   led: {
-    kind: 'led', name: 'Đèn LED 2V', short: 'Đèn LED', group: 'Tải & Điện trở',
-    w: 100, h: 66, elec: 'led', value: 150, unit: 'Ω',
+    kind: 'led', name: 'Mô-đun đèn LED', short: 'Đèn LED', group: 'Tải & Điện trở',
+    w: 100, h: 66, elec: 'led', value: 500, unit: 'Ω',
     terminals: [T('a', 22, 52, 'pos', 'Chân dài (+)'), T('b', 78, 52, 'neg', 'Chân ngắn (−)')],
     desc: 'Đèn LED có cực rõ ràng: dòng phải đi vào chân dài (+) mới sáng, cắm ngược thì tắt hẳn. '
+      + 'LED chỉ bắt đầu dẫn khi điện áp vượt điện áp thuận của nó, khoảng 1,9V với màu đỏ và 3V với màu lam. '
+      + 'Mô-đun đã gắn sẵn điện trở hạn dòng 500Ω nên cắm thẳng vào nguồn 12V vẫn an toàn. '
       + 'Bấm vào đèn để đổi màu. Sáng tắt tức thì, không có quán tính nhiệt như sợi đốt.',
     onBoard: true,
   },

@@ -11,7 +11,7 @@ export const INITIAL_USERS = [
   },
   {
     id: 'user-2',
-    name: 'Thầy Trần Hùng',
+    name: 'ModuLab Teacher',
     email: 'hung.tran@thpt.edu.vn',
     role: 'gv' as const,
     classCode: '11A2-VL',
@@ -45,7 +45,7 @@ $$I = \\frac{U}{R} \\implies R = \\frac{U}{I}$$
 > * Chỉ đóng điện khi đã kiểm tra và đảm bảo các chốt dương (+) của dụng cụ đo nối về phía cực dương của nguồn.`,
     videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
     maxErrorThreshold: 0.10, // 10%
-    verifiedBy: 'Thầy Trần Hùng — GV Vật lí',
+    verifiedBy: 'ModuLab Teacher — GV Vật lí',
     verifiedDate: '20/07/2026',
     referenceSource: 'SGK Vật lí 11 (Chương trình GDPT 2018) - Bộ Kết nối tri thức',
     status: 'da_duyet',

@@ -66,6 +66,8 @@ export interface Branch {
   shorted?: boolean;
   /** Đèn đang mắc ngược cực nên không cho dòng qua */
   reversed?: boolean;
+  /** LED mắc đúng cực nhưng điện áp đặt vào chưa vượt điện áp thuận nên chưa sáng */
+  lowVolt?: boolean;
 }
 
 export interface SimResult {
@@ -104,7 +106,10 @@ export function branchResistance(p: PlacedPart, rxTrue: number): number {
       const r = bulbRating(p);
       return r.volt / r.amp;
     }
-    case 'led': return spec.value ?? 150;
+    /* Điện trở hạn dòng gắn sẵn trong mô-đun LED của bộ dụng cụ, không phải
+       điện trở của bản thân con LED. Trị số chọn sao cho ở 12V dòng qua đèn
+       xấp xỉ 20mA đúng bằng dòng định mức. */
+    case 'led': return spec.value ?? 500;
     case 'coil': return spec.value ?? 6;
     case 'ammeter': return p.kind === 'multimeter' ? (p.func === 'mA' ? 1.8 : 0.02) : 0.05;
     case 'voltmeter': return 2e6;
@@ -185,6 +190,25 @@ export const LED_COLORS = [
 ];
 export const LED_RATED_A = 0.02;
 
+/**
+ * Điện áp thuận của LED, đổi theo màu.
+ *
+ * LED không phải điện trở: nó gần như không dẫn cho tới khi điện áp đặt vào
+ * vượt một ngưỡng gọi là điện áp thuận, sau đó sụt áp trên nó gần như giữ
+ * nguyên còn dòng thì do phần mạch bên ngoài quyết định. Ngưỡng này phụ thuộc
+ * vật liệu bán dẫn nên mỗi màu một khác — LED lam cần điện áp cao hơn LED đỏ.
+ */
+export const LED_VF: Record<string, number> = {
+  '#EF4444': 1.9,  // đỏ
+  '#F59E0B': 2.1,  // hổ phách
+  '#22C55E': 2.2,  // lục
+  '#3B82F6': 3.0,  // lam
+};
+export const DEFAULT_LED_VF = 2.0;
+
+export const ledForwardVolt = (p: PlacedPart): number =>
+  LED_VF[p.ledColor ?? LED_COLORS[0].hex] ?? DEFAULT_LED_VF;
+
 export interface SimOptions {
   /** Triệt tiêu suất điện động của mọi nguồn, chỉ giữ điện trở trong (dùng khi đo điện trở) */
   zeroSources?: boolean;
@@ -251,10 +275,26 @@ function solveOnce(
       }
       return;
     }
+    /*
+     * Suất điện động của nhánh.
+     *
+     * Với LED, dùng một nguồn NGƯỢC chiều có độ lớn bằng điện áp thuận, mắc
+     * nối tiếp điện trở hạn dòng. Khi đó dòng qua đèn là (U − Uf)/R, đúng kiểu
+     * điốt: dưới ngưỡng Uf thì kết quả âm, vòng lặp ở `simulate` sẽ khoá đèn
+     * lại. Trước đây LED bị coi là điện trở thuần nên dòng tỉ lệ thẳng với
+     * điện áp — sai bản chất, và ở 12V dòng vọt lên gấp bốn lần định mức.
+     */
+    const blockedNow = blocked.has(p.id);
+    let emfOf = 0;
+    if (!opts.zeroSources) {
+      if (elec === 'source') emfOf = sourceEmf(p);
+      else if (elec === 'led' && !blockedNow) emfOf = -ledForwardVolt(p);
+    }
+
     branches.push({
       compId: p.id, kind: p.kind, elec, na, nb,
-      R: blocked.has(p.id) ? LAMP_BLOCK_R : branchResistance(p, rxTrue),
-      E: elec === 'source' && !opts.zeroSources ? sourceEmf(p) : 0,
+      R: blockedNow ? LAMP_BLOCK_R : branchResistance(p, rxTrue),
+      E: emfOf,
       I: 0, V: 0,
     });
   });
@@ -317,26 +357,39 @@ export function simulate(
   opts: SimOptions = {},
 ): SimResult {
   const blocked = new Set<string>();
+  /* Đèn bị khoá vì cắm ngược cực, tách khỏi đèn bị khoá vì thiếu điện áp */
+  const wrongWay = new Set<string>();
+
+  /** Gắn lý do vào từng đèn đang khoá để giao diện báo đúng việc cần sửa */
+  const label = (res: SimResult) => {
+    res.branches.forEach((b) => {
+      if (b.elec !== 'led' || !blocked.has(b.compId)) return;
+      if (wrongWay.has(b.compId)) b.reversed = true;
+      else b.lowVolt = true;
+    });
+    return res;
+  };
 
   for (let pass = 0; pass < 6; pass++) {
     const res = solveOnce(parts, wires, rxTrue, opts, blocked);
 
-    /* Chốt đầu tiên của đèn là cực dương; dòng âm nghĩa là đang chạy ngược */
-    /* Chỉ đèn LED mới chặn dòng ngược; bóng sợi đốt cắm chiều nào cũng sáng */
-    const reversed = res.branches.filter((b) =>
-      b.elec === 'led' && !blocked.has(b.compId) && b.I < -1e-6);
+    /* Chốt đầu tiên của đèn là cực dương. Dòng âm nghĩa là hoặc cắm ngược,
+       hoặc điện áp đặt vào chưa vượt điện áp thuận — cả hai đều phải khoá lại.
+       Bóng sợi đốt thì không: cắm chiều nào cũng sáng. */
+    const off = res.branches.filter((b) =>
+      b.elec === 'led' && !blocked.has(b.compId) && b.I < -1e-9);
 
-    if (!reversed.length) {
-      /* Đánh dấu những đèn đang bị khoá để giao diện biết mà báo cắm ngược */
-      res.branches.forEach((b) => {
-        if (b.elec === 'led' && blocked.has(b.compId)) b.reversed = true;
-      });
-      return res;
-    }
-    reversed.forEach((b) => blocked.add(b.compId));
+    if (!off.length) return label(res);
+
+    off.forEach((b) => {
+      blocked.add(b.compId);
+      /* Hiệu điện thế đặt lên đèn âm rõ rệt thì đúng là cắm ngược hai đầu dây;
+         còn dương mà vẫn không dẫn thì chỉ là nguồn chưa đủ mạnh. */
+      if (b.V < -0.05) wrongWay.add(b.compId);
+    });
   }
 
-  return solveOnce(parts, wires, rxTrue, opts, blocked);
+  return label(solveOnce(parts, wires, rxTrue, opts, blocked));
 }
 
 /**
@@ -515,6 +568,19 @@ export function checkCircuit(parts: PlacedPart[], wires: Wire[], rxTrue: number)
   }
   if (!ammeterPresent) msgs.push({ level: 'err', text: 'Thiếu dụng cụ đo cường độ dòng điện (ampe kế hoặc đồng hồ vạn năng ở thang A).' });
   if (!voltmeterPresent) msgs.push({ level: 'err', text: 'Thiếu dụng cụ đo hiệu điện thế (vôn kế hoặc đồng hồ vạn năng ở thang V).' });
+
+  /* LED đúng cực nhưng nguồn chưa vượt điện áp thuận: nhắc tăng điện áp */
+  sim.branches.filter((b) => b.lowVolt).forEach((b) => {
+    const p = parts.find((x) => x.id === b.compId);
+    const vf = p ? ledForwardVolt(p) : DEFAULT_LED_VF;
+    msgs.push({
+      level: 'warn',
+      text: `Đèn LED (${b.compId}) mắc đúng cực nhưng điện áp đặt vào chưa đủ. `
+        + `Loại LED này cần ít nhất ${vf.toFixed(1).replace('.', ',')}V mới bắt đầu sáng — `
+        + 'hãy tăng điện áp nguồn hoặc giảm bớt điện trở mắc nối tiếp.',
+    });
+    faulty.push(b.compId);
+  });
 
   /* Đèn mắc ngược cực thì không sáng — nhắc học sinh đảo hai đầu dây */
   sim.branches.filter((b) => b.reversed).forEach((b) => {
