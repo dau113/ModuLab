@@ -27,7 +27,7 @@ const ACCENT_KEY = 'modulab-accent';
 
 const DICT = {
   /* Chung */
-  'app.tagline': ['Trợ lí số hỗ trợ giờ thực hành vật lí cấp trung học phổ thông', 'Digital assistant for upper-secondary physics labs'],
+  'app.tagline': ['Trợ lí số giờ thực hành vật lí cấp trung học phổ thông', 'Digital assistant for upper-secondary physics labs'],
   'app.back': ['Quay lại', 'Back'],
   'app.home': ['Trang chủ', 'Home'],
   'app.start': ['Bắt đầu', 'Start'],
