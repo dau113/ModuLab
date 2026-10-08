@@ -32,21 +32,22 @@ interface HomeMenuProps {
 
 type Role = 'hs' | 'gv' | 'khach';
 
+/* Tên đầy đủ, viết thẳng ở đây vì trang chủ hiện trước khi người dùng đăng nhập */
 const SECTIONS = [
   {
-    name: 'Khởi động',
+    name: 'ModuStart — Khởi động nhanh',
     desc: 'Trắc nghiệm nhanh hoặc trò chơi phiêu lưu, lấy câu hỏi từ ngân hàng 75 câu chia ba chủ đề.',
   },
   {
-    name: 'Thực hành',
+    name: 'ModuSim — Mô phỏng 2D',
     desc: 'Lắp mạch trên bảng lắp ráp ảo. Bộ giải mạch tính đúng dòng và thế, nối sai thì báo ngay chỗ sai.',
   },
   {
-    name: 'Báo cáo thực hành',
+    name: 'ModuLog — Báo cáo thực hành',
     desc: 'Nhập số liệu từng lần đo, tự tính điện trở trung bình và sai số, rồi nộp cho giáo viên.',
   },
   {
-    name: 'Tài liệu',
+    name: 'ModuDoc — Tài liệu ôn tập',
     desc: 'Lý thuyết bốn bài từ định luật Ohm tới nguồn điện, kèm tra cứu từng dụng cụ trong bộ thí nghiệm.',
   },
 ];
@@ -215,7 +216,7 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({ users, onEnter }) => {
             <div className="pt-4 lg:pt-0">
               <h1 className="text-[clamp(26px,3vw,38px)] font-bold leading-[1.15] tracking-tight text-white">
                 {/* Dấu cách không ngắt (\u00A0) giữ "Vật lí" không bị tách đôi khi xuống dòng */}
-                “ModuLab” — trợ lý số hỗ trợ giờ thực hành Vật lí cấp THPT
+                “ModuLab” — Trợ lí số hỗ trợ giờ thực hành vật lí cấp trung học phổ thông
               </h1>
 
               {/*

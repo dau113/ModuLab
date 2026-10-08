@@ -27,7 +27,7 @@ const ACCENT_KEY = 'modulab-accent';
 
 const DICT = {
   /* Chung */
-  'app.tagline': ['Trợ lý số giờ học thực hành', 'Digital lab-session assistant'],
+  'app.tagline': ['Trợ lí số hỗ trợ giờ thực hành vật lí cấp trung học phổ thông', 'Digital assistant for upper-secondary physics labs'],
   'app.back': ['Quay lại', 'Back'],
   'app.home': ['Trang chủ', 'Home'],
   'app.start': ['Bắt đầu', 'Start'],
@@ -54,6 +54,20 @@ const DICT = {
   'nav.circuit': ['ModuSim', 'ModuSim'],
   'nav.report': ['ModuLog', 'ModuLog'],
   'nav.teacher': ['ModuManage', 'ModuManage'],
+
+  /*
+   * Tên đầy đủ: tên sản phẩm kèm phần tiếng Việt nói rõ phần đó làm gì.
+   *
+   * Thanh bên vẫn dùng tên ngắn ở trên vì khi mở rộng chỉ còn khoảng 155px cho
+   * nhãn, mà "ModuLog — Báo cáo thực hành" dài hơn chỗ đó nên sẽ bị cắt mất.
+   * Tên đầy đủ chỉ dùng ở dòng đường dẫn trên đầu trang và ở trang chủ, nơi
+   * rộng rãi và là chỗ người mới cần biết mỗi phần tên tiếng Việt là gì.
+   */
+  'nav.quiz.full': ['ModuStart — Khởi động nhanh', 'ModuStart — Quick warm-up'],
+  'nav.circuit.full': ['ModuSim — Mô phỏng 2D', 'ModuSim — 2D simulation'],
+  'nav.report.full': ['ModuLog — Báo cáo thực hành', 'ModuLog — Lab report'],
+  'nav.theory.full': ['ModuDoc — Tài liệu ôn tập', 'ModuDoc — Study material'],
+  'nav.teacher.full': ['ModuManage — Bảng quản lý lớp', 'ModuManage — Class dashboard'],
 
   /* Trang chủ */
   'home.hero.title': ['Học Vật lí điện học bằng cách tự tay lắp mạch', 'Learn electricity by wiring circuits yourself'],

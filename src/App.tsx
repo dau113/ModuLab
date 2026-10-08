@@ -244,9 +244,12 @@ function Workspace() {
                 {currentStep === 'tools' && `${t('nav.theory')} — ${t('nav.theory.tools')}`}
                 {currentStep === 'quiz' && `${t('nav.quiz')} — ${t('nav.quiz.drill')}`}
                 {currentStep === 'quest' && `${t('nav.quiz')} — ${t('nav.quest')}`}
-                {currentStep === 'circuit' && t('nav.circuit')}
-                {currentStep === 'report' && t('nav.report')}
-                {currentStep === 'teacher' && t('nav.teacher')}
+                {/* Phần có trang con thì ghép tên ngắn với tên trang con; phần
+                    không có trang con thì hiện thẳng tên đầy đủ, để dòng này
+                    lúc nào cũng có dạng "Modu… — <tiếng Việt>". */}
+                {currentStep === 'circuit' && t('nav.circuit.full')}
+                {currentStep === 'report' && t('nav.report.full')}
+                {currentStep === 'teacher' && t('nav.teacher.full')}
                 {currentStep === 'account' && (lang === 'vi' ? 'Tài khoản & Phân quyền' : 'Accounts & roles')}
               </span>
             </div>
