@@ -8,9 +8,17 @@
  *
  * Vùng bấm vẽ bằng hai nét chồng lên nhau — một nét trắng mờ nằm dưới, một nét
  * sẫm đứt quãng nằm trên — để nhìn rõ trên cả thân nhựa sáng lẫn vỏ máy tối màu.
+ *
+ * QUY TẮC BỐ CỤC, ĐỪNG ĐỔI: phần chữ thay đổi theo con trỏ phải nằm DƯỚI danh
+ * sách tên bộ phận, không được nằm trên. Bản trước đặt ngược lại nên rê chuột
+ * vào một cái tên là đoạn chữ phía trên dài ra, đẩy cả hàng tên tụt xuống, con
+ * trỏ rơi ra ngoài, chữ co lại, hàng tên nhảy về chỗ cũ — lặp vô tận, nhìn như
+ * giật lên giật xuống. Hàng tên nằm trên thì nó không bao giờ tự dịch chuyển
+ * dưới con trỏ nữa. Vì lẽ đó mọi thứ phản ứng với hover đều giữ kích thước cố
+ * định: nút tên không đổi độ đậm chữ, chấm ghim luôn chiếm sẵn chỗ.
  */
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { MousePointerClick, X } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { MousePointerClick, Pin, X } from 'lucide-react';
 import { PART_CATALOG, PartArt, PartDefs, ANATOMY } from '../f5-circuit';
 import type { PartKind, PartLive, AnatomySpot, AnatomyShape } from '../f5-circuit';
 
@@ -63,7 +71,6 @@ export const PartAnatomy: React.FC<Props> = ({ kind, name }) => {
 
   const [hover, setHover] = useState<string | null>(null);
   const [pinned, setPinned] = useState<string | null>(null);
-  const boxRef = useRef<HTMLDivElement>(null);
 
   /* Đổi sang dụng cụ khác thì bỏ hết phần đang chọn của dụng cụ cũ */
   useEffect(() => { setHover(null); setPinned(null); }, [kind]);
@@ -105,7 +112,7 @@ export const PartAnatomy: React.FC<Props> = ({ kind, name }) => {
 
       <div className="p-4 flex flex-col sm:flex-row gap-4">
         {/* Hình vẽ kèm lớp vùng bấm. Máy cao thì giới hạn theo chiều cao, máy ngang thì theo bề ngang. */}
-        <div ref={boxRef} className={`shrink-0 mx-auto sm:mx-0 ${tall ? 'w-56' : 'w-full sm:w-80'}`}>
+        <div className={`shrink-0 mx-auto sm:mx-0 ${tall ? 'w-56' : 'w-full sm:w-80'}`}>
           <svg viewBox={`${-PAD} ${-PAD} ${vbW} ${vbH}`}
             className={`w-full h-auto ${tall ? 'max-h-[26rem]' : ''}`}
             role="img" aria-label={`Sơ đồ bộ phận của ${name ?? spec.name}`}>
@@ -145,17 +152,28 @@ export const PartAnatomy: React.FC<Props> = ({ kind, name }) => {
                   */}
                   {s.shapes.map((sh, i) => (
                     <Shape key={`halo-${i}`} s={sh} fill="none"
-                      stroke="#FFFFFF" strokeOpacity={on ? 0.95 : 0.6}
-                      strokeWidth={on ? 5 : 3.5} vectorEffect="non-scaling-stroke"
+                      stroke="#FFFFFF" strokeOpacity={on ? 0.95 : 0.55}
+                      strokeWidth={on ? 5.5 : 3.5} vectorEffect="non-scaling-stroke"
+                      style={{ pointerEvents: 'none' }} />
+                  ))}
+                  {/*
+                    Vùng đang chọn thêm một quầng chàm mờ bọc ngoài nét chính. Quầng
+                    này nằm hẳn ngoài viền nên mắt bắt được ngay cả khi vùng bé bằng
+                    một cái nút bấm, mà không làm mờ hình vẽ bên dưới.
+                  */}
+                  {on && s.shapes.map((sh, i) => (
+                    <Shape key={`glow-${i}`} s={sh} fill="none"
+                      stroke="#4F46E5" strokeOpacity={0.3} strokeWidth={9}
+                      vectorEffect="non-scaling-stroke"
                       style={{ pointerEvents: 'none' }} />
                   ))}
                   {s.shapes.map((sh, i) => (
                     <Shape key={`line-${i}`} s={sh}
                       fill={on ? 'rgba(79,70,229,0.24)' : 'transparent'}
                       stroke={on ? '#4F46E5' : '#1E293B'}
-                      strokeOpacity={on ? 1 : 0.65}
-                      strokeWidth={on ? 2.4 : 1.4}
-                      strokeDasharray={on ? undefined : '4 3'}
+                      strokeOpacity={on ? 1 : 0.5}
+                      strokeWidth={on ? 2.4 : 1.3}
+                      strokeDasharray={on ? undefined : '3 4'}
                       vectorEffect="non-scaling-stroke"
                       style={{ pointerEvents: 'none' }} />
                   ))}
@@ -165,28 +183,24 @@ export const PartAnatomy: React.FC<Props> = ({ kind, name }) => {
           </svg>
         </div>
 
-        {/* Phần chữ: tên và chức năng của bộ phận đang chọn */}
         <div className="min-w-0 flex-1">
-          {active ? (
-            <>
-              <h5 className="text-[clamp(14px,0.98vw,16.5px)] font-bold text-indigo-900">
-                {active.label}
-              </h5>
-              <p className="mt-1.5 text-[clamp(13px,0.9vw,15.5px)] text-slate-700 leading-relaxed">
-                {active.desc}
-              </p>
-            </>
-          ) : (
-            <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-500 leading-relaxed">
-              Hình này có <strong className="font-semibold text-slate-700">{spots.length} bộ phận</strong> xem
-              được. Đưa chuột lên hình, hoặc chọn tên bộ phận ở danh sách bên dưới.
-            </p>
-          )}
-
-          {/* Danh sách tên bộ phận: vừa để tra nhanh, vừa để dùng được khi không có chuột */}
-          <div className="mt-3 flex flex-wrap gap-1.5">
+          {/*
+            Danh sách tên bộ phận ĐỨNG TRÊN. Chiều cao của nó không phụ thuộc vào
+            bộ phận nào đang chọn, nên rê chuột dọc hàng này không làm hàng tự dịch.
+          */}
+          <p className="text-[clamp(12px,0.82vw,14px)] text-slate-500">
+            <strong className="font-semibold text-slate-700">{spots.length} bộ phận</strong>
+            {' · rê chuột để xem nhanh, bấm để giữ lại'}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
             {spots.map((s) => {
               const on = s.id === activeId;
+              const isPinned = s.id === pinned;
+              /*
+                Độ đậm chữ và bề rộng của nút giữ nguyên ở mọi trạng thái. Đổi chữ
+                sang đậm khi rê chuột sẽ làm nút rộng ra, cả hàng dồn lại và các nút
+                phía sau trượt khỏi con trỏ — lại sinh ra đúng kiểu nhấp nháy cũ.
+              */
               return (
                 <button key={s.id}
                   onMouseEnter={() => setHover(s.id)}
@@ -194,15 +208,53 @@ export const PartAnatomy: React.FC<Props> = ({ kind, name }) => {
                   onFocus={() => setHover(s.id)}
                   onBlur={() => setHover(null)}
                   onClick={() => setPinned((p) => (p === s.id ? null : s.id))}
-                  className={`px-2.5 py-1 rounded-lg border text-[clamp(12.5px,0.86vw,15px)] transition-colors ${
-                    on
-                      ? 'border-indigo-600 bg-indigo-50 text-indigo-900 font-semibold'
-                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                  aria-pressed={isPinned}
+                  className={`h-8 px-2.5 inline-flex items-center gap-1.5 rounded-lg border font-medium
+                    text-[clamp(12.5px,0.86vw,15px)] transition-colors ${
+                    isPinned
+                      ? 'border-indigo-600 bg-indigo-50 text-indigo-900'
+                      : on
+                        ? 'border-indigo-400 bg-indigo-50 text-indigo-900'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300'
                   }`}>
+                  {/* Chấm ghim luôn chiếm chỗ, chỉ đổi màu — nút không đổi bề rộng */}
+                  <span aria-hidden className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                    isPinned ? 'bg-indigo-600' : 'bg-transparent'}`} />
                   {s.label}
                 </button>
               );
             })}
+          </div>
+
+          {/*
+            Khung giải thích nằm DƯỚI CÙNG và có chiều cao tối thiểu, nên dù bộ phận
+            này mô tả dài hơn bộ phận kia thì cũng không thứ gì ở trên bị xê dịch.
+          */}
+          <div className="mt-3 min-h-[8rem] rounded-lg border border-slate-200 border-l-[3px] border-l-indigo-500
+            bg-white px-3.5 py-3">
+            {active ? (
+              <>
+                <div className="flex items-start gap-2">
+                  <h5 className="text-[clamp(14px,0.98vw,16.5px)] font-bold text-indigo-900">
+                    {active.label}
+                  </h5>
+                  {pinned === active.id && (
+                    <span className="mt-0.5 shrink-0 inline-flex items-center gap-1 text-[clamp(11px,0.76vw,13px)]
+                      text-indigo-700">
+                      <Pin className="w-3 h-3" /> đang giữ
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1.5 text-[clamp(13px,0.9vw,15.5px)] text-slate-700 leading-relaxed">
+                  {active.desc}
+                </p>
+              </>
+            ) : (
+              <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-500 leading-relaxed">
+                Đưa chuột lên hình vẽ, hoặc chọn một tên ở hàng trên, để đọc chức năng
+                của từng bộ phận. Bấm vào thì phần giải thích được giữ lại cho em đọc kỹ.
+              </p>
+            )}
           </div>
         </div>
       </div>
