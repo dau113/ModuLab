@@ -15,7 +15,9 @@
  * còn lớp này là ràng buộc thật của chính SQLite.
  */
 import { DatabaseSync } from 'node:sqlite';
+import { randomBytes } from 'node:crypto';
 import { all, get, run, logActivity, DB_PATH } from './db.mjs';
+import { hashPassword } from './auth.mjs';
 
 const fail = (message, status = 400) => {
   throw Object.assign(new Error(message), { status });
@@ -140,6 +142,36 @@ export const setAccountStatus = (devUser, userId, status) => {
   if (status === 'khoa') run('DELETE FROM sessions WHERE user_id = ?', userId);
   logActivity(devUser.id, 'dev_doi_trang_thai', `${userId} → ${status}`);
   return { ok: true, userId, status };
+};
+
+/**
+ * Đặt lại mật khẩu cho một tài khoản.
+ *
+ * Mật khẩu cũ KHÔNG đọc lại được — cột password_hash chỉ giữ chuỗi băm một
+ * chiều. Vì vậy khi học sinh quên mật khẩu thì cách duy nhất là đặt một mật
+ * khẩu mới rồi báo lại cho em đó, chứ không có nút "xem mật khẩu" nào cả.
+ *
+ * Không truyền mật khẩu thì tự sinh một chuỗi ngẫu nhiên. Chuỗi này được trả
+ * về đúng MỘT lần trong câu trả lời của lời gọi này; sau đó nó chỉ còn tồn tại
+ * dưới dạng băm, hỏi lại máy chủ cũng không ra.
+ */
+export const resetAccountPassword = (devUser, userId, newPassword) => {
+  if (userId === devUser.id) {
+    fail('Mật khẩu của chính mình thì đổi ở trang Tài khoản, không đổi ở đây.');
+  }
+  const u = get('SELECT id, name, email FROM users WHERE id = ?', userId);
+  if (!u) fail('Không tìm thấy tài khoản.', 404);
+
+  const mk = newPassword ? String(newPassword) : randomBytes(6).toString('base64url');
+  if (mk.length < 6) fail('Mật khẩu phải dài ít nhất 6 kí tự.');
+
+  run('UPDATE users SET password_hash = ? WHERE id = ?', hashPassword(mk), userId);
+  /* Đặt lại mật khẩu thì mọi phiên đang mở của người đó phải mất hiệu lực,
+     kể cả phiên trên máy khác — nếu không thì ai đang mượn máy vẫn dùng tiếp được. */
+  run('DELETE FROM sessions WHERE user_id = ?', userId);
+
+  logActivity(devUser.id, 'dev_dat_lai_mat_khau', `${u.email}`);
+  return { userId, email: u.email, name: u.name, password: mk };
 };
 
 /** Nhật ký thao tác gần đây, để lần lại ai đã làm gì */

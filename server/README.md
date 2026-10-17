@@ -70,14 +70,35 @@ Mật khẩu băm bằng scrypt kèm muối riêng từng tài khoản, lưu ở
 
 ### Tạo tài khoản developer
 
+Hai cách, chọn một.
+
+**Cách 1 — có dòng lệnh trên máy chủ:**
+
 ```
 npm run dev:account -- --email dev@truong.edu.vn --password 'MatKhauDai'
 ```
 
-Bỏ `--password` thì lệnh tự sinh một mật khẩu ngẫu nhiên và in ra đúng một
-lần. Cố tình không có điểm cuối HTTP nào tạo được quyền `dev`: phải chạy được
-lệnh trên chính máy chủ, nên người dùng web không tự nâng quyền cho mình được
-dù đọc hết mã nguồn.
+Bỏ `--password` thì lệnh tự sinh một mật khẩu ngẫu nhiên và in ra đúng một lần.
+
+**Cách 2 — biến môi trường (dùng cho Render, nơi không có dòng lệnh):**
+
+| Biến | Bắt buộc | Ví dụ |
+| --- | --- | --- |
+| `MODULAB_DEV_EMAIL` | có | `dev@truong.edu.vn` |
+| `MODULAB_DEV_PASSWORD` | có, tối thiểu 8 kí tự | mật khẩu của riêng bạn |
+| `MODULAB_DEV_NAME` | không | `Quản trị ModuLab` |
+
+Đặt đủ hai biến bắt buộc rồi triển khai lại; máy chủ tự tạo tài khoản lúc khởi
+động và ghi một dòng vào nhật ký. Thiếu một biến thì bỏ qua lặng lẽ, nên máy
+của người phát triển không tự mọc tài khoản dev ngoài ý muốn.
+
+Khởi động lại mà mật khẩu không đổi thì máy chủ không làm gì cả — phiên đang
+đăng nhập vẫn còn, không bị đăng xuất sau mỗi lần triển khai. Đổi giá trị biến
+`MODULAB_DEV_PASSWORD` là đổi mật khẩu, và mọi phiên cũ bị thu hồi ngay.
+
+Cố tình không có điểm cuối HTTP nào tạo được quyền `dev`: phải sửa được biến
+môi trường hoặc chạy được lệnh trên chính máy chủ, nên người dùng web không tự
+nâng quyền cho mình được dù đọc hết mã nguồn.
 
 ### Khung truy vấn của dev
 
@@ -96,3 +117,19 @@ Ba lớp chặn, xem `server/devtools.mjs`:
 - **Vercel chỉ phục vụ tệp tĩnh**, không chạy được máy chủ này. Đặt biến
   `VITE_API_URL` trỏ sang địa chỉ Render. Không đặt thì ứng dụng tự thử API
   cùng nguồn trước rồi mới quay sang địa chỉ dự phòng.
+
+### Vì sao không có chỗ xem mật khẩu
+
+Cột `users.password_hash` giữ chuỗi dạng `scrypt$<muối>$<băm>`, là kết quả của
+một phép băm **một chiều**: từ mật khẩu tính ra được chuỗi đó, nhưng từ chuỗi
+đó không tính ngược lại được. Lúc đăng nhập, máy chủ băm lại cái người dùng vừa
+gõ rồi so hai chuỗi — không nơi nào trong hệ thống đọc được mật khẩu gốc, kể cả
+tài khoản `dev` hay người có tệp cơ sở dữ liệu trong tay.
+
+Vì vậy trang ModuDev không có nút "xem mật khẩu", mà có nút **Đặt lại mật
+khẩu**: sinh một mật khẩu mới (hoặc nhận mật khẩu bạn tự gõ), hiện ra đúng một
+lần để chép cho học sinh, rồi thu hồi mọi phiên đang mở của tài khoản đó.
+
+Muốn xem lại được mật khẩu thì phải lưu nguyên văn trong cơ sở dữ liệu — ai đọc
+được tệp đó là biết mật khẩu của cả lớp, và vì nhiều người dùng chung một mật
+khẩu cho nhiều nơi nên thiệt hại không dừng ở phần mềm này.

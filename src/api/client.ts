@@ -374,6 +374,10 @@ export const api = {
     accounts: () => call<DevAccount[]>('/dev/accounts'),
     setStatus: (userId: string, status: 'hoat_dong' | 'khoa') =>
       call<{ ok: boolean }>(`/dev/accounts/${encodeURIComponent(userId)}/status`, post({ status })),
+    /* Mật khẩu mới chỉ trả về đúng một lần ở đây; hỏi lại máy chủ sẽ không ra nữa */
+    resetPassword: (userId: string, password?: string) =>
+      call<{ userId: string; email: string; name: string; password: string }>(
+        `/dev/accounts/${encodeURIComponent(userId)}/password`, post({ password })),
     logs: (limit = 100) => call<{
       id: number; action: string; detail: string | null; createdAt: string;
       userName: string; userId: string | null;

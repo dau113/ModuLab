@@ -15,6 +15,7 @@ import {
 } from './db.mjs';
 import {
   register, login, destroySession, userFromToken, changePassword, updateProfile, listSessions,
+  bootstrapDeveloper,
 } from './auth.mjs';
 import {
   listAssignments, getAssignment, assignmentBoard, myAssignments,
@@ -23,6 +24,7 @@ import {
 } from './assignments.mjs';
 import {
   listTables, readTable, runQuery, listAccounts, setAccountStatus, recentLogs, overview,
+  resetAccountPassword,
 } from './devtools.mjs';
 
 const PORT = Number(process.env.PORT || 8787);
@@ -217,6 +219,8 @@ const routes = [
   ['GET', /^\/api\/dev\/accounts$/, () => listAccounts(), ['dev']],
   ['POST', /^\/api\/dev\/accounts\/([^/]+)\/status$/, ({ user, m, body }) =>
     setAccountStatus(user, decodeURIComponent(m[1]), body.status), ['dev']],
+  ['POST', /^\/api\/dev\/accounts\/([^/]+)\/password$/, ({ user, m, body }) =>
+    resetAccountPassword(user, decodeURIComponent(m[1]), body.password), ['dev']],
   ['GET', /^\/api\/dev\/logs$/, ({ url }) => recentLogs(url.searchParams.get('limit')), ['dev']],
 ];
 
@@ -264,4 +268,15 @@ server.listen(PORT, HOST, () => {
     ? `  giao diện: phục vụ từ ${DIST}`
     : '  giao diện: chưa dựng (chạy "npm run build") — hiện chỉ có API');
   if (isEmpty()) console.log('⚠ Cơ sở dữ liệu còn trống — chạy "npm run db:seed" để nạp dữ liệu.');
+
+  /* Có đủ hai biến MODULAB_DEV_EMAIL và MODULAB_DEV_PASSWORD thì tạo sẵn tài
+     khoản developer, để triển khai trên máy chủ không có dòng lệnh vẫn có. */
+  const dev = bootstrapDeveloper();
+  if (dev) {
+    console.log(dev.created
+      ? `✓ Đã tạo tài khoản developer: ${dev.email}`
+      : dev.changed
+        ? `✓ Đã đặt lại mật khẩu tài khoản developer: ${dev.email}`
+        : `  tài khoản developer: ${dev.email} (không đổi)`);
+  }
 });

@@ -217,17 +217,48 @@ export const upsertDeveloper = ({ email, password, name }) => {
   if (!EMAIL_RE.test(mail)) fail('Địa chỉ email không hợp lệ.');
   if (String(password ?? '').length < 8) fail('Mật khẩu tài khoản dev phải dài ít nhất 8 kí tự.');
 
-  const found = get('SELECT id FROM users WHERE email = ?', mail);
+  const found = get('SELECT id, password_hash, role FROM users WHERE email = ?', mail);
   if (found) {
+    /* Mật khẩu không đổi thì đừng băm lại và đừng xoá phiên. Hàm này còn được
+       gọi mỗi lần máy chủ khởi động (xem bootstrapDeveloper), mà cứ khởi động
+       lại là đăng xuất thì mỗi lần triển khai lại phải đăng nhập lại. */
+    const giongCu = verifyPassword(password, found.password_hash) && found.role === 'dev';
+    if (giongCu) return { ...publicUser(found.id), created: false, changed: false };
+
     run("UPDATE users SET password_hash = ?, role = 'dev', status = 'hoat_dong', name = ? WHERE id = ?",
       hashPassword(password), name || 'ModuLab Developer', found.id);
     run('DELETE FROM sessions WHERE user_id = ?', found.id);
-    return { ...publicUser(found.id), created: false };
+    return { ...publicUser(found.id), created: false, changed: true };
   }
 
   const id = `dev-${randomUUID().slice(0, 8)}`;
   run(`INSERT INTO users (id, name, email, role, password_hash)
        VALUES (?, ?, ?, 'dev', ?)`,
     id, name || 'ModuLab Developer', mail, hashPassword(password));
-  return { ...publicUser(id), created: true };
+  return { ...publicUser(id), created: true, changed: true };
+};
+
+/**
+ * Tạo tài khoản dev lúc máy chủ khởi động, lấy từ biến môi trường.
+ *
+ * Trên Render gói rẻ không có cửa sổ dòng lệnh để chạy `npm run dev:account`,
+ * nên phải có đường này: đặt hai biến môi trường rồi triển khai lại là xong.
+ *
+ * Chỉ chạy khi CẢ HAI biến đều có. Thiếu một cái thì bỏ qua lặng lẽ — như vậy
+ * máy của người phát triển không tự dưng mọc ra tài khoản dev ngoài ý muốn.
+ */
+export const bootstrapDeveloper = () => {
+  const email = process.env.MODULAB_DEV_EMAIL;
+  const password = process.env.MODULAB_DEV_PASSWORD;
+  if (!email || !password) return null;
+
+  try {
+    const kq = upsertDeveloper({ email, password, name: process.env.MODULAB_DEV_NAME });
+    return { email: kq.email, created: kq.created, changed: kq.changed };
+  } catch (err) {
+    /* Sai định dạng email hay mật khẩu quá ngắn thì báo rồi chạy tiếp, chứ
+       không để máy chủ chết chỉ vì một biến môi trường gõ nhầm. */
+    console.error('✗ Không tạo được tài khoản developer từ biến môi trường:', err.message);
+    return null;
+  }
 };

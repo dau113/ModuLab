@@ -8,7 +8,7 @@
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Database, Table2, Terminal, Users, ScrollText, Loader2, AlertCircle,
+  Database, Table2, Terminal, Users, ScrollText, Loader2, AlertCircle, KeyRound,
   Play, Lock, LockOpen, RefreshCw,
 } from 'lucide-react';
 import { api } from '../../api/client';
@@ -285,6 +285,9 @@ const VAI_TRO: Record<string, string> = { hs: 'Học sinh', gv: 'Giáo viên', d
 const AccountsTab: React.FC<{ onError: (s: string | null) => void }> = ({ onError }) => {
   const [rows, setRows] = useState<DevAccount[] | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  /* Mật khẩu vừa đặt lại, giữ tạm trên màn hình để chép cho học sinh. Máy chủ
+     chỉ trả về đúng một lần nên rời trang là mất, hỏi lại cũng không ra. */
+  const [vuaDat, setVuaDat] = useState<{ email: string; password: string } | null>(null);
 
   const load = useCallback(() => {
     api.dev.accounts().then(setRows).catch((e) => onError(e.message));
@@ -301,58 +304,123 @@ const AccountsTab: React.FC<{ onError: (s: string | null) => void }> = ({ onErro
     } finally { setBusyId(null); }
   };
 
+  const datLai = async (a: DevAccount) => {
+    const tuDat = window.prompt(
+      `Đặt lại mật khẩu cho ${a.name} (${a.email}).\n\n`
+      + 'Gõ mật khẩu mới, hoặc để trống rồi bấm OK để hệ thống tự sinh một chuỗi ngẫu nhiên.',
+      '');
+    if (tuDat === null) return;
+    setBusyId(a.id); setVuaDat(null); onError(null);
+    try {
+      const r = await api.dev.resetPassword(a.id, tuDat.trim() || undefined);
+      setVuaDat({ email: r.email, password: r.password });
+      load();
+    } catch (e) {
+      onError(e instanceof Error ? e.message : String(e));
+    } finally { setBusyId(null); }
+  };
+
   if (!rows) return <p className="text-slate-500">Đang tải danh sách tài khoản…</p>;
 
   return (
-    <div className={card}>
-      <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200">
-        <span className="font-bold text-[clamp(13px,0.9vw,15.5px)] text-slate-800">{rows.length} tài khoản</span>
-        <button onClick={load} className="h-8 px-2.5 inline-flex items-center gap-1.5 rounded-lg border
-          border-slate-200 text-slate-600 text-[clamp(12px,0.82vw,14px)] hover:bg-slate-50 transition-colors">
-          <RefreshCw className="w-3.5 h-3.5" /> Tải lại
-        </button>
+    <div className="space-y-3">
+      <div className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3
+        text-[clamp(12.5px,0.86vw,15px)] text-slate-600 flex items-start gap-2">
+        <KeyRound className="w-4 h-4 shrink-0 mt-0.5 text-slate-400" />
+        <span>
+          Mật khẩu không đọc lại được — cơ sở dữ liệu chỉ giữ chuỗi băm một chiều.
+          Học sinh quên mật khẩu thì đặt cho em một mật khẩu mới rồi báo lại.
+        </span>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-[clamp(12.5px,0.86vw,15px)]">
-          <thead className="bg-slate-100 text-slate-600 text-[clamp(11.5px,0.78vw,13.5px)] uppercase font-bold">
-            <tr>
-              <th className="px-2.5 py-2">Họ tên</th>
-              <th className="px-2.5 py-2">Email</th>
-              <th className="px-2.5 py-2">Vai trò</th>
-              <th className="px-2.5 py-2">Lớp</th>
-              <th className="px-2.5 py-2 text-center">Phiên</th>
-              <th className="px-2.5 py-2 text-right">Trạng thái</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((a) => (
-              <tr key={a.id} className="hover:bg-slate-50">
-                <td className={`${cell} font-semibold text-slate-800`}>{a.name}</td>
-                <td className={`${cell} font-mono text-slate-600`}>{a.email}</td>
-                <td className={cell}>
-                  <span className={`px-2 py-0.5 rounded font-semibold text-[clamp(11.5px,0.78vw,13.5px)] ${
-                    a.role === 'dev' ? 'bg-indigo-100 text-indigo-800'
-                      : a.role === 'gv' ? 'bg-amber-100 text-amber-800'
-                        : 'bg-slate-100 text-slate-600'}`}>
-                    {VAI_TRO[a.role] ?? a.role}
-                  </span>
-                </td>
-                <td className={`${cell} text-slate-600`}>{a.classCode || '—'}</td>
-                <td className={`${cell} text-center font-mono text-slate-600`}>{a.activeSessions}</td>
-                <td className={`${cell} text-right`}>
-                  <button onClick={() => void toggle(a)} disabled={busyId === a.id}
-                    className={`h-7 px-2.5 inline-flex items-center gap-1.5 rounded-lg border
-                      text-[clamp(11.5px,0.78vw,13.5px)] font-semibold transition-colors disabled:opacity-50 ${
-                      a.status === 'khoa'
-                        ? 'border-rose-300 bg-rose-50 text-rose-700'
-                        : 'border-slate-200 text-slate-600 hover:border-rose-300'}`}>
-                    {a.status === 'khoa' ? <><Lock className="w-3 h-3" /> Đang khoá</> : <><LockOpen className="w-3 h-3" /> Hoạt động</>}
-                  </button>
-                </td>
+
+      {vuaDat && (
+        <div className="rounded-xl border border-emerald-300 bg-emerald-50 px-3.5 py-3">
+          <p className="text-[clamp(12.5px,0.86vw,15px)] font-semibold text-emerald-900">
+            Mật khẩu mới của {vuaDat.email}
+          </p>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <code className="px-2.5 py-1.5 rounded-lg bg-white border border-emerald-300
+              font-mono font-bold text-[clamp(14px,0.98vw,17px)] text-slate-900 select-all">
+              {vuaDat.password}
+            </code>
+            <button onClick={() => void navigator.clipboard?.writeText(vuaDat.password)}
+              className="h-9 px-3 rounded-lg border border-emerald-300 bg-white text-emerald-800
+                font-semibold text-[clamp(12px,0.82vw,14px)] hover:bg-emerald-100 transition-colors">
+              Chép
+            </button>
+            <button onClick={() => setVuaDat(null)}
+              className="h-9 px-3 rounded-lg text-emerald-700 text-[clamp(12px,0.82vw,14px)]
+                hover:bg-emerald-100 transition-colors">
+              Đã chép xong, ẩn đi
+            </button>
+          </div>
+          <p className="mt-1.5 text-[clamp(11.5px,0.78vw,13.5px)] text-emerald-800">
+            Chuỗi này chỉ hiện một lần. Rời khỏi trang là mất, lúc đó phải đặt lại lần nữa.
+          </p>
+        </div>
+      )}
+
+      <div className={card}>
+        <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200">
+          <span className="font-bold text-[clamp(13px,0.9vw,15.5px)] text-slate-800">{rows.length} tài khoản</span>
+          <button onClick={load} className="h-8 px-2.5 inline-flex items-center gap-1.5 rounded-lg border
+            border-slate-200 text-slate-600 text-[clamp(12px,0.82vw,14px)] hover:bg-slate-50 transition-colors">
+            <RefreshCw className="w-3.5 h-3.5" /> Tải lại
+          </button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-[clamp(12.5px,0.86vw,15px)]">
+            <thead className="bg-slate-100 text-slate-600 text-[clamp(11.5px,0.78vw,13.5px)] uppercase font-bold">
+              <tr>
+                <th className="px-2.5 py-2">Họ tên</th>
+                <th className="px-2.5 py-2">Email</th>
+                <th className="px-2.5 py-2">Vai trò</th>
+                <th className="px-2.5 py-2">Lớp</th>
+                <th className="px-2.5 py-2">Đăng nhập gần nhất</th>
+                <th className="px-2.5 py-2 text-center">Phiên</th>
+                <th className="px-2.5 py-2 text-right">Thao tác</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map((a) => (
+                <tr key={a.id} className="hover:bg-slate-50">
+                  <td className={`${cell} font-semibold text-slate-800`}>{a.name}</td>
+                  <td className={`${cell} font-mono text-slate-600`}>{a.email}</td>
+                  <td className={cell}>
+                    <span className={`px-2 py-0.5 rounded font-semibold text-[clamp(11.5px,0.78vw,13.5px)] ${
+                      a.role === 'dev' ? 'bg-indigo-100 text-indigo-800'
+                        : a.role === 'gv' ? 'bg-amber-100 text-amber-800'
+                          : 'bg-slate-100 text-slate-600'}`}>
+                      {VAI_TRO[a.role] ?? a.role}
+                    </span>
+                  </td>
+                  <td className={`${cell} text-slate-600`}>{a.classCode || '—'}</td>
+                  <td className={`${cell} font-mono text-slate-500 whitespace-nowrap`}>
+                    {a.lastLoginAt ?? 'chưa bao giờ'}
+                  </td>
+                  <td className={`${cell} text-center font-mono text-slate-600`}>{a.activeSessions}</td>
+                  <td className={`${cell} text-right whitespace-nowrap`}>
+                    <button onClick={() => void datLai(a)} disabled={busyId === a.id}
+                      title={`Đặt lại mật khẩu cho ${a.name}`}
+                      className="h-7 px-2.5 mr-1.5 inline-flex items-center gap-1.5 rounded-lg border
+                        border-slate-200 text-slate-600 text-[clamp(11.5px,0.78vw,13.5px)] font-semibold
+                        hover:border-indigo-400 hover:text-indigo-700 disabled:opacity-50 transition-colors">
+                      <KeyRound className="w-3 h-3" /> Đặt lại mật khẩu
+                    </button>
+                    <button onClick={() => void toggle(a)} disabled={busyId === a.id}
+                      className={`h-7 px-2.5 inline-flex items-center gap-1.5 rounded-lg border
+                        text-[clamp(11.5px,0.78vw,13.5px)] font-semibold transition-colors disabled:opacity-50 ${
+                        a.status === 'khoa'
+                          ? 'border-rose-300 bg-rose-50 text-rose-700'
+                          : 'border-slate-200 text-slate-600 hover:border-rose-300'}`}>
+                      {a.status === 'khoa' ? <><Lock className="w-3 h-3" /> Đang khoá</> : <><LockOpen className="w-3 h-3" /> Hoạt động</>}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
