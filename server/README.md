@@ -50,3 +50,49 @@ npm run dev         # ở cửa sổ dòng lệnh khác — giao diện gọi /a
   qua khung nhìn `v_student_progress`, không phải số cố định.
 - Mọi thao tác quan trọng đều ghi vào bảng `activity_logs`.
 - Đổi cổng bằng biến môi trường `PORT`, đổi vị trí tệp dữ liệu bằng `MODULAB_DB`.
+
+---
+
+## Tài khoản và phân quyền (từ V1.69)
+
+Ba vai trò, máy chủ kiểm ở từng điểm cuối trong bảng định tuyến của
+`server/index.mjs`, không kiểm ở giao diện:
+
+| Vai trò | Vào được |
+| --- | --- |
+| `hs` | bài làm của chính mình, bài tập của lớp mình |
+| `gv` | mọi thứ của `hs`, thêm giao bài và chấm bài trong lớp mình |
+| `dev` | thêm khu `/api/dev/*` để xem cơ sở dữ liệu |
+
+Mật khẩu băm bằng scrypt kèm muối riêng từng tài khoản, lưu ở cột
+`users.password_hash`. Phiên đăng nhập là một dòng trong bảng `sessions`;
+đăng xuất là xoá dòng đó nên thu hồi được thật.
+
+### Tạo tài khoản developer
+
+```
+npm run dev:account -- --email dev@truong.edu.vn --password 'MatKhauDai'
+```
+
+Bỏ `--password` thì lệnh tự sinh một mật khẩu ngẫu nhiên và in ra đúng một
+lần. Cố tình không có điểm cuối HTTP nào tạo được quyền `dev`: phải chạy được
+lệnh trên chính máy chủ, nên người dùng web không tự nâng quyền cho mình được
+dù đọc hết mã nguồn.
+
+### Khung truy vấn của dev
+
+Ba lớp chặn, xem `server/devtools.mjs`:
+
+1. phải đăng nhập bằng vai trò `dev`;
+2. câu lệnh phải là một `SELECT` đơn, không dấu chấm phẩy thứ hai;
+3. chạy trên một kết nối **mở ở chế độ chỉ đọc riêng** — lớp này là ràng buộc
+   thật của SQLite, không phải đọc chuỗi đoán ý như hai lớp trên.
+
+### Lưu ý khi triển khai
+
+- **Render gói miễn phí xoá ổ đĩa mỗi lần deploy**, nên tệp SQLite mất theo và
+  mọi tài khoản học sinh đăng kí sẽ biến mất. Phải gắn một ổ đĩa bền rồi trỏ
+  `MODULAB_DB` vào đó.
+- **Vercel chỉ phục vụ tệp tĩnh**, không chạy được máy chủ này. Đặt biến
+  `VITE_API_URL` trỏ sang địa chỉ Render. Không đặt thì ứng dụng tự thử API
+  cùng nguồn trước rồi mới quay sang địa chỉ dự phòng.

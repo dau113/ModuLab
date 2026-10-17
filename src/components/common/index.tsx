@@ -12,6 +12,7 @@ import {
   AlertCircle, 
   LogOut,
   LayoutGrid,
+  Database,
   ChevronDown
 } from 'lucide-react';
 import { useTheme } from '../../theme';
@@ -22,10 +23,17 @@ import { music, isSfxEnabled, toggleSfx } from '../../audio';
 
 interface TopNavProps {
   currentUser: User;
-  onSwitchUser: (userId: string) => void;
-  availableUsers: User[];
+  /** Đang xem thử, không có tài khoản thật */
+  isGuest?: boolean;
+  onSignOut: () => void;
   onGoHome: () => void;
 }
+
+const VAI_TRO: Record<string, { text: string; cls: string }> = {
+  gv: { text: 'Giáo viên', cls: 'bg-amber-100 text-amber-800 border-amber-300' },
+  dev: { text: 'Developer', cls: 'bg-indigo-100 text-indigo-800 border-indigo-300' },
+  hs: { text: 'Học sinh', cls: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
+};
 
 /**
  * Cài đặt gom vào một nút bánh răng.
@@ -159,14 +167,16 @@ export const SettingsMenu: React.FC<{ tone?: 'onLight' | 'onDark' }> = ({ tone =
 /** Giữ tên cũ cho những chỗ đang dùng */
 export const SettingsBar = SettingsMenu;
 
-export const TopNav: React.FC<TopNavProps> = ({ currentUser, onSwitchUser, availableUsers, onGoHome }) => {
+export const TopNav: React.FC<TopNavProps> = ({ currentUser, isGuest, onSignOut, onGoHome }) => {
+  const vt = VAI_TRO[currentUser.role] ?? VAI_TRO.hs;
+  const chuCai = currentUser.name.trim().split(/\s+/).slice(-1)[0]?.[0] ?? '?';
+
   return (
     <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0 shadow-sm z-20">
       <div className="flex items-center gap-4">
-        <button onClick={onGoHome} title="Về trang chủ"
-          className="flex items-center gap-3 group">
+        <button onClick={onGoHome} title="Về trang chủ" className="flex items-center gap-3 group">
           <div className="w-9 h-9 bg-indigo-600 rounded-lg flex items-center justify-center group-hover:bg-indigo-700 transition-colors">
-            <div className="w-4 h-4 border-2 border-white rounded-sm"></div>
+            <div className="w-4 h-4 border-2 border-white rounded-sm" />
           </div>
           <h1 className="text-lg font-bold tracking-tight text-slate-800 uppercase font-sans">ModuLab</h1>
         </button>
@@ -181,52 +191,35 @@ export const TopNav: React.FC<TopNavProps> = ({ currentUser, onSwitchUser, avail
       <div className="flex items-center gap-6">
         <SettingsBar />
 
-        {/* User / Team & Role Switcher */}
         <div className="flex items-center gap-3 border-l border-slate-200 pl-4">
           <div className="text-right hidden sm:block">
             <div className="text-[clamp(13px,0.9vw,15.5px)] font-bold text-slate-800 flex items-center justify-end gap-1.5">
               <span>{currentUser.name}</span>
-              <span className={`px-1.5 py-0.5 rounded text-[12.5px] font-extrabold uppercase ${
-                currentUser.role === 'gv' 
-                  ? 'bg-amber-100 text-amber-800 border border-amber-300' 
-                  : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-              }`}>
-                {currentUser.role === 'gv' ? 'Giáo viên' : 'Học sinh'}
+              <span className={`px-1.5 py-0.5 rounded text-[12.5px] font-extrabold uppercase border ${
+                isGuest ? 'bg-slate-100 text-slate-600 border-slate-300' : vt.cls}`}>
+                {isGuest ? 'Khách' : vt.text}
               </span>
             </div>
             <div className="text-[12.5px] text-slate-500 font-medium">
-              {currentUser.role === 'hs' ? `Lớp: ${currentUser.classCode} • ${currentUser.teamCode}` : `Lớp: ${currentUser.classCode} • ModuManage`}
+              {isGuest ? 'Kết quả không được lưu'
+                : currentUser.role === 'hs'
+                  ? `Lớp: ${currentUser.classCode || '—'}${currentUser.teamCode ? ` • ${currentUser.teamCode}` : ''}`
+                  : currentUser.role === 'dev' ? 'Toàn quyền cơ sở dữ liệu'
+                    : `Lớp: ${currentUser.classCode || '—'} • ModuManage`}
             </div>
           </div>
 
-          <div className="relative group">
-            <div className="w-9 h-9 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center text-indigo-700 font-bold text-[clamp(13px,0.9vw,15.5px)] cursor-pointer shadow-sm hover:ring-2 hover:ring-indigo-400 transition-all">
-              {currentUser.name.split(' ').slice(-1)[0][0]}
-            </div>
-            {/* Dropdown to switch accounts */}
-            <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-200 p-2 hidden group-hover:block z-50">
-              <div className="text-[12.5px] font-bold text-slate-400 uppercase tracking-widest px-2 py-1">
-                Chuyển đổi tài khoản mô phỏng
-              </div>
-              {availableUsers.map((u) => (
-                <button
-                  key={u.id}
-                  onClick={() => onSwitchUser(u.id)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-[clamp(13px,0.9vw,15.5px)] flex items-center justify-between font-medium transition-colors ${
-                    u.id === currentUser.id 
-                      ? 'bg-indigo-50 text-indigo-700 font-bold' 
-                      : 'text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  <div>
-                    <div>{u.name}</div>
-                    <div className="text-[12.5px] text-slate-400">{u.role === 'gv' ? 'Giáo viên Vật lí' : `HS - ${u.teamCode}`}</div>
-                  </div>
-                  {u.id === currentUser.id && <CheckCircle2 className="w-4 h-4 text-indigo-600" />}
-                </button>
-              ))}
-            </div>
+          <div className="w-9 h-9 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center
+            text-indigo-700 font-bold text-[clamp(13px,0.9vw,15.5px)] shadow-sm shrink-0">
+            {chuCai}
           </div>
+
+          <button onClick={onSignOut}
+            className="h-8 px-2.5 rounded-lg border border-slate-200 bg-white hover:border-rose-300
+              hover:text-rose-700 text-slate-600 text-[12.5px] font-bold flex items-center gap-1.5 transition-colors">
+            <LogOut className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">{isGuest ? 'Thoát' : 'Đăng xuất'}</span>
+          </button>
         </div>
       </div>
     </header>
@@ -251,7 +244,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const { t } = useSettings();
   const [expanded, setExpanded] = useState(false);
   const steps: {
-    id: LabStep | 'teacher';
+    id: LabStep | 'teacher' | 'dev';
     label: string;
     icon: React.ReactNode;
     roleOnly?: UserRole;
@@ -278,6 +271,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ],
     },
     { id: 'teacher', label: t('nav.teacher'), icon: <Users className="w-4 h-4" />, roleOnly: 'gv' },
+    { id: 'dev', label: 'ModuDev', icon: <Database className="w-4 h-4" />, roleOnly: 'dev' },
   ];
 
   return (

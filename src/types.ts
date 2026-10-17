@@ -1,4 +1,4 @@
-export type UserRole = 'hs' | 'gv';
+export type UserRole = 'hs' | 'gv' | 'dev';
 
 export interface User {
   id: string;
@@ -109,6 +109,7 @@ export interface TeacherClassStats {
   classCode: string;
   className: string;
   totalStudents: number;
+  totalTeams: number;
   quizCompleted: number;
   reportsSubmitted: number;
   errorStats: { question: string; wrongCount: number }[];
@@ -117,6 +118,6 @@ export interface TeacherClassStats {
     name: string;
     team: string;
     quizScore: number | null;
-    reportStatus: 'Chưa nộp' | 'Đạt' | 'Chưa đạt';
+    reportStatus: 'Chưa nộp' | 'Chưa chấm' | 'Đạt' | 'Chưa đạt';
   }[];
 }

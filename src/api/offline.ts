@@ -60,7 +60,6 @@ const blankReport = (userId: string, moduleId: string): LabReport => ({
 export const offline = {
   bootstrap(): Bootstrap {
     return {
-      users,
       modules: LAB_MODULES,
       tools: EXPLORE_TOOLS,
       questions: QUIZ_QUESTIONS,

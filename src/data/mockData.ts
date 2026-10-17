@@ -313,8 +313,9 @@ export const TEACHER_CLASS_STATS: TeacherClassStats = {
   classCode: '11A2-VL',
   className: 'Lớp 11A2 - Chuyên Lý THPT',
   totalStudents: 36,
+  totalTeams: 10,
   quizCompleted: 31,
-  reportsSubmitted: 8, // out of 10 teams
+  reportsSubmitted: 8,
   errorStats: [
     { question: 'Mắc song song Ampe kế với nguồn (Lỗi nguy hiểm)', wrongCount: 12 },
     { question: 'Quy đổi nhầm đơn vị mA sang A khi tính R = U/I', wrongCount: 9 },

@@ -11,8 +11,19 @@ import { fileURLToPath } from 'node:url';
 import {
   listUsers, listModules, listTools, listQuestions, createQuestion, saveAttempt,
   getReport, saveReportRows, submitReport, reopenReport, saveCircuit, listCircuits, getCircuit,
-  teacherStats, isEmpty, get, logActivity,
+  teacherStats, isEmpty,
 } from './db.mjs';
+import {
+  register, login, destroySession, userFromToken, changePassword, updateProfile, listSessions,
+} from './auth.mjs';
+import {
+  listAssignments, getAssignment, assignmentBoard, myAssignments,
+  createAssignment, updateAssignment, deleteAssignment,
+  startAssignment, submitAssignment, gradeSubmission, reopenSubmission,
+} from './assignments.mjs';
+import {
+  listTables, readTable, runQuery, listAccounts, setAccountStatus, recentLogs, overview,
+} from './devtools.mjs';
 
 const PORT = Number(process.env.PORT || 8787);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -62,18 +73,33 @@ const serveUi = (res, pathname) => {
   return sendFile(res, join(DIST, 'index.html'));
 };
 
+/* Trình duyệt gửi mã phiên trong tiêu đề Authorization nên phải cho phép tiêu
+   đề đó đi qua kiểm tra nguồn chéo, nếu không trình duyệt chặn ngay từ đầu. */
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+  'Access-Control-Max-Age': '86400',
+};
+
 const json = (res, status, body) => {
   const data = JSON.stringify(body);
   res.writeHead(status, {
     'Content-Type': 'application/json; charset=utf-8',
     'Content-Length': Buffer.byteLength(data),
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+    ...CORS,
     'Cache-Control': 'no-store',
   });
   res.end(data);
 };
+
+/** Mã phiên nằm ở "Authorization: Bearer <mã>" */
+const tokenOf = (req) => {
+  const h = req.headers.authorization ?? '';
+  return h.startsWith('Bearer ') ? h.slice(7).trim() : null;
+};
+
+const deny = (message, status) => { throw Object.assign(new Error(message), { status }); };
 
 const readBody = (req) => new Promise((resolve, reject) => {
   let raw = '';
@@ -92,61 +118,111 @@ const readBody = (req) => new Promise((resolve, reject) => {
 /* Bảng định tuyến                                                     */
 /* ------------------------------------------------------------------ */
 
+/*
+ * Mỗi dòng: [phương thức, mẫu đường dẫn, hàm xử lý, vai trò được phép].
+ *
+ * Cột vai trò là chỗ quyết định ai gọi được điểm cuối nào. Bỏ trống nghĩa là
+ * không cần đăng nhập. Để quyền nằm ngay cạnh đường dẫn như thế này thì đọc cả
+ * bảng là thấy ngay ai vào được đâu, thay vì phải lần trong từng hàm xử lý.
+ *
+ * Hàm xử lý nhận một đối tượng gồm: m (các nhóm bắt được của mẫu), body, url,
+ * user (người đang đăng nhập, null nếu không) và req.
+ */
 const routes = [
   ['GET', /^\/api\/health$/, () => ({
-    ok: true,
-    seeded: !isEmpty(),
-    time: new Date().toISOString(),
+    ok: true, seeded: !isEmpty(), time: new Date().toISOString(),
   })],
 
-  /* Nạp một lượt toàn bộ dữ liệu tĩnh cho lần mở ứng dụng */
+  /* ---------------- Tài khoản ---------------- */
+
+  ['POST', /^\/api\/auth\/register$/, ({ body, req }) => register(body, req.headers['user-agent'])],
+  ['POST', /^\/api\/auth\/login$/, ({ body, req }) => login(body, req.headers['user-agent'])],
+  ['POST', /^\/api\/auth\/logout$/, ({ req }) => destroySession(tokenOf(req)), ['hs', 'gv', 'dev']],
+  ['GET', /^\/api\/auth\/me$/, ({ user }) => user, ['hs', 'gv', 'dev']],
+  ['POST', /^\/api\/auth\/password$/, ({ user, body }) => changePassword(user.id, body), ['hs', 'gv', 'dev']],
+  ['PATCH', /^\/api\/auth\/profile$/, ({ user, body }) => updateProfile(user.id, body), ['hs', 'gv', 'dev']],
+  ['GET', /^\/api\/auth\/sessions$/, ({ user }) => listSessions(user.id), ['hs', 'gv', 'dev']],
+
+  /* ---------------- Dữ liệu dùng chung ---------------- */
+
+  /* Nạp một lượt toàn bộ dữ liệu tĩnh cho lần mở ứng dụng. Không kèm danh sách
+     tài khoản nữa: trước đây ai mở trang cũng tải được email của cả lớp. */
   ['GET', /^\/api\/bootstrap$/, () => ({
-    users: listUsers(),
-    modules: listModules(),
-    tools: listTools(),
-    questions: listQuestions(),
+    modules: listModules(), tools: listTools(), questions: listQuestions(),
   })],
-
-  ['GET', /^\/api\/users$/, () => listUsers()],
-
-  ['POST', /^\/api\/auth\/login$/, (_m, body) => {
-    const user = get('SELECT id FROM users WHERE email = ? OR id = ?', body.email ?? '', body.userId ?? '');
-    if (!user) throw Object.assign(new Error('Không tìm thấy tài khoản'), { status: 404 });
-    logActivity(user.id, 'dang_nhap', null);
-    return listUsers().find((u) => u.id === user.id);
-  }],
 
   ['GET', /^\/api\/modules$/, () => listModules()],
   ['GET', /^\/api\/tools$/, () => listTools()],
+  ['GET', /^\/api\/questions$/, ({ url }) => listQuestions(url.searchParams.get('moduleId') ?? undefined)],
+  ['POST', /^\/api\/questions$/, ({ user, body }) => createQuestion(body, user.id), ['gv', 'dev']],
 
-  ['GET', /^\/api\/questions$/, (_m, _b, url) => listQuestions(url.searchParams.get('moduleId') ?? undefined)],
-  ['POST', /^\/api\/questions$/, (_m, body) => createQuestion(body, body.createdBy)],
+  /* ---------------- Bài làm của chính mình ---------------- */
 
-  ['POST', /^\/api\/attempts$/, (_m, body) => saveAttempt(body)],
+  ['POST', /^\/api\/attempts$/, ({ user, body }) =>
+    saveAttempt({ ...body, userId: user.id }), ['hs', 'gv', 'dev']],
 
-  ['GET', /^\/api\/reports\/([^/]+)\/([^/]+)$/, (m) => getReport(decodeURIComponent(m[1]), decodeURIComponent(m[2]))],
-  ['PUT', /^\/api\/reports\/([^/]+)\/([^/]+)$/, (m, body) =>
-    saveReportRows(decodeURIComponent(m[1]), decodeURIComponent(m[2]), body.rows ?? [])],
-  ['POST', /^\/api\/reports\/([^/]+)\/([^/]+)\/submit$/, (m, body) =>
-    submitReport(decodeURIComponent(m[1]), decodeURIComponent(m[2]), body)],
+  ['GET', /^\/api\/reports\/([^/]+)$/, ({ user, m }) =>
+    getReport(user.id, decodeURIComponent(m[1])), ['hs', 'gv', 'dev']],
+  ['PUT', /^\/api\/reports\/([^/]+)$/, ({ user, m, body }) =>
+    saveReportRows(user.id, decodeURIComponent(m[1]), body.rows ?? []), ['hs', 'gv', 'dev']],
+  ['POST', /^\/api\/reports\/([^/]+)\/submit$/, ({ user, m, body }) =>
+    submitReport(user.id, decodeURIComponent(m[1]), body), ['hs', 'gv', 'dev']],
+  ['POST', /^\/api\/reports\/([^/]+)\/reopen$/, ({ user, m }) =>
+    reopenReport(user.id, decodeURIComponent(m[1])), ['hs', 'gv', 'dev']],
 
-  ['POST', /^\/api\/reports\/([^/]+)\/([^/]+)\/reopen$/, (m) =>
-    reopenReport(decodeURIComponent(m[1]), decodeURIComponent(m[2]))],
+  ['GET', /^\/api\/circuits$/, ({ user }) => listCircuits(user.id), ['hs', 'gv', 'dev']],
+  ['GET', /^\/api\/circuit\/(\d+)$/, ({ m }) => getCircuit(Number(m[1])), ['hs', 'gv', 'dev']],
+  ['POST', /^\/api\/circuits$/, ({ user, body }) =>
+    saveCircuit({ ...body, userId: user.id }), ['hs', 'gv', 'dev']],
 
-  ['GET', /^\/api\/circuits\/([^/]+)$/, (m) => listCircuits(decodeURIComponent(m[1]))],
-  ['GET', /^\/api\/circuit\/(\d+)$/, (m) => getCircuit(Number(m[1]))],
-  ['POST', /^\/api\/circuits$/, (_m, body) => saveCircuit(body)],
+  /* ---------------- Bài tập: phía học sinh ---------------- */
 
-  ['GET', /^\/api\/teacher\/stats$/, (_m, _b, url) => teacherStats(url.searchParams.get('classCode') ?? undefined)],
+  ['GET', /^\/api\/my\/assignments$/, ({ user }) =>
+    myAssignments(user.id, user.classId), ['hs', 'gv', 'dev']],
+  ['POST', /^\/api\/assignments\/([^/]+)\/start$/, ({ user, m }) =>
+    startAssignment(user, decodeURIComponent(m[1])), ['hs']],
+  ['POST', /^\/api\/assignments\/([^/]+)\/submit$/, ({ user, m, body }) =>
+    submitAssignment(user, decodeURIComponent(m[1]), body), ['hs']],
+
+  /* ---------------- Bài tập: phía giáo viên ---------------- */
+
+  ['GET', /^\/api\/assignments$/, ({ user }) => listAssignments(user.classId), ['gv', 'dev']],
+  ['POST', /^\/api\/assignments$/, ({ user, body }) => createAssignment(user, body), ['gv', 'dev']],
+  ['GET', /^\/api\/assignments\/([^/]+)$/, ({ m }) =>
+    getAssignment(decodeURIComponent(m[1])), ['gv', 'dev']],
+  ['PATCH', /^\/api\/assignments\/([^/]+)$/, ({ user, m, body }) =>
+    updateAssignment(user, decodeURIComponent(m[1]), body), ['gv', 'dev']],
+  ['DELETE', /^\/api\/assignments\/([^/]+)$/, ({ user, m }) =>
+    deleteAssignment(user, decodeURIComponent(m[1])), ['gv', 'dev']],
+  ['GET', /^\/api\/assignments\/([^/]+)\/board$/, ({ m }) =>
+    assignmentBoard(decodeURIComponent(m[1])), ['gv', 'dev']],
+  ['POST', /^\/api\/assignments\/([^/]+)\/grade\/([^/]+)$/, ({ user, m, body }) =>
+    gradeSubmission(user, decodeURIComponent(m[1]), decodeURIComponent(m[2]), body), ['gv', 'dev']],
+  ['POST', /^\/api\/assignments\/([^/]+)\/reopen\/([^/]+)$/, ({ user, m }) =>
+    reopenSubmission(user, decodeURIComponent(m[1]), decodeURIComponent(m[2])), ['gv', 'dev']],
+
+  ['GET', /^\/api\/teacher\/stats$/, ({ user, url }) =>
+    teacherStats(url.searchParams.get('classCode') ?? user.classCode), ['gv', 'dev']],
+  ['GET', /^\/api\/teacher\/students$/, ({ user }) =>
+    listUsers(user.classId), ['gv', 'dev']],
+
+  /* ---------------- Dành riêng cho tài khoản developer ---------------- */
+
+  ['GET', /^\/api\/dev\/overview$/, () => overview(), ['dev']],
+  ['GET', /^\/api\/dev\/tables$/, () => listTables(), ['dev']],
+  ['GET', /^\/api\/dev\/table\/([A-Za-z0-9_]+)$/, ({ m, url }) => readTable(m[1], {
+    limit: url.searchParams.get('limit'), offset: url.searchParams.get('offset'),
+  }), ['dev']],
+  ['POST', /^\/api\/dev\/query$/, ({ user, body }) => runQuery(user, body.sql), ['dev']],
+  ['GET', /^\/api\/dev\/accounts$/, () => listAccounts(), ['dev']],
+  ['POST', /^\/api\/dev\/accounts\/([^/]+)\/status$/, ({ user, m, body }) =>
+    setAccountStatus(user, decodeURIComponent(m[1]), body.status), ['dev']],
+  ['GET', /^\/api\/dev\/logs$/, ({ url }) => recentLogs(url.searchParams.get('limit')), ['dev']],
 ];
 
 const server = createServer(async (req, res) => {
   if (req.method === 'OPTIONS') {
-    res.writeHead(204, {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type',
-      'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-    });
+    res.writeHead(204, CORS);
     return res.end();
   }
 
@@ -159,8 +235,21 @@ const server = createServer(async (req, res) => {
   }
 
   try {
-    const body = ['POST', 'PUT'].includes(req.method) ? await readBody(req) : {};
-    const result = route[2](url.pathname.match(route[1]), body, url);
+    const [, pattern, handler, roles] = route;
+
+    /*
+     * Chốt kiểm quyền duy nhất của máy chủ. Mọi điểm cuối có khai báo vai trò
+     * đều đi qua đây, nên không có đường nào lọt được vì người viết hàm xử lý
+     * quên kiểm tra.
+     */
+    const user = userFromToken(tokenOf(req));
+    if (roles) {
+      if (!user) deny('Bạn cần đăng nhập để dùng chức năng này.', 401);
+      if (!roles.includes(user.role)) deny('Tài khoản của bạn không có quyền này.', 403);
+    }
+
+    const body = ['POST', 'PUT', 'PATCH'].includes(req.method) ? await readBody(req) : {};
+    const result = handler({ m: url.pathname.match(pattern), body, url, user, req });
     return json(res, 200, result ?? null);
   } catch (err) {
     const status = err.status ?? 400;

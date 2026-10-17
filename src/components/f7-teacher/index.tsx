@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { TeacherClassStats } from '../../types';
+import { TeacherClassStats, LabModule } from '../../types';
+import { AssignmentManager } from './assignments';
 import { BentoCard, WarningBadge } from '../common';
 import { 
   Users, 
@@ -16,26 +17,51 @@ import {
 
 interface TeacherDashboardProps {
   stats: TeacherClassStats;
+  modules: LabModule[];
+  /** Gọi khi có bài tập mới hoặc điểm vừa đổi, để màn hình cha nạp lại số liệu lớp */
+  onChanged?: () => void;
 }
 
-export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ stats }) => {
-  const [assignmentType, setAssignmentType] = useState<'khoi_dong' | 'thuc_hanh'>('khoi_dong');
-  const [dueDate, setDueDate] = useState<string>('2026-07-30');
-  const [isAssigned, setIsAssigned] = useState<boolean>(false);
+export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ stats, modules, onChanged }) => {
   const [isExporting, setIsExporting] = useState<boolean>(false);
 
-  const handleAssign = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsAssigned(true);
-    setTimeout(() => setIsAssigned(false), 3000);
-  };
-
+  /**
+   * Xuất sổ điểm ra tệp CSV thật.
+   *
+   * Bản trước chỉ đợi một giây rồi hiện hộp thoại báo "đã xuất" mà không có tệp
+   * nào cả. Giờ dựng nội dung từ chính danh sách học sinh đang hiển thị rồi cho
+   * trình duyệt tải về.
+   *
+   * Hai chi tiết để Excel mở ra không bị lỗi chữ Việt:
+   *   · chuỗi \uFEFF ở đầu tệp báo cho Excel biết đây là UTF-8;
+   *   · ô có dấu phẩy, nháy kép hay xuống dòng phải bọc trong nháy kép, và nháy
+   *     kép bên trong phải nhân đôi.
+   */
   const handleExportExcel = () => {
     setIsExporting(true);
-    setTimeout(() => {
+    try {
+      const o = (v: string | number | null) => {
+        const t = v === null || v === undefined ? '' : String(v);
+        return /[",\n;]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
+      };
+      const dong = [
+        ['Họ và tên', 'Nhóm thực hành', 'Điểm khởi động', 'Báo cáo thực hành'],
+        ...stats.studentList.map((s) => [s.name, s.team, s.quizScore ?? '', s.reportStatus]),
+      ];
+      const csv = '\uFEFF' + dong.map((r) => r.map(o).join(',')).join('\r\n');
+
+      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ModuLab - So diem ${stats.classCode} - ${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      /* Thu hồi địa chỉ tạm sau khi trình duyệt đã bắt đầu tải, không thì rò bộ nhớ */
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } finally {
       setIsExporting(false);
-      alert(`📊 Đã xuất bảng điểm và tiến độ lớp ${stats.classCode} ra tệp Excel/CSV.\n✓ Đã tự động chèn BOM UTF-8 để hiển thị nguyên vẹn dấu tiếng Việt trong Microsoft Excel & Google Sheets!`);
-    }, 1000);
+    }
   };
 
   return (
@@ -66,69 +92,46 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ stats }) => 
               {stats.quizCompleted}/{stats.totalStudents} <span className="text-[clamp(13px,0.9vw,15.5px)] font-medium text-indigo-700">HS</span>
             </div>
             <div className="w-full bg-indigo-200 h-1.5 rounded-full mt-2">
-              <div className="bg-indigo-600 h-1.5 rounded-full" style={{ width: `${(stats.quizCompleted / stats.totalStudents) * 100}%` }}></div>
+              <div className="bg-indigo-600 h-1.5 rounded-full" style={{ width: `${stats.totalStudents ? (stats.quizCompleted / stats.totalStudents) * 100 : 0}%` }} />
             </div>
           </div>
 
           <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl">
             <div className="flex items-center justify-between text-emerald-900 font-bold text-[clamp(13px,0.9vw,15.5px)] mb-1">
-              <span>Báo cáo nhóm đã nộp</span>
+              <span>Báo cáo đã nộp</span>
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             </div>
             <div className="text-2xl font-extrabold text-emerald-950">
-              {stats.reportsSubmitted}/10 <span className="text-[clamp(13px,0.9vw,15.5px)] font-medium text-emerald-700">Nhóm</span>
+              {stats.reportsSubmitted}/{stats.totalStudents || 0} <span className="text-[clamp(13px,0.9vw,15.5px)] font-medium text-emerald-700">HS</span>
             </div>
             <div className="w-full bg-emerald-200 h-1.5 rounded-full mt-2">
-              <div className="bg-emerald-600 h-1.5 rounded-full" style={{ width: `${(stats.reportsSubmitted / 10) * 100}%` }}></div>
+              <div className="bg-emerald-600 h-1.5 rounded-full"
+                style={{ width: `${stats.totalStudents ? (stats.reportsSubmitted / stats.totalStudents) * 100 : 0}%` }} />
             </div>
           </div>
 
           <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
             <div className="flex items-center justify-between text-slate-700 font-bold text-[clamp(13px,0.9vw,15.5px)] mb-1">
-              <span>Sĩ số & Bảo mật</span>
+              <span>Sĩ số lớp</span>
               <Users className="w-4 h-4 text-slate-500" />
             </div>
             <div className="text-2xl font-extrabold text-slate-900">
               {stats.totalStudents} <span className="text-[clamp(13px,0.9vw,15.5px)] font-medium text-slate-500">Học sinh</span>
             </div>
-            <p className="text-[12.5px] text-emerald-600 font-bold mt-2 flex items-center gap-1">
-              <span>✓ RLS Supabase đã khóa</span>
+            <p className="text-[12.5px] text-slate-500 font-medium mt-2">
+              {stats.totalTeams} nhóm thực hành
             </p>
           </div>
         </div>
       </BentoCard>
 
-      {/* Assignment Card */}
-      <BentoCard className="md:col-span-2" accent={true} title="QUẢN LÝ GIAO BÀI TẬP">
-        <form onSubmit={handleAssign} className="flex flex-col h-full justify-between space-y-3 mt-1 text-[clamp(13px,0.9vw,15.5px)]">
-          <div>
-            <label className="text-[clamp(12.5px,0.86vw,15px)] font-bold text-indigo-200 block mb-1">Loại bài giao cho lớp:</label>
-            <select
-              value={assignmentType}
-              onChange={(e) => setAssignmentType(e.target.value as any)}
-              className="w-full p-2 bg-indigo-900/80 border border-indigo-500 rounded-xl text-white font-bold outline-none focus:ring-2 focus:ring-white"
-            >
-              <option value="khoi_dong">Game ôn tập lý thuyết (Lấy điểm QTr)</option>
-              <option value="thuc_hanh">Thực hành mô phỏng 2D & Báo cáo</option>
-            </select>
-
-            <label className="text-[clamp(12.5px,0.86vw,15px)] font-bold text-indigo-200 block mt-3 mb-1">Hạn nộp chính thức:</label>
-            <input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className="w-full p-2 bg-indigo-900/80 border border-indigo-500 rounded-xl text-white font-bold outline-none focus:ring-2 focus:ring-white"
-            />
-          </div>
-
-          <button
-            type="submit"
-            className="w-full py-2.5 bg-white text-indigo-900 font-extrabold rounded-xl text-[clamp(13px,0.9vw,15.5px)] hover:bg-indigo-50 transition-all flex items-center justify-center gap-1.5 shadow-sm"
-          >
-            <Send className="w-3.5 h-3.5" />
-            <span>{isAssigned ? '✓ Đã gửi thông báo cho HS' : 'Giao bài & Cập nhật hạn nộp'}</span>
-          </button>
-        </form>
+      {/* Giao bài tập — ghi thẳng vào cơ sở dữ liệu, học sinh thấy ngay.
+          Để chiếm trọn bề ngang vì bên trong có bảng theo dõi từng học sinh. */}
+      <BentoCard className="md:col-span-6" title="QUẢN LÝ GIAO BÀI TẬP"
+        subtitle="Bài giao ở đây hiện ngay trong mục bài tập của học sinh">
+        <div className="mt-2">
+          <AssignmentManager modules={modules} onChanged={onChanged} />
+        </div>
       </BentoCard>
 
       {/* Error Frequency Analysis (most wrong questions) */}
@@ -180,11 +183,13 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ stats }) => 
                   </td>
                   <td className="p-2.5 text-right">
                     <span className={`px-2 py-0.5 rounded text-[12.5px] font-bold ${
-                      stu.reportStatus === 'Đạt' 
-                        ? 'bg-emerald-100 text-emerald-800' 
-                        : stu.reportStatus === 'Chưa đạt' 
-                        ? 'bg-amber-100 text-amber-800' 
-                        : 'bg-slate-100 text-slate-500'
+                      stu.reportStatus === 'Đạt'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : stu.reportStatus === 'Chưa đạt'
+                          ? 'bg-amber-100 text-amber-800'
+                          : stu.reportStatus === 'Chưa chấm'
+                            ? 'bg-sky-100 text-sky-800'
+                            : 'bg-slate-100 text-slate-500'
                     }`}>
                       {stu.reportStatus}
                     </span>

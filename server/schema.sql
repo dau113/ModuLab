@@ -23,17 +23,39 @@ CREATE TABLE IF NOT EXISTS teams (
   UNIQUE (class_id, code)
 );
 
+-- Mật khẩu KHÔNG bao giờ lưu nguyên văn. Cột password_hash giữ chuỗi băm scrypt
+-- kèm muối riêng cho từng tài khoản, xem server/auth.mjs.
 CREATE TABLE IF NOT EXISTS users (
-  id         TEXT PRIMARY KEY,
-  name       TEXT NOT NULL,
-  email      TEXT UNIQUE,
-  role       TEXT NOT NULL CHECK (role IN ('hs', 'gv')),
-  class_id   TEXT REFERENCES classes(id) ON DELETE SET NULL,
-  team_id    TEXT REFERENCES teams(id)   ON DELETE SET NULL,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  id            TEXT PRIMARY KEY,
+  name          TEXT NOT NULL,
+  email         TEXT UNIQUE,
+  role          TEXT NOT NULL CHECK (role IN ('hs', 'gv', 'dev')),
+  class_id      TEXT REFERENCES classes(id) ON DELETE SET NULL,
+  team_id       TEXT REFERENCES teams(id)   ON DELETE SET NULL,
+  password_hash TEXT,
+  status        TEXT NOT NULL DEFAULT 'hoat_dong' CHECK (status IN ('hoat_dong', 'khoa')),
+  last_login_at TEXT,
+  created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_class ON users(class_id, role);
+
+-- ---------------------------------------------------------------------
+-- 1b. Phiên đăng nhập
+--
+-- Mỗi lần đăng nhập sinh một mã phiên ngẫu nhiên; trình duyệt giữ mã này và
+-- gửi kèm mọi lời gọi về sau. Lưu trong bảng nên thu hồi được từng phiên một,
+-- và đăng xuất là xoá thật chứ không chỉ quên ở phía trình duyệt.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS sessions (
+  token      TEXT PRIMARY KEY,
+  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_agent TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  expires_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id, expires_at);
 
 -- ---------------------------------------------------------------------
 -- 2. Bài thực hành và nội dung lý thuyết
@@ -201,7 +223,54 @@ CREATE TABLE IF NOT EXISTS activity_logs (
 CREATE INDEX IF NOT EXISTS idx_logs_time ON activity_logs(created_at DESC);
 
 -- ---------------------------------------------------------------------
--- 9. Khung nhìn tổng hợp cho Bảng quản lý của giáo viên
+-- 9. Giao bài tập và bài nộp
+--
+-- Một bài tập thuộc về một lớp. Mọi học sinh của lớp đó đều nhận được, nên
+-- không cần bảng trung gian ghi từng người được giao. Dòng trong `submissions`
+-- chỉ sinh ra khi học sinh bắt đầu làm hoặc nộp; học sinh chưa động tới thì
+-- không có dòng nào, và bảng theo dõi của giáo viên hiểu đó là "chưa làm".
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS assignments (
+  id           TEXT PRIMARY KEY,
+  class_id     TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+  kind         TEXT NOT NULL CHECK (kind IN ('khoi_dong', 'thuc_hanh')),
+  module_id    TEXT REFERENCES lab_modules(id) ON DELETE SET NULL,
+  title        TEXT NOT NULL,
+  instructions TEXT NOT NULL DEFAULT '',
+  due_at       TEXT,
+  -- Điểm tối thiểu để tính là đạt, thang 10
+  pass_score   REAL NOT NULL DEFAULT 5,
+  state        TEXT NOT NULL DEFAULT 'mo' CHECK (state IN ('nhap', 'mo', 'dong')),
+  created_by   TEXT REFERENCES users(id) ON DELETE SET NULL,
+  created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_assignments_class ON assignments(class_id, state, due_at);
+
+CREATE TABLE IF NOT EXISTS submissions (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  assignment_id   TEXT NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
+  user_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  status          TEXT NOT NULL DEFAULT 'dang_lam'
+                  CHECK (status IN ('dang_lam', 'da_nop', 'da_cham')),
+  score           REAL,
+  -- Nguồn điểm: lượt chơi Game ôn tập, hoặc bản báo cáo thực hành
+  attempt_id      INTEGER REFERENCES quiz_attempts(id) ON DELETE SET NULL,
+  report_id       INTEGER REFERENCES lab_reports(id)   ON DELETE SET NULL,
+  late            INTEGER NOT NULL DEFAULT 0 CHECK (late IN (0, 1)),
+  teacher_comment TEXT,
+  submitted_at    TEXT,
+  graded_at       TEXT,
+  created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at      TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (assignment_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_submissions_user ON submissions(user_id, status);
+
+-- ---------------------------------------------------------------------
+-- 10. Khung nhìn tổng hợp cho Bảng quản lý của giáo viên
 -- ---------------------------------------------------------------------
 CREATE VIEW IF NOT EXISTS v_student_progress AS
 SELECT

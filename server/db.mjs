@@ -7,6 +7,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { readFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { migrate } from './migrate.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const DB_PATH = process.env.MODULAB_DB || join(HERE, 'data', 'modulab.db');
@@ -17,6 +18,10 @@ export const db = new DatabaseSync(DB_PATH);
 db.exec('PRAGMA journal_mode = WAL;');
 db.exec('PRAGMA foreign_keys = ON;');
 db.exec(readFileSync(join(HERE, 'schema.sql'), 'utf8'));
+
+/* Tệp dữ liệu có sẵn từ bản cũ phải được nâng cấp thêm, vì mọi lệnh trong
+   schema.sql đều là CREATE IF NOT EXISTS nên không đụng được vào bảng đã tồn tại. */
+migrate(db).forEach((step) => console.log(`↑ Nâng cấp CSDL — ${step}`));
 
 /* ------------------------------------------------------------------ */
 /* Hàm truy vấn ngắn gọn                                               */
@@ -49,15 +54,30 @@ export const logActivity = (userId, action, detail) =>
 /* Truy vấn theo nghiệp vụ                                             */
 /* ------------------------------------------------------------------ */
 
-export const listUsers = () => all(`
-  SELECT u.id, u.name, u.email, u.role,
-         COALESCE(c.code, '') AS classCode,
-         COALESCE(t.code, '') AS teamCode
-  FROM users u
-  LEFT JOIN classes c ON c.id = u.class_id
-  LEFT JOIN teams   t ON t.id = u.team_id
-  ORDER BY u.role DESC, u.name
-`);
+/**
+ * Danh sách tài khoản. Có truyền classId thì chỉ trả học sinh của đúng lớp đó —
+ * giáo viên chỉ được nhìn lớp mình, không nhìn được cả trường.
+ *
+ * Không bao giờ chọn cột password_hash ra, kể cả cho tài khoản dev.
+ */
+export const listUsers = (classId) => (classId
+  ? all(`
+      SELECT u.id, u.name, u.email, u.role,
+             COALESCE(c.code, '') AS classCode,
+             COALESCE(t.code, '') AS teamCode
+      FROM users u
+      LEFT JOIN classes c ON c.id = u.class_id
+      LEFT JOIN teams   t ON t.id = u.team_id
+      WHERE u.class_id = ? AND u.role = 'hs'
+      ORDER BY u.name`, classId)
+  : all(`
+      SELECT u.id, u.name, u.email, u.role,
+             COALESCE(c.code, '') AS classCode,
+             COALESCE(t.code, '') AS teamCode
+      FROM users u
+      LEFT JOIN classes c ON c.id = u.class_id
+      LEFT JOIN teams   t ON t.id = u.team_id
+      ORDER BY u.role DESC, u.name`));
 
 export const listModules = () => all(`
   SELECT id, title, description, theory_content AS theoryContent,
@@ -220,7 +240,9 @@ export const teacherStats = (classCode) => {
   const students = all(`SELECT user_id AS id, name, team, quiz_score, report_status
                         FROM v_student_progress WHERE class_id = ? ORDER BY team, name`, cls.id);
   const quizCompleted = students.filter((s) => s.quiz_score !== null).length;
-  const reportsSubmitted = students.filter((s) => s.report_status === 'da_nop' || s.report_status === 'da_cham').length;
+  const daNop = (s) => s.report_status === 'da_nop' || s.report_status === 'da_cham';
+  const reportsSubmitted = students.filter(daNop).length;
+  const totalTeams = get('SELECT COUNT(*) AS n FROM teams WHERE class_id = ?', cls.id).n;
   const errorStats = all(
     'SELECT label AS question, wrong_count AS wrongCount FROM error_stats WHERE class_id = ? ORDER BY wrong_count DESC',
     cls.id);
@@ -229,6 +251,7 @@ export const teacherStats = (classCode) => {
     classCode: cls.code,
     className: cls.name,
     totalStudents: students.length,
+    totalTeams,
     quizCompleted,
     reportsSubmitted,
     errorStats,
@@ -236,8 +259,12 @@ export const teacherStats = (classCode) => {
       id: s.id,
       name: s.name,
       team: s.team,
-      quizScore: s.quiz_score ?? 0,
-      reportStatus: s.report_status === 'da_nop' || s.report_status === 'da_cham' ? 'Đạt' : 'Chưa đạt',
+      quizScore: s.quiz_score ?? null,
+      /* Nộp rồi không có nghĩa là đạt. Bản trước gộp hai việc này làm một nên
+         sổ điểm ghi "Đạt" cho cả bài vừa nộp mà giáo viên chưa chấm. */
+      reportStatus: !daNop(s) ? 'Chưa nộp'
+        : s.grade === null || s.grade === undefined ? 'Chưa chấm'
+          : s.grade >= 5 ? 'Đạt' : 'Chưa đạt',
     })),
   };
 };

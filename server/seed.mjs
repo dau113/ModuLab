@@ -6,6 +6,7 @@
  *   npm run db:reset         — xoá sạch rồi nạp lại
  */
 import { db, run, tx, isEmpty, DB_PATH } from './db.mjs';
+import { hashPassword } from './auth.mjs';
 import {
   INITIAL_USERS, LAB_MODULES, EXPLORE_TOOLS, QUIZ_QUESTIONS,
   INITIAL_REPORT_ROWS, TEACHER_CLASS_STATS,
@@ -16,6 +17,7 @@ const RESET = process.argv.includes('--reset');
 const TABLES = [
   'quiz_answers', 'quiz_attempts', 'report_rows', 'lab_reports', 'circuit_designs',
   'activity_logs', 'error_stats', 'quiz_options', 'quiz_questions',
+  'submissions', 'assignments', 'sessions',
   'tool_modes', 'tools', 'lab_modules', 'users', 'teams', 'classes',
 ];
 
@@ -50,10 +52,17 @@ tx(() => {
     run('INSERT INTO teams (id, class_id, code) VALUES (?, ?, ?)', id, classId, code);
   });
 
-  /* ---------- Người dùng ---------- */
+  /* ---------- Người dùng ----------
+     Mọi tài khoản mẫu dùng chung một mật khẩu để còn thử được ngay. Đây là dữ
+     liệu trình diễn, nên lớp thật phải để học sinh tự đăng kí lấy mật khẩu
+     riêng chứ đừng nạp bằng lệnh này. */
+  const MK_MAU = process.env.MODULAB_SEED_PASSWORD || 'modulab123';
+  const bam = hashPassword(MK_MAU);
+
   INITIAL_USERS.forEach((u) => {
-    run('INSERT INTO users (id, name, email, role, class_id, team_id) VALUES (?, ?, ?, ?, ?, ?)',
-      u.id, u.name, u.email, u.role, classId, u.teamCode ? teamId[u.teamCode] : null);
+    run(`INSERT INTO users (id, name, email, role, class_id, team_id, password_hash)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      u.id, u.name, u.email, u.role, classId, u.teamCode ? teamId[u.teamCode] : null, bam);
   });
   const teacher = INITIAL_USERS.find((u) => u.role === 'gv');
   if (teacher) run('UPDATE classes SET teacher_id = ? WHERE id = ?', teacher.id, classId);
@@ -62,8 +71,10 @@ tx(() => {
   const existingNames = new Set(INITIAL_USERS.map((u) => u.name));
   stats.studentList.forEach((s) => {
     if (existingNames.has(s.name)) return;
-    run('INSERT INTO users (id, name, email, role, class_id, team_id) VALUES (?, ?, ?, ?, ?, ?)',
-      s.id, s.name, `${slug(s.name)}@thpt.edu.vn`, 'hs', classId, s.team ? teamId[s.team] : null);
+    run(`INSERT INTO users (id, name, email, role, class_id, team_id, password_hash)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      s.id, s.name, `${slug(s.name)}@thpt.edu.vn`, 'hs', classId,
+      s.team ? teamId[s.team] : null, bam);
   });
 
   /* ---------- Bài thực hành ---------- */

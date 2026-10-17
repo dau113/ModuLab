@@ -12,7 +12,7 @@
  * một danh sách có đánh số. Hai mục đích khác nhau thì hình thức phải khác nhau.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowRight, ArrowLeft, X } from 'lucide-react';
+import { ArrowRight, ArrowLeft, X, LogOut } from 'lucide-react';
 import { SettingsMenu } from '../common';
 import { APP_VERSION } from '../../version';
 import type { ApiUser } from '../../api/client';
@@ -25,12 +25,15 @@ import photoWarning from '../../assets/photos/canh-bao-doan-mach.jpg';
 import photoCompare from '../../assets/photos/doi-chieu-ao-that.jpg';
 
 interface HomeMenuProps {
-  users: ApiUser[];
-  onEnter: (userId: string, guest?: boolean) => void;
-  currentUserId?: string;
+  /** Đã đăng nhập sẵn từ phiên trước; null thì hiện ô đăng nhập */
+  currentUser: ApiUser | null;
+  /** Ô đăng nhập/đăng kí, do App truyền vào */
+  signInPanel: React.ReactNode;
+  /** Vào thẳng phòng thực hành khi đã đăng nhập sẵn */
+  onContinue: () => void;
+  /** Đăng xuất ngay từ trang chủ, không phải vào trong mới ra được */
+  onSignOut: () => void;
 }
-
-type Role = 'hs' | 'gv' | 'khach';
 
 /* Tên đầy đủ, viết thẳng ở đây vì trang chủ hiện trước khi người dùng đăng nhập */
 const SECTIONS = [
@@ -106,8 +109,7 @@ const SLIDES: { src: string; label: string; caption: string }[] = [
   },
 ];
 
-export const HomeMenu: React.FC<HomeMenuProps> = ({ users, onEnter }) => {
-  const [role, setRole] = useState<Role>('hs');
+export const HomeMenu: React.FC<HomeMenuProps> = ({ currentUser, signInPanel, onContinue, onSignOut }) => {
   const [slide, setSlide] = useState(0);
   const [maxSlide, setMaxSlide] = useState(SLIDES.length - 1);
   const [zoom, setZoom] = useState<number | null>(null);
@@ -163,18 +165,6 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({ users, onEnter }) => {
     '--card-gap': '16px',
   } as React.CSSProperties;
 
-  const students = users.filter((u) => u.role === 'hs');
-  const teachers = users.filter((u) => u.role === 'gv');
-  const list = role === 'hs' ? students : role === 'gv' ? teachers : [];
-
-  const [picked, setPicked] = useState<string | null>(null);
-  const chosen = picked ?? list[0]?.id ?? null;
-
-  const enter = () => {
-    if (role === 'khach') onEnter(students[0]?.id ?? users[0]?.id, true);
-    else if (chosen) onEnter(chosen);
-  };
-
   return (
     <div className="ml-scroll h-screen overflow-y-auto bg-white text-slate-900">
       {/* ---------------------------------------------------------------- */}
@@ -228,88 +218,41 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({ users, onEnter }) => {
                 vẫn đúng: trong index.css đã có sẵn luật `.dark .bg-white` đổi nền
                 sang màu tối, nên chữ và nền vẫn đổi cùng nhịp với nhau.
               */}
-              <div className="mt-6 rounded-xl border border-slate-200 bg-white text-slate-900
-                overflow-hidden shadow-2xl shadow-slate-950/40">
-                <div className="px-5 py-4 border-b border-slate-200">
-                  <h2 className="text-[clamp(16px,1.2vw,19px)] font-semibold">Vào phòng thực hành</h2>
-                  <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-500 mt-0.5">
-                    Chọn tài khoản của em, hoặc vào xem thử với tư cách khách.
-                  </p>
-                </div>
-
-                {/* Chọn vai trò */}
-                <div className="px-5 pt-4">
-                  <div className="inline-flex rounded-lg border border-slate-200 overflow-hidden">
-                    {([
-                      ['hs', `Học sinh (${students.length})`],
-                      ['gv', `Giáo viên (${teachers.length})`],
-                      ['khach', 'Khách'],
-                    ] as [Role, string][]).map(([id, label]) => (
-                      <button key={id}
-                        onClick={() => { setRole(id); setPicked(null); }}
-                        className={`h-9 px-4 text-[clamp(13px,0.9vw,15.5px)] transition-colors ${
-                          role === id
-                            ? 'bg-slate-900 text-white font-medium'
-                            : 'text-slate-600 hover:bg-slate-100'
-                        }`}>
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Danh sách tài khoản */}
-                <div className="px-5 py-4">
-                  {role === 'khach' ? (
-                    <p className="text-[clamp(14px,0.98vw,16.5px)] text-slate-600 py-2">
-                      Vào xem toàn bộ ứng dụng mà không ghi lại kết quả. Bài làm và số liệu sẽ không được lưu.
+              <div className="mt-6">
+                {currentUser ? (
+                  /* Mở lại trang mà phiên cũ vẫn còn hiệu lực: khỏi bắt gõ mật khẩu lần nữa */
+                  <div className="rounded-xl border border-slate-200 bg-white text-slate-900
+                    overflow-hidden shadow-2xl shadow-slate-950/40 p-5">
+                    <h2 className="text-[clamp(16px,1.2vw,19px)] font-semibold">
+                      Chào {currentUser.name}
+                    </h2>
+                    <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-500 mt-0.5">
+                      {currentUser.role === 'gv' ? 'Giáo viên'
+                        : currentUser.role === 'dev' ? 'Tài khoản developer' : 'Học sinh'}
+                      {currentUser.classCode ? ` · lớp ${currentUser.classCode}` : ''}
                     </p>
-                  ) : (
-                    /* Giới hạn chiều cao rồi cho cuộn: lớp đông thì danh sách dài,
-                       để tràn ra là khối này cao quá một màn hình. */
-                    <ul className="ml-scroll max-h-[13.5rem] overflow-y-auto
-                      divide-y divide-slate-100 border border-slate-200 rounded-lg">
-                      {list.map((u) => (
-                        <li key={u.id}>
-                          <button
-                            onClick={() => setPicked(u.id)}
-                            onDoubleClick={enter}
-                            className={`w-full text-left px-4 py-3 flex items-center gap-3 transition-colors ${
-                              chosen === u.id ? 'bg-indigo-50' : 'hover:bg-slate-100'
-                            }`}>
-                            <span className={`w-4 h-4 rounded-full border-2 shrink-0 grid place-items-center ${
-                              chosen === u.id ? 'border-indigo-600' : 'border-slate-300'
-                            }`}>
-                              {chosen === u.id && <span className="w-2 h-2 rounded-full bg-indigo-600" />}
-                            </span>
-                            <span className="text-[clamp(14px,0.98vw,16.5px)] truncate">{u.name}</span>
-                            {u.teamCode && (
-                              <span className="ml-auto text-[clamp(13px,0.9vw,15.5px)] text-slate-400 shrink-0">
-                                {u.teamCode}
-                              </span>
-                            )}
-                          </button>
-                        </li>
-                      ))}
-                      {list.length === 0 && (
-                        <li className="px-4 py-3 text-[clamp(14px,0.98vw,16.5px)] text-slate-500">
-                          Chưa có tài khoản nào.
-                        </li>
-                      )}
-                    </ul>
-                  )}
-
-                  <button
-                    onClick={enter}
-                    disabled={role !== 'khach' && !chosen}
-                    className="mt-4 h-11 px-5 rounded-lg bg-indigo-600 hover:bg-indigo-700
-                      disabled:bg-slate-200 disabled:text-slate-400
-                      text-white text-[clamp(14px,0.98vw,16.5px)] font-medium
-                      flex items-center gap-2 transition-colors">
-                    Vào phòng thực hành
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
+                    {/* Phải có lối đăng xuất ngay ở đây. Mở lại trang là về màn
+                        này, mà nút đăng xuất chỉ nằm trong phòng thực hành thì
+                        muốn đổi tài khoản lại phải vào rồi mới ra được. */}
+                    <div className="mt-4 flex flex-wrap items-center gap-3">
+                      <button onClick={onContinue}
+                        className="h-11 px-5 rounded-lg bg-indigo-600 hover:bg-indigo-700
+                          text-white text-[clamp(14px,0.98vw,16.5px)] font-medium
+                          flex items-center gap-2 transition-colors">
+                        Vào phòng thực hành
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                      <button onClick={onSignOut}
+                        className="h-11 px-4 rounded-lg border border-slate-300 text-slate-600
+                          text-[clamp(13px,0.9vw,15.5px)] hover:border-rose-400 hover:text-rose-700
+                          flex items-center gap-1.5 transition-colors">
+                        <LogOut className="w-4 h-4" /> Đăng xuất
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="shadow-2xl shadow-slate-950/40 rounded-2xl">{signInPanel}</div>
+                )}
               </div>
             </div>
 

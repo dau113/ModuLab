@@ -5,13 +5,16 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { LabStep, LabReportRow, TeacherClassStats } from './types';
-import { api, isOffline } from './api/client';
+import { api, isOffline, getToken, setSignedOutHandler } from './api/client';
 import type { ApiUser, Bootstrap } from './api/client';
 import { TopNav, Sidebar, Footer, WarningBadge, VersionBadge } from './components/common';
 import { SettingsProvider, useSettings } from './settings';
 import { sfx, music } from './audio';
 import { HomeMenu } from './components/f0-home';
 import { AuthAccountView } from './components/f1-auth';
+import { SignIn } from './components/f1-auth/sign-in';
+import { DeveloperConsole } from './components/f8-dev';
+import { MyAssignments } from './components/f2-quiz/my-assignments';
 import { QuizGame } from './components/f2-quiz';
 import { PhysicsQuest } from './components/f2-quiz/quest';
 import { TheoryView } from './components/f3-theory';
@@ -39,7 +42,7 @@ function Workspace() {
       window.setTimeout(() => setFading(false), 30);
     }, 190);
   }, []);
-  const [currentStep, setCurrentStep] = useState<LabStep | 'teacher' | 'account'>('quiz');
+  const [currentStep, setCurrentStep] = useState<LabStep | 'teacher' | 'account' | 'dev'>('quiz');
   const { t, lang } = useSettings();
   const [currentModuleId, setCurrentModuleId] = useState<string>('lab-1');
   const [reportRows, setReportRows] = useState<LabReportRow[]>([]);
@@ -61,14 +64,27 @@ function Workspace() {
     try {
       const boot = await api.bootstrap();
       setData(boot);
-      setCurrentUser((prev) => prev ?? boot.users.find((u) => u.role === 'hs') ?? boot.users[0]);
       if (boot.modules.length) setCurrentModuleId((prev) => (boot.modules.some((m) => m.id === prev) ? prev : boot.modules[0].id));
+
+      /* Còn mã phiên trong trình duyệt thì đăng nhập lại luôn, người dùng khỏi
+         phải gõ mật khẩu mỗi lần mở trang. Mã hỏng thì bỏ qua, về màn đăng nhập. */
+      if (getToken()) {
+        const me = await api.me();
+        if (me) setCurrentUser(me);
+      }
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Không kết nối được máy chủ dữ liệu');
     }
   }, []);
 
   useEffect(() => { void loadAll(); }, [loadAll]);
+
+  /* Máy chủ báo mã phiên hết hiệu lực thì đưa người dùng về màn đăng nhập ngay,
+     thay vì để họ bấm mãi mà không hiểu vì sao chẳng có gì xảy ra. */
+  useEffect(() => {
+    setSignedOutHandler(() => { setCurrentUser(null); setAtHome(true); });
+    return () => setSignedOutHandler(null);
+  }, []);
 
   /* Tiếng bấm chung cho mọi nút; lần chạm đầu cũng mở khoá âm thanh của trình duyệt */
   useEffect(() => {
@@ -102,20 +118,27 @@ function Workspace() {
     api.teacherStats(currentUser.classCode).then(setTeacherStats).catch(() => setTeacherStats(null));
   }, [currentStep, currentUser?.classCode, isReportSubmitted]);
 
+  /* Chế độ khách không có tài khoản thật. Dựng một người dùng giả để màn hình
+     vẫn vẽ được; mọi lời gọi máy chủ sẽ bị từ chối và rơi về bản lưu trong
+     trình duyệt, đúng như dòng nhắc "kết quả sẽ không được ghi vào sổ điểm". */
+  const viewer: ApiUser | null = currentUser
+    ?? (isGuestMode
+      ? { id: 'khach', name: 'Khách', email: '', role: 'hs', classCode: '', teamCode: '' }
+      : null);
+
   const modules = data?.modules ?? [];
   const currentModule = modules.find((m) => m.id === currentModuleId) || modules[0];
 
-  const handleSwitchUser = (userId: string) => {
-    const user = data?.users.find((u) => u.id === userId);
-    if (user) {
-      setCurrentUser(user);
-      if (user.role === 'gv' && currentStep !== 'teacher') {
-        setCurrentStep('teacher');
-      } else if (user.role === 'hs' && currentStep === 'teacher') {
-        setCurrentStep('theory');
-      }
-    }
-  };
+  /** Đăng xuất: thu hồi mã phiên ở máy chủ rồi quay về trang chủ */
+  const handleSignOut = useCallback(() => {
+    void api.logout().finally(() => {
+      setCurrentUser(null);
+      setIsGuestMode(false);
+      setTeacherStats(null);
+      setAtHome(true);
+      setCurrentStep('quiz');
+    });
+  }, []);
 
   const handleUpdateRows = (rows: LabReportRow[]) => {
     setReportRows(rows);
@@ -147,7 +170,7 @@ function Workspace() {
     );
   }
 
-  if (!data || !currentUser || !currentModule) {
+  if (!data || !currentModule) {
     return (
       <div className="w-full h-screen bg-slate-100 text-slate-900 grid place-items-center font-sans">
         <div className="text-center">
@@ -158,22 +181,35 @@ function Workspace() {
     );
   }
 
-  if (atHome) {
+  if (atHome || !viewer) {
     return (
       <div className="ml-page ml-scale">
         <PageFade active={fading} />
         <VersionBadge />
         <HomeMenu
-        users={data.users}
-        currentUserId={currentUser.id}
-        onEnter={(userId, guest) => navigate(() => {
-          const u = data.users.find((x) => x.id === userId);
-          if (u) setCurrentUser(u);
-          setIsGuestMode(!!guest);
-          setGuestNoteOpen(true);
-          setCurrentStep(u?.role === 'gv' ? 'teacher' : 'quiz');
-          setAtHome(false);
-        })}
+          currentUser={currentUser}
+          signInPanel={(
+            <SignIn
+              onSignedIn={(u) => navigate(() => {
+                setCurrentUser(u);
+                setIsGuestMode(false);
+                setCurrentStep(u.role === 'gv' ? 'teacher' : u.role === 'dev' ? 'dev' : 'quiz');
+                setAtHome(false);
+              })}
+              onGuest={() => navigate(() => {
+                setIsGuestMode(true);
+                setGuestNoteOpen(true);
+                setCurrentStep('quiz');
+                setAtHome(false);
+              })}
+            />
+          )}
+          onSignOut={handleSignOut}
+          onContinue={() => navigate(() => {
+            setCurrentStep(viewer?.role === 'gv' ? 'teacher'
+              : viewer?.role === 'dev' ? 'dev' : 'quiz');
+            setAtHome(false);
+          })}
         />
       </div>
     );
@@ -185,9 +221,9 @@ function Workspace() {
       <VersionBadge />
       {/* Top Navigation Bar */}
       <TopNav
-        currentUser={currentUser}
-        onSwitchUser={handleSwitchUser}
-        availableUsers={data.users}
+        currentUser={viewer}
+        isGuest={isGuestMode}
+        onSignOut={handleSignOut}
         onGoHome={() => navigate(() => setAtHome(true))}
       />
 
@@ -200,7 +236,7 @@ function Workspace() {
           </span>
           <button onClick={() => setAtHome(true)}
             className="underline underline-offset-2 hover:text-amber-950 shrink-0">
-            Chọn tài khoản
+            Đăng nhập
           </button>
           <button onClick={() => setGuestNoteOpen(false)} title="Ẩn dòng nhắc này"
             className="w-6 h-6 grid place-items-center rounded hover:bg-amber-200 shrink-0">
@@ -213,9 +249,9 @@ function Workspace() {
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar: Step / Feature Navigation */}
         <Sidebar
-          currentStep={currentStep === 'account' ? 'quiz' : currentStep}
+          currentStep={currentStep === 'account' || currentStep === 'dev' ? 'quiz' : currentStep}
           onSelectStep={(step) => navigate(() => setCurrentStep(step))}
-          userRole={currentUser.role}
+          userRole={viewer.role}
           labTitle={currentModule.title}
           isReportPassed={isReportPassed}
         />
@@ -251,6 +287,7 @@ function Workspace() {
                 {currentStep === 'report' && t('nav.report.full')}
                 {currentStep === 'teacher' && t('nav.teacher.full')}
                 {currentStep === 'account' && (lang === 'vi' ? 'Tài khoản & Phân quyền' : 'Accounts & roles')}
+                {currentStep === 'dev' && (lang === 'vi' ? 'ModuDev — Cơ sở dữ liệu' : 'ModuDev — Database')}
               </span>
             </div>
 
@@ -289,27 +326,38 @@ function Workspace() {
             )}
 
             {currentStep === 'quiz' && (
-              <QuizGame
-                userRole={currentUser.role}
+              <div className="h-full overflow-y-auto pr-1 ml-scroll space-y-4">
+                {/* Bài tập giáo viên giao — chỉ hiện cho học sinh đã đăng nhập */}
+                {!isGuestMode && viewer.role === 'hs' && (
+                  <section>
+                    <h3 className="mb-2 text-[clamp(14px,0.98vw,16.5px)] font-bold text-slate-900">
+                      Bài tập được giao
+                    </h3>
+                    <MyAssignments />
+                  </section>
+                )}
+                <QuizGame
+                userRole={viewer.role}
                 extraQuestions={data.questions}
                 onFinishQuiz={(score, total) => {
                   void api.saveAttempt({
-                    userId: currentUser.id,
+                    userId: viewer.id,
                     moduleId: currentModuleId,
                     score,
                     total,
                   }).catch(() => undefined);
                 }}
-              />
+                />
+              </div>
             )}
 
             {currentStep === 'quest' && (
               <PhysicsQuest
-                userRole={currentUser.role}
+                userRole={viewer.role}
                 extraQuestions={data.questions}
                 onFinishQuiz={(score, total) => {
                   void api.saveAttempt({
-                    userId: currentUser.id,
+                    userId: viewer.id,
                     moduleId: currentModuleId,
                     score,
                     total,
@@ -324,7 +372,7 @@ function Workspace() {
                 onPassCircuit={() => setIsCircuitPassed(true)}
                 onSaveCircuit={(payload) =>
                   api.saveCircuit({
-                    userId: currentUser.id,
+                    userId: viewer.id,
                     moduleId: currentModuleId,
                     name: payload.name,
                     data: payload.data,
@@ -340,19 +388,19 @@ function Workspace() {
                   setReportRows([]);
                   setIsReportSubmitted(false);
                   setIsReportPassed(false);
-                  void api.reopenReport(currentUser.id, currentModuleId).catch(() => undefined);
+                  void api.reopenReport(viewer.id, currentModuleId).catch(() => undefined);
                 }}
                 module={currentModule}
                 rows={reportRows}
                 onUpdateRows={handleUpdateRows}
                 syncState={syncState}
                 savedAt={savedAt}
-                teamCode={currentUser.teamCode}
+                teamCode={viewer.teamCode}
                 isSubmitted={isReportSubmitted}
                 onSubmitReport={(passed, summary) => {
                   setIsReportPassed(passed);
                   setIsReportSubmitted(true);
-                  void api.submitReport(currentUser.id, currentModuleId, summary ?? {}).catch(() => undefined);
+                  void api.submitReport(viewer.id, currentModuleId, summary ?? {}).catch(() => undefined);
                   alert(
                     passed
                       ? `🎉 Nhóm 3 đã nộp báo cáo thành công (Kết quả: ĐẠT YÊU CẦU)! Dữ liệu đã được đồng bộ vào Sổ điểm của giáo viên.`
@@ -364,18 +412,21 @@ function Workspace() {
 
             {currentStep === 'teacher' && (
               teacherStats
-                ? <TeacherDashboard stats={teacherStats} />
+                ? <TeacherDashboard stats={teacherStats} modules={modules}
+                    onChanged={() => api.teacherStats(viewer.classCode).then(setTeacherStats).catch(() => undefined)} />
                 : <div className="h-full grid place-items-center text-[clamp(13px,0.9vw,15.5px)] text-slate-500">Đang nạp số liệu lớp…</div>
             )}
 
             {currentStep === 'account' && (
               <AuthAccountView
-                currentUser={currentUser}
-                onUpdateUser={(updated) => setCurrentUser((prev) => ({ ...prev, ...updated }))}
-                onSwitchUserRole={handleSwitchUser}
-                availableUsers={data.users}
+                currentUser={viewer}
+                isGuest={isGuestMode}
+                onUpdateUser={(updated) => setCurrentUser((prev) => (prev ? { ...prev, ...updated } : prev))}
+                onSignOut={handleSignOut}
               />
             )}
+
+            {currentStep === 'dev' && viewer.role === 'dev' && <DeveloperConsole />}
           </div>
         </main>
       </div>
