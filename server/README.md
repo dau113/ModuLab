@@ -133,3 +133,35 @@ lần để chép cho học sinh, rồi thu hồi mọi phiên đang mở của 
 Muốn xem lại được mật khẩu thì phải lưu nguyên văn trong cơ sở dữ liệu — ai đọc
 được tệp đó là biết mật khẩu của cả lớp, và vì nhiều người dùng chung một mật
 khẩu cho nhiều nơi nên thiệt hại không dừng ở phần mềm này.
+
+---
+
+## Lớp học, nhóm và mã vào lớp (từ V1.72)
+
+Đăng kí chỉ cần tên, email, mật khẩu. Lớp lập sau, trong ứng dụng.
+
+### Mã vào lớp
+
+Dạng `<4 chữ số lớp>N<số nhóm>` — ví dụ `1204N2` là lớp mã 1204, nhóm 2.
+Mã bốn chữ số sinh tự động từ tên gọi tắt của lớp: "12A4" cho ra "1204"; trùng
+với lớp đã có thì lấy số nhỏ nhất còn trống. Giáo viên cũng tự đặt được.
+
+**Nhóm 0 luôn tồn tại** trong mọi lớp và mang nghĩa "làm riêng lẻ", nên em nào
+không thuộc nhóm nào vẫn vào lớp được bằng mã kết thúc bằng `N0`.
+
+Số thứ tự của học sinh KHÔNG nằm trong mã — em nhập ở một ô riêng khi vào lớp.
+Nhờ vậy giáo viên chỉ phát một mã cho cả nhóm thay vì bốn mươi mã khác nhau.
+Số thứ tự phải duy nhất trong một lớp, nếu không sổ điểm không phân biệt được ai.
+
+### Phát mã cho học sinh
+
+Trong ModuManage, mục **Lớp học & nhóm thực hành**:
+
+- chép mã từng nhóm, hoặc chép cả bảng mã thành một đoạn để dán vào nhóm chat;
+- **Xuất bảng mã** tải về tệp CSV mở được bằng Excel hay Google Sheets.
+
+### Xoá nhóm
+
+Học sinh trong nhóm bị xoá chuyển sang nhóm "làm riêng lẻ" chứ không rơi ra
+ngoài lớp — nếu rơi ra thì mọi bài các em đã nộp sẽ không còn thuộc lớp nào.
+Nhóm 0 không xoá được.

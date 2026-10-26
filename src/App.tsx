@@ -8,6 +8,7 @@ import { LabStep, LabReportRow, TeacherClassStats } from './types';
 import { api, isOffline, getToken, setSignedOutHandler } from './api/client';
 import type { ApiUser, Bootstrap } from './api/client';
 import { TopNav, Sidebar, Footer, WarningBadge, VersionBadge } from './components/common';
+import { LoadingWithFact } from './components/common/physics-facts';
 import { SettingsProvider, useSettings } from './settings';
 import { sfx, music } from './audio';
 import { HomeMenu } from './components/f0-home';
@@ -15,6 +16,7 @@ import { AuthAccountView } from './components/f1-auth';
 import { SignIn } from './components/f1-auth/sign-in';
 import { DeveloperConsole } from './components/f8-dev';
 import { MyAssignments } from './components/f2-quiz/my-assignments';
+import { JoinClass } from './components/f1-auth/join-class';
 import { QuizGame } from './components/f2-quiz';
 import { PhysicsQuest } from './components/f2-quiz/quest';
 import { TheoryView } from './components/f3-theory';
@@ -50,6 +52,8 @@ function Workspace() {
   const [isReportPassed, setIsReportPassed] = useState<boolean>(false);
   const [isReportSubmitted, setIsReportSubmitted] = useState<boolean>(false);
   const [isGuestMode, setIsGuestMode] = useState<boolean>(false);
+  /* Tăng lên mỗi lần học sinh vào lớp khác, để danh sách bài tập nạp lại */
+  const [classTick, setClassTick] = useState(0);
 
   /* Hai dòng nhắc này đóng được; đóng rồi thì thôi không hiện lại trong phiên */
   const [guestNoteOpen, setGuestNoteOpen] = useState(true);
@@ -170,16 +174,7 @@ function Workspace() {
     );
   }
 
-  if (!data || !currentModule) {
-    return (
-      <div className="w-full h-screen bg-slate-100 text-slate-900 grid place-items-center font-sans">
-        <div className="text-center">
-          <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-[clamp(13px,0.9vw,15.5px)] font-bold text-slate-500">Đang nạp dữ liệu từ cơ sở dữ liệu…</p>
-        </div>
-      </div>
-    );
-  }
+  if (!data || !currentModule) return <LoadingWithFact />;
 
   if (atHome || !viewer) {
     return (
@@ -329,12 +324,26 @@ function Workspace() {
               <div className="h-full overflow-y-auto pr-1 ml-scroll space-y-4">
                 {/* Bài tập giáo viên giao — chỉ hiện cho học sinh đã đăng nhập */}
                 {!isGuestMode && viewer.role === 'hs' && (
-                  <section>
-                    <h3 className="mb-2 text-[clamp(14px,0.98vw,16.5px)] font-bold text-slate-900">
-                      Bài tập được giao
-                    </h3>
-                    <MyAssignments />
-                  </section>
+                  <>
+                    {/* Vào lớp trước đã — chưa có lớp thì chưa nhận được bài nào */}
+                    <section>
+                      <h3 className="mb-2 text-[clamp(14px,0.98vw,16.5px)] font-bold text-slate-900">
+                        Lớp của em
+                      </h3>
+                      <JoinClass compact onJoined={(c) => {
+                        setCurrentUser((prev) => (prev
+                          ? { ...prev, classCode: c.classCode, teamCode: c.groupName, seatNo: c.seatNo }
+                          : prev));
+                        setClassTick((n) => n + 1);
+                      }} />
+                    </section>
+                    <section>
+                      <h3 className="mb-2 text-[clamp(14px,0.98vw,16.5px)] font-bold text-slate-900">
+                        Bài tập được giao
+                      </h3>
+                      <MyAssignments key={classTick} />
+                    </section>
+                  </>
                 )}
                 <QuizGame
                 userRole={viewer.role}
@@ -413,7 +422,12 @@ function Workspace() {
             {currentStep === 'teacher' && (
               teacherStats
                 ? <TeacherDashboard stats={teacherStats} modules={modules}
-                    onChanged={() => api.teacherStats(viewer.classCode).then(setTeacherStats).catch(() => undefined)} />
+                    onChanged={() => {
+                      /* Tạo hoặc đổi lớp làm đổi luôn lớp đang mở của giáo viên ở máy chủ,
+                         nên phải nạp lại hồ sơ, không thì thanh trên còn ghi lớp cũ. */
+                      void api.me().then((u) => { if (u) setCurrentUser(u); }).catch(() => undefined);
+                      void api.teacherStats().then(setTeacherStats).catch(() => undefined);
+                    }} />
                 : <div className="h-full grid place-items-center text-[clamp(13px,0.9vw,15.5px)] text-slate-500">Đang nạp số liệu lớp…</div>
             )}
 

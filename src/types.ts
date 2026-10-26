@@ -7,6 +7,9 @@ export interface User {
   role: UserRole;
   classCode: string;
   teamCode: string;
+  /** Số thứ tự trong lớp; null khi học sinh chưa vào lớp nào */
+  seatNo?: number | null;
+  groupNo?: number | null;
 }
 
 export type LabStep = 'theory' | 'tools' | 'quiz' | 'quest' | 'circuit' | 'report';

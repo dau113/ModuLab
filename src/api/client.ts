@@ -53,6 +53,50 @@ export interface ApiUser {
   teamCode: string;
   classId?: string | null;
   teamId?: string | null;
+  /** Số thứ tự của học sinh trong lớp; null khi em chưa vào lớp nào */
+  seatNo?: number | null;
+  /** Số nhóm thực hành; 0 nghĩa là làm riêng lẻ */
+  groupNo?: number | null;
+}
+
+export interface ClassGroup {
+  id: string;
+  groupNo: number;
+  name: string;
+  memberCount: number;
+  /** Mã học sinh gõ để vào nhóm này, ví dụ 1204N2 */
+  joinCode: string;
+}
+
+export interface ClassInfo {
+  id: string;
+  code: string;
+  name: string;
+  joinCode: string;
+  teacherId: string | null;
+  createdAt: string;
+  studentCount: number;
+  groups: ClassGroup[];
+}
+
+export interface MyClass {
+  classId: string;
+  classCode: string;
+  className: string;
+  groupNo: number;
+  groupName: string;
+  seatNo: number | null;
+  members: { id: string; name: string; seatNo: number | null }[];
+}
+
+export interface ClassStudent {
+  id: string;
+  name: string;
+  email: string;
+  seatNo: number | null;
+  groupNo: number;
+  groupName: string;
+  lastLoginAt: string | null;
 }
 
 export interface Bootstrap {
@@ -216,9 +260,19 @@ export interface MyAssignment {
   gradedAt: string | null;
 }
 
+export interface BoardGroup {
+  groupNo: number;
+  name: string;
+  members: BoardRow[];
+  submitted: number;
+  graded: number;
+}
+
 export interface BoardRow {
   userId: string;
   name: string;
+  seatNo: number | null;
+  groupNo: number;
   team: string;
   status: SubmissionStatus;
   score: number | null;
@@ -259,7 +313,6 @@ export const api = {
 
   register: async (payload: {
     name: string; email: string; password: string; role: 'hs' | 'gv';
-    classCode?: string; className?: string; teamCode?: string;
   }) => {
     const r = await call<{ token: string; user: ApiUser }>('/auth/register', post(payload));
     setToken(r.token);
@@ -285,8 +338,31 @@ export const api = {
   changePassword: (oldPassword: string, newPassword: string) =>
     call<{ ok: boolean }>('/auth/password', post({ oldPassword, newPassword })),
 
-  updateProfile: (payload: { name?: string; classCode?: string; teamCode?: string }) =>
+  updateProfile: (payload: { name?: string }) =>
     call<ApiUser>('/auth/profile', { method: 'PATCH', body: body(payload) }),
+
+  /* ---------------- Lớp học và nhóm ---------------- */
+
+  myClass: () => call<MyClass | null>('/my/class'),
+  joinClass: (code: string, seatNo: number) =>
+    call<MyClass & { joinCode: string }>('/my/class/join', post({ code, seatNo })),
+  leaveClass: () => call<{ ok: boolean }>('/my/class/leave', post()),
+
+  classes: () => call<ClassInfo[]>('/classes'),
+  createClass: (payload: { name: string; code?: string; joinCode?: string; groupCount?: number }) =>
+    call<ClassInfo>('/classes', post(payload)),
+  updateClass: (id: string, payload: { name?: string; code?: string }) =>
+    call<ClassInfo>(`/classes/${encodeURIComponent(id)}`, { method: 'PATCH', body: body(payload) }),
+  deleteClass: (id: string) =>
+    call<{ ok: boolean }>(`/classes/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  selectClass: (id: string) =>
+    call<ClassInfo>(`/classes/${encodeURIComponent(id)}/select`, post()),
+  classStudents: (id: string) =>
+    call<ClassStudent[]>(`/classes/${encodeURIComponent(id)}/students`),
+  addGroup: (id: string, payload: { groupNo?: number; name?: string }) =>
+    call<ClassInfo>(`/classes/${encodeURIComponent(id)}/groups`, post(payload)),
+  deleteGroup: (id: string, groupNo: number) =>
+    call<ClassInfo>(`/classes/${encodeURIComponent(id)}/groups/${groupNo}`, { method: 'DELETE' }),
 
   /* ---------------- Dữ liệu dùng chung ---------------- */
 
@@ -351,7 +427,8 @@ export const api = {
   deleteAssignment: (id: string) =>
     call<{ ok: boolean }>(`/assignments/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   assignmentBoard: (id: string) =>
-    call<{ assignment: Assignment; rows: BoardRow[] }>(`/assignments/${encodeURIComponent(id)}/board`),
+    call<{ assignment: Assignment; rows: BoardRow[]; groups: BoardGroup[] }>(
+      `/assignments/${encodeURIComponent(id)}/board`),
   gradeSubmission: (id: string, userId: string, payload: { score?: number | null; comment?: string }) =>
     call<BoardRow>(`/assignments/${encodeURIComponent(id)}/grade/${encodeURIComponent(userId)}`, post(payload)),
   reopenSubmission: (id: string, userId: string) =>

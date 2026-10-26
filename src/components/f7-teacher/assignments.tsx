@@ -12,7 +12,7 @@ import {
   CheckCircle2, Clock, CircleDashed, RotateCcw,
 } from 'lucide-react';
 import { api } from '../../api/client';
-import type { Assignment, BoardRow, AssignmentKind } from '../../api/client';
+import type { Assignment, BoardRow, BoardGroup, AssignmentKind } from '../../api/client';
 import type { LabModule } from '../../types';
 
 const card = 'rounded-xl border border-slate-200 bg-white';
@@ -47,7 +47,9 @@ interface Props {
 export const AssignmentManager: React.FC<Props> = ({ modules, onChanged }) => {
   const [list, setList] = useState<Assignment[] | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
-  const [board, setBoard] = useState<{ assignment: Assignment; rows: BoardRow[] } | null>(null);
+  const [board, setBoard] = useState<{
+    assignment: Assignment; rows: BoardRow[]; groups: BoardGroup[];
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -250,11 +252,31 @@ export const AssignmentManager: React.FC<Props> = ({ modules, onChanged }) => {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                          {board.rows.map((r) => {
+                          {board.groups.flatMap((g) => [
+                            /* Một hàng tiêu đề cho mỗi nhóm, kèm số em đã nộp trên tổng số */
+                            <tr key={`g-${g.groupNo}`} className="bg-slate-50">
+                              <td colSpan={5} className="px-2.5 py-1.5">
+                                <span className="font-bold text-[clamp(12px,0.82vw,14px)] text-slate-700">
+                                  {g.name}
+                                </span>
+                                <span className="ml-2 text-[clamp(11.5px,0.78vw,13.5px)] text-slate-500">
+                                  {g.submitted}/{g.members.length} đã nộp
+                                  {g.graded > 0 && ` · ${g.graded} đã chấm`}
+                                </span>
+                              </td>
+                            </tr>,
+                            ...g.members.map((r) => {
                             const st = TRANG_THAI[r.status] ?? TRANG_THAI.chua_lam;
                             return (
                               <tr key={r.userId} className="hover:bg-slate-50">
-                                <td className="px-2.5 py-2 font-semibold text-slate-800">{r.name}</td>
+                                <td className="px-2.5 py-2 font-semibold text-slate-800">
+                                  {r.seatNo !== null && (
+                                    <span className="mr-1.5 font-mono font-normal text-slate-400">
+                                      {r.seatNo}
+                                    </span>
+                                  )}
+                                  {r.name}
+                                </td>
                                 <td className="px-2.5 py-2 text-slate-500">{r.team || '—'}</td>
                                 <td className="px-2.5 py-2">
                                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded
@@ -291,7 +313,8 @@ export const AssignmentManager: React.FC<Props> = ({ modules, onChanged }) => {
                                 </td>
                               </tr>
                             );
-                          })}
+                          }),
+                          ])}
                         </tbody>
                       </table>
                     </div>

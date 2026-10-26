@@ -13,6 +13,7 @@ import {
   Users, UserCheck, KeyRound, LogOut, ShieldCheck, Loader2, AlertCircle, CheckCircle2,
 } from 'lucide-react';
 import { api } from '../../api/client';
+import { JoinClass } from './join-class';
 
 interface AuthAccountViewProps {
   currentUser: User;
@@ -47,26 +48,9 @@ const Note: React.FC<{ kind: 'ok' | 'err'; text: string }> = ({ kind, text }) =>
 export const AuthAccountView: React.FC<AuthAccountViewProps> = ({
   currentUser, isGuest, onUpdateUser, onSignOut,
 }) => {
-  const [classCode, setClassCode] = useState(currentUser.classCode || '');
-  const [teamCode, setTeamCode] = useState(currentUser.teamCode || '');
-  const [savingProfile, setSavingProfile] = useState(false);
-  const [profileNote, setProfileNote] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
-
   const [pw, setPw] = useState({ old: '', next: '' });
   const [savingPw, setSavingPw] = useState(false);
   const [pwNote, setPwNote] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
-
-  const saveProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setProfileNote(null); setSavingProfile(true);
-    try {
-      const u = await api.updateProfile({ classCode, teamCode });
-      onUpdateUser({ classCode: u.classCode, teamCode: u.teamCode });
-      setProfileNote({ kind: 'ok', text: 'Đã cập nhật lớp và nhóm thực hành.' });
-    } catch (err) {
-      setProfileNote({ kind: 'err', text: err instanceof Error ? err.message : String(err) });
-    } finally { setSavingProfile(false); }
-  };
 
   const savePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,6 +110,12 @@ export const AuthAccountView: React.FC<AuthAccountViewProps> = ({
               <span className="text-slate-500">Nhóm thực hành</span>
               <span className="font-bold text-slate-800 text-right">{currentUser.teamCode || '—'}</span>
             </div>
+            <div className="flex justify-between gap-2 py-1 border-b border-slate-200/60">
+              <span className="text-slate-500">Số thứ tự trong lớp</span>
+              <span className="font-mono font-bold text-slate-800">
+                {currentUser.seatNo ?? '—'}
+              </span>
+            </div>
             <div className="flex justify-between gap-2 py-1">
               <span className="text-slate-500">Nơi lưu bài làm</span>
               <span className={`font-bold ${isGuest ? 'text-amber-700' : 'text-emerald-700'}`}>
@@ -135,39 +125,25 @@ export const AuthAccountView: React.FC<AuthAccountViewProps> = ({
           </div>
         </div>
 
-        {!isGuest && (
+        {!isGuest && currentUser.role === 'hs' && (
           <div className="mt-5 pt-4 border-t border-slate-200">
             <h4 className="font-bold text-slate-800 mb-2.5 flex items-center gap-2
               text-[clamp(13px,0.9vw,15.5px)]">
-              <KeyRound className="w-4 h-4 text-indigo-600" /> Đổi lớp hoặc nhóm thực hành
+              <KeyRound className="w-4 h-4 text-indigo-600" /> Lớp và nhóm thực hành
             </h4>
-            <form onSubmit={saveProfile} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className={label} htmlFor="tk-class">Mã lớp</label>
-                <input id="tk-class" className={`${field} font-mono uppercase`} value={classCode}
-                  disabled={savingProfile} onChange={(e) => setClassCode(e.target.value.toUpperCase())}
-                  placeholder="11A2-VL" />
-              </div>
-              <div>
-                <label className={label} htmlFor="tk-team">Nhóm thực hành</label>
-                <input id="tk-team" className={field} value={teamCode} disabled={savingProfile}
-                  onChange={(e) => setTeamCode(e.target.value)} placeholder="Nhóm 3 - Bàn 5" />
-              </div>
-              <div className="flex items-end">
-                <button type="submit" disabled={savingProfile}
-                  className="w-full h-10 inline-flex items-center justify-center gap-2 rounded-xl
-                    bg-indigo-600 text-white font-bold text-[clamp(13px,0.9vw,15.5px)]
-                    hover:bg-indigo-700 disabled:opacity-60 transition-colors">
-                  {savingProfile && <Loader2 className="w-4 h-4 animate-spin" />} Lưu thay đổi
-                </button>
-              </div>
-            </form>
-            {profileNote && <div className="mt-2.5">{<Note {...profileNote} />}</div>}
-            <p className="mt-2 text-[clamp(12px,0.82vw,14px)] text-slate-500">
-              Đổi mã lớp là chuyển sang nhận bài tập của lớp mới. Bài đã nộp ở lớp cũ vẫn giữ nguyên.
+            <JoinClass />
+          </div>
+        )}
+
+        {!isGuest && currentUser.role === 'gv' && (
+          <div className="mt-5 pt-4 border-t border-slate-200">
+            <p className="text-[clamp(12.5px,0.86vw,15px)] text-slate-600">
+              Lớp và nhóm quản lí ở mục <strong className="font-semibold text-slate-800">ModuManage</strong>:
+              tạo lớp, chia nhóm, và lấy mã để phát cho học sinh.
             </p>
           </div>
         )}
+
       </BentoCard>
 
       <BentoCard className="md:col-span-2 flex flex-col justify-between" title="Bảo mật">

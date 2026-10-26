@@ -26,6 +26,10 @@ import {
   listTables, readTable, runQuery, listAccounts, setAccountStatus, recentLogs, overview,
   resetAccountPassword,
 } from './devtools.mjs';
+import {
+  lopCuaGiaoVien, chiTietLop, taoLop, suaLop, xoaLop, chonLop,
+  themNhom, xoaNhom, hocSinhCuaLop, vaoLop, lopCuaToi, roiLop,
+} from './classes.mjs';
 
 const PORT = Number(process.env.PORT || 8787);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -176,6 +180,30 @@ const routes = [
   ['GET', /^\/api\/circuit\/(\d+)$/, ({ m }) => getCircuit(Number(m[1])), ['hs', 'gv', 'dev']],
   ['POST', /^\/api\/circuits$/, ({ user, body }) =>
     saveCircuit({ ...body, userId: user.id }), ['hs', 'gv', 'dev']],
+
+  /* ---------------- Lớp học và nhóm ---------------- */
+
+  /* Học sinh */
+  ['GET', /^\/api\/my\/class$/, ({ user }) => lopCuaToi(user), ['hs', 'gv', 'dev']],
+  ['POST', /^\/api\/my\/class\/join$/, ({ user, body }) => vaoLop(user, body), ['hs']],
+  ['POST', /^\/api\/my\/class\/leave$/, ({ user }) => roiLop(user), ['hs']],
+
+  /* Giáo viên */
+  ['GET', /^\/api\/classes$/, ({ user }) => lopCuaGiaoVien(user.id), ['gv', 'dev']],
+  ['POST', /^\/api\/classes$/, ({ user, body }) => taoLop(user, body), ['gv', 'dev']],
+  ['GET', /^\/api\/classes\/([^/]+)$/, ({ m }) => chiTietLop(decodeURIComponent(m[1])), ['gv', 'dev']],
+  ['PATCH', /^\/api\/classes\/([^/]+)$/, ({ user, m, body }) =>
+    suaLop(user, decodeURIComponent(m[1]), body), ['gv', 'dev']],
+  ['DELETE', /^\/api\/classes\/([^/]+)$/, ({ user, m }) =>
+    xoaLop(user, decodeURIComponent(m[1])), ['gv', 'dev']],
+  ['POST', /^\/api\/classes\/([^/]+)\/select$/, ({ user, m }) =>
+    chonLop(user, decodeURIComponent(m[1])), ['gv', 'dev']],
+  ['GET', /^\/api\/classes\/([^/]+)\/students$/, ({ user, m }) =>
+    hocSinhCuaLop(user, decodeURIComponent(m[1])), ['gv', 'dev']],
+  ['POST', /^\/api\/classes\/([^/]+)\/groups$/, ({ user, m, body }) =>
+    themNhom(user, decodeURIComponent(m[1]), body), ['gv', 'dev']],
+  ['DELETE', /^\/api\/classes\/([^/]+)\/groups\/(\d+)$/, ({ user, m }) =>
+    xoaNhom(user, decodeURIComponent(m[1]), Number(m[2])), ['gv', 'dev']],
 
   /* ---------------- Bài tập: phía học sinh ---------------- */
 

@@ -68,8 +68,9 @@ export const assignmentBoard = (assignmentId) => {
   const a = getAssignment(assignmentId);
   if (!a) fail('Không tìm thấy bài tập này.', 404);
   const rows = all(`
-    SELECT u.id AS userId, u.name,
-           COALESCE(t.code, '') AS team,
+    SELECT u.id AS userId, u.name, u.seat_no AS seatNo,
+           COALESCE(t.name, 'Làm riêng lẻ') AS team,
+           COALESCE(t.group_no, 0) AS groupNo,
            COALESCE(s.status, 'chua_lam') AS status,
            s.score, s.late, s.teacher_comment AS teacherComment,
            s.submitted_at AS submittedAt, s.graded_at AS gradedAt
@@ -77,8 +78,23 @@ export const assignmentBoard = (assignmentId) => {
     LEFT JOIN teams t ON t.id = u.team_id
     LEFT JOIN submissions s ON s.assignment_id = ? AND s.user_id = u.id
     WHERE u.class_id = ? AND u.role = 'hs'
-    ORDER BY u.name`, assignmentId, a.classId);
-  return { assignment: a, rows };
+    ORDER BY COALESCE(t.group_no, 0), COALESCE(u.seat_no, 999), u.name`, assignmentId, a.classId);
+
+  /* Gom theo nhóm để giáo viên nhìn ra nhóm nào xong, nhóm nào còn người chưa nộp.
+     Nhóm 0 là các em làm riêng lẻ, vẫn gom chung một khối cho dễ đọc. */
+  const nhom = [];
+  rows.forEach((r) => {
+    let g = nhom.find((x) => x.groupNo === r.groupNo);
+    if (!g) {
+      g = { groupNo: r.groupNo, name: r.team, members: [], submitted: 0, graded: 0 };
+      nhom.push(g);
+    }
+    g.members.push(r);
+    if (r.status !== 'chua_lam' && r.status !== 'dang_lam') g.submitted++;
+    if (r.status === 'da_cham') g.graded++;
+  });
+
+  return { assignment: a, rows, groups: nhom };
 };
 
 /* ------------------------------------------------------------------ */
@@ -97,7 +113,10 @@ const checkFields = ({ kind, state, dueAt, passScore }) => {
 };
 
 export const createAssignment = (teacher, payload) => {
-  if (!teacher.classId) fail('Tài khoản giáo viên chưa gắn với lớp nào.', 400);
+  if (!teacher.classId) {
+    fail('Bạn chưa có lớp nào. Hãy tạo lớp ở mục Lớp học & nhóm thực hành trước, '
+      + 'rồi mới giao bài được.', 409);
+  }
   const title = String(payload.title ?? '').trim();
   if (title.length < 3) fail('Tên bài tập phải có ít nhất 3 kí tự.');
   checkFields(payload);

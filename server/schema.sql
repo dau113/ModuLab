@@ -8,20 +8,35 @@ PRAGMA foreign_keys = ON;
 -- ---------------------------------------------------------------------
 -- 1. Lớp học, nhóm thực hành và người dùng
 -- ---------------------------------------------------------------------
+-- `code` là tên lớp người ta vẫn gọi, ví dụ 12A4.
+-- `join_code` là bốn chữ số học sinh gõ để vào lớp, ví dụ 1204. Tách riêng vì
+-- tên lớp có thể đổi hoặc trùng cách viết, còn mã vào lớp thì phải duy nhất và
+-- gõ được nhanh trên điện thoại.
 CREATE TABLE IF NOT EXISTS classes (
   id          TEXT PRIMARY KEY,
   code        TEXT NOT NULL UNIQUE,
   name        TEXT NOT NULL,
+  join_code   TEXT UNIQUE,
   teacher_id  TEXT,
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Mỗi lớp luôn có một nhóm số 0 nghĩa là "làm riêng lẻ", để học sinh không có
+-- nhóm vẫn vào lớp được bằng mã kết thúc bằng N0. Nhờ vậy mọi học sinh đều
+-- thuộc về một hàng trong bảng này, không phải xử lí riêng trường hợp rỗng.
 CREATE TABLE IF NOT EXISTS teams (
   id        TEXT PRIMARY KEY,
   class_id  TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
   code      TEXT NOT NULL,
+  group_no  INTEGER,
+  name      TEXT,
   UNIQUE (class_id, code)
 );
+
+-- Chỉ mục trên group_no KHÔNG đặt ở đây. Tệp này chạy trước bước di trú, mà
+-- cơ sở dữ liệu cũ thì bảng teams chưa có cột group_no — tạo chỉ mục trên một
+-- cột chưa tồn tại là lỗi, và lỗi đó làm hỏng cả lượt khởi động. Chỉ mục được
+-- dựng trong server/migrate.mjs, sau khi cột đã chắc chắn có.
 
 -- Mật khẩu KHÔNG bao giờ lưu nguyên văn. Cột password_hash giữ chuỗi băm scrypt
 -- kèm muối riêng cho từng tài khoản, xem server/auth.mjs.
@@ -33,6 +48,8 @@ CREATE TABLE IF NOT EXISTS users (
   class_id      TEXT REFERENCES classes(id) ON DELETE SET NULL,
   team_id       TEXT REFERENCES teams(id)   ON DELETE SET NULL,
   password_hash TEXT,
+  -- Số thứ tự của học sinh trong lớp, do chính em nhập khi vào lớp
+  seat_no       INTEGER,
   status        TEXT NOT NULL DEFAULT 'hoat_dong' CHECK (status IN ('hoat_dong', 'khoa')),
   last_login_at TEXT,
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
@@ -277,7 +294,7 @@ SELECT
   u.id                AS user_id,
   u.name              AS name,
   u.class_id          AS class_id,
-  COALESCE(t.code, '') AS team,
+  COALESCE(t.name, t.code, '') AS team,
   (SELECT MAX(score) FROM quiz_attempts a WHERE a.user_id = u.id)      AS quiz_score,
   (SELECT r.status   FROM lab_reports  r WHERE r.user_id = u.id
      ORDER BY r.updated_at DESC LIMIT 1)                               AS report_status,

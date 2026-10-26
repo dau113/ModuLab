@@ -64,7 +64,7 @@ export const listUsers = (classId) => (classId
   ? all(`
       SELECT u.id, u.name, u.email, u.role,
              COALESCE(c.code, '') AS classCode,
-             COALESCE(t.code, '') AS teamCode
+             COALESCE(t.name, t.code, '') AS teamCode
       FROM users u
       LEFT JOIN classes c ON c.id = u.class_id
       LEFT JOIN teams   t ON t.id = u.team_id
@@ -73,7 +73,7 @@ export const listUsers = (classId) => (classId
   : all(`
       SELECT u.id, u.name, u.email, u.role,
              COALESCE(c.code, '') AS classCode,
-             COALESCE(t.code, '') AS teamCode
+             COALESCE(t.name, t.code, '') AS teamCode
       FROM users u
       LEFT JOIN classes c ON c.id = u.class_id
       LEFT JOIN teams   t ON t.id = u.team_id

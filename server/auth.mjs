@@ -70,9 +70,11 @@ export const destroySession = (token) => {
 export const publicUser = (id) => get(`
   SELECT u.id, u.name, u.email, u.role, u.status,
          COALESCE(c.code, '') AS classCode,
-         COALESCE(t.code, '') AS teamCode,
+         COALESCE(t.name, '') AS teamCode,
          u.class_id AS classId,
-         u.team_id  AS teamId
+         u.team_id  AS teamId,
+         u.seat_no  AS seatNo,
+         t.group_no AS groupNo
   FROM users u
   LEFT JOIN classes c ON c.id = u.class_id
   LEFT JOIN teams   t ON t.id = u.team_id
@@ -90,40 +92,19 @@ export const userFromToken = (token) => {
 };
 
 /* ------------------------------------------------------------------ */
-/* Lớp học                                                             */
-/* ------------------------------------------------------------------ */
-
-const normCode = (s) => String(s ?? '').trim().toUpperCase();
-
-/** Tìm lớp theo mã; chưa có thì tạo, để giáo viên mở lớp mới ngay lúc đăng kí */
-const ensureClass = (code, name, teacherId) => {
-  const c = normCode(code);
-  if (!c) return null;
-  const found = get('SELECT id FROM classes WHERE code = ?', c);
-  if (found) return found.id;
-  const id = `class-${randomUUID().slice(0, 8)}`;
-  run('INSERT INTO classes (id, code, name, teacher_id) VALUES (?, ?, ?, ?)',
-    id, c, name || `Lớp ${c}`, teacherId ?? null);
-  return id;
-};
-
-const ensureTeam = (classId, code) => {
-  const c = String(code ?? '').trim();
-  if (!classId || !c) return null;
-  const found = get('SELECT id FROM teams WHERE class_id = ? AND code = ?', classId, c);
-  if (found) return found.id;
-  const id = `team-${randomUUID().slice(0, 8)}`;
-  run('INSERT INTO teams (id, class_id, code) VALUES (?, ?, ?)', id, classId, c);
-  return id;
-};
-
-/* ------------------------------------------------------------------ */
 /* Đăng kí và đăng nhập                                                */
 /* ------------------------------------------------------------------ */
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-export const register = ({ name, email, password, role, classCode, className, teamCode }, userAgent) => {
+/**
+ * Đăng kí chỉ cần tên, email, mật khẩu và vai trò.
+ *
+ * Phần lớp đã chuyển hẳn vào trong ứng dụng: học sinh vào lớp bằng mã giáo viên
+ * phát, giáo viên tự tạo lớp. Trước đây bắt nhập mã lớp ngay lúc đăng kí, mà
+ * lúc đó em chưa chắc đã có mã trong tay, nên nhiều em gõ bừa rồi vào nhầm lớp.
+ */
+export const register = ({ name, email, password, role }, userAgent) => {
   const ten = String(name ?? '').trim();
   const mail = String(email ?? '').trim().toLowerCase();
   const matKhau = String(password ?? '');
@@ -138,13 +119,8 @@ export const register = ({ name, email, password, role, classCode, className, te
   }
 
   const id = `${role}-${randomUUID().slice(0, 8)}`;
-  const classId = ensureClass(classCode, className, role === 'gv' ? id : null);
-  if (role === 'hs' && !classId) fail('Học sinh phải nhập mã lớp để vào đúng lớp của mình.');
-  const teamId = role === 'hs' ? ensureTeam(classId, teamCode) : null;
-
-  run(`INSERT INTO users (id, name, email, role, class_id, team_id, password_hash)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    id, ten, mail, role, classId, teamId, hashPassword(matKhau));
+  run('INSERT INTO users (id, name, email, role, password_hash) VALUES (?, ?, ?, ?, ?)',
+    id, ten, mail, role, hashPassword(matKhau));
 
   logActivity(id, 'dang_ki', `${role} · ${mail}`);
   return { token: createSession(id, userAgent), user: publicUser(id) };
@@ -180,22 +156,21 @@ export const changePassword = (userId, { oldPassword, newPassword }) => {
   return { ok: true };
 };
 
-/** Học sinh tự đổi lớp hoặc nhóm thực hành của mình */
-export const updateProfile = (userId, { name, classCode, teamCode }) => {
+/**
+ * Đổi họ tên.
+ *
+ * Lớp và nhóm KHÔNG đổi ở đây nữa: học sinh đổi bằng cách nhập mã lớp khác,
+ * giáo viên đổi bằng cách chọn lớp khác trong phần quản lí lớp. Để hai đường
+ * cùng sửa một thứ thì sớm muộn cũng lệch nhau.
+ */
+export const updateProfile = (userId, { name }) => {
   const user = publicUser(userId);
   if (!user) fail('Không tìm thấy tài khoản.', 404);
 
   const ten = name === undefined ? user.name : String(name).trim();
   if (ten.length < 2) fail('Họ tên phải có ít nhất 2 kí tự.');
 
-  let classId = user.classId;
-  if (classCode !== undefined && normCode(classCode) !== normCode(user.classCode)) {
-    classId = ensureClass(classCode, '', null);
-  }
-  const teamId = teamCode !== undefined ? ensureTeam(classId, teamCode) : user.teamId;
-
-  run('UPDATE users SET name = ?, class_id = ?, team_id = ? WHERE id = ?',
-    ten, classId, teamId, userId);
+  run('UPDATE users SET name = ? WHERE id = ?', ten, userId);
   return publicUser(userId);
 };
 

@@ -7,6 +7,7 @@
  */
 import { db, run, tx, isEmpty, DB_PATH } from './db.mjs';
 import { hashPassword } from './auth.mjs';
+import { doanMaTuTen } from './classes.mjs';
 import {
   INITIAL_USERS, LAB_MODULES, EXPLORE_TOOLS, QUIZ_QUESTIONS,
   INITIAL_REPORT_ROWS, TEACHER_CLASS_STATS,
@@ -40,16 +41,27 @@ tx(() => {
   /* ---------- Lớp học và nhóm ---------- */
   const stats = TEACHER_CLASS_STATS;
   const classId = `class-${slug(stats.classCode)}`;
-  run('INSERT INTO classes (id, code, name) VALUES (?, ?, ?)', classId, stats.classCode, stats.className);
+  /* Mã vào lớp đoán từ tên lớp: "11A2-VL" cho ra "1102" */
+  const maVaoLop = doanMaTuTen(stats.classCode) ?? '1102';
+  run('INSERT INTO classes (id, code, name, join_code) VALUES (?, ?, ?, ?)',
+    classId, stats.classCode, stats.className, maVaoLop);
+
+  /* Nhóm 0 — làm riêng lẻ. Lớp nào cũng phải có. */
+  run(`INSERT INTO teams (id, class_id, code, group_no, name)
+       VALUES (?, ?, 'N0', 0, 'Làm riêng lẻ')`, `team-${slug(stats.classCode)}-n0`, classId);
 
   const teamCodes = new Set();
   INITIAL_USERS.forEach((u) => u.teamCode && teamCodes.add(u.teamCode));
   stats.studentList.forEach((s) => s.team && teamCodes.add(s.team));
   const teamId = {};
-  [...teamCodes].forEach((code) => {
+  [...teamCodes].forEach((code, i) => {
     const id = `team-${slug(code)}`;
     teamId[code] = id;
-    run('INSERT INTO teams (id, class_id, code) VALUES (?, ?, ?)', id, classId, code);
+    /* Số nhóm rút từ tên nếu có ("Nhóm 3 - Bàn 5" → 3), không thì đánh số tiếp */
+    const m = String(code).match(/(\d+)/);
+    const so = m && Number(m[1]) > 0 ? Number(m[1]) : i + 1;
+    run('INSERT INTO teams (id, class_id, code, group_no, name) VALUES (?, ?, ?, ?, ?)',
+      id, classId, `N${so}`, so, code);
   });
 
   /* ---------- Người dùng ----------

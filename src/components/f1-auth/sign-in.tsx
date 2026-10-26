@@ -34,9 +34,7 @@ export const SignIn: React.FC<Props> = ({ onSignedIn, onGuest, onBack }) => {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [form, setForm] = useState({
-    name: '', email: '', password: '', classCode: '', className: '', teamCode: '',
-  });
+  const [form, setForm] = useState({ name: '', email: '', password: '' });
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -49,7 +47,6 @@ export const SignIn: React.FC<Props> = ({ onSignedIn, onGuest, onBack }) => {
         ? await api.login(form.email, form.password)
         : await api.register({
           name: form.name, email: form.email, password: form.password, role,
-          classCode: form.classCode, className: form.className, teamCode: form.teamCode,
         });
       onSignedIn(user);
     } catch (err) {
@@ -135,33 +132,10 @@ export const SignIn: React.FC<Props> = ({ onSignedIn, onGuest, onBack }) => {
           </div>
 
           {dangKi && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className={label} htmlFor="ml-class">
-                  Mã lớp {role === 'hs' && <span className="text-rose-500">*</span>}
-                </label>
-                <input id="ml-class" className={field} value={form.classCode} onChange={set('classCode')}
-                  disabled={busy} placeholder="11A2-VL" required={role === 'hs'} />
-              </div>
-              {role === 'hs' ? (
-                <div>
-                  <label className={label} htmlFor="ml-team">Nhóm thực hành</label>
-                  <input id="ml-team" className={field} value={form.teamCode} onChange={set('teamCode')}
-                    disabled={busy} placeholder="Nhóm 3 - Bàn 5" />
-                </div>
-              ) : (
-                <div>
-                  <label className={label} htmlFor="ml-cname">Tên lớp</label>
-                  <input id="ml-cname" className={field} value={form.className} onChange={set('className')}
-                    disabled={busy} placeholder="Lớp 11A2 - Chuyên Lý" />
-                </div>
-              )}
-            </div>
-          )}
-
-          {dangKi && role === 'hs' && (
             <p className="text-[clamp(12px,0.82vw,14px)] text-slate-500">
-              Mã lớp do giáo viên cho. Nhập đúng mã thì em mới nhận được bài tập của lớp mình.
+              {role === 'hs'
+                ? 'Vào lớp sau khi đăng kí: giáo viên sẽ cho em một mã lớp dạng 1204N2 để nhập trong ứng dụng.'
+                : 'Tạo lớp sau khi đăng nhập, trong mục quản lí lớp. Hệ thống sẽ sinh mã để thầy cô phát cho học sinh.'}
             </p>
           )}
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { TeacherClassStats, LabModule } from '../../types';
 import { AssignmentManager } from './assignments';
+import { ClassManager } from './classes';
 import { BentoCard, WarningBadge } from '../common';
 import { 
   Users, 
@@ -122,6 +123,14 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ stats, modul
               {stats.totalTeams} nhóm thực hành
             </p>
           </div>
+        </div>
+      </BentoCard>
+
+      {/* Lớp và nhóm — nơi sinh ra mã để phát cho học sinh */}
+      <BentoCard className="md:col-span-6" title="LỚP HỌC & NHÓM THỰC HÀNH"
+        subtitle="Tạo lớp, chia nhóm, rồi phát mã cho học sinh tự vào">
+        <div className="mt-2">
+          <ClassManager onChanged={onChanged} />
         </div>
       </BentoCard>
 
