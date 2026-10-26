@@ -200,6 +200,13 @@ export function migrate(db) {
     done.push('users: thêm số thứ tự trong lớp');
   }
 
+  /* Số câu đúng, tách khỏi điểm trò chơi. Lượt chơi cũ để trống vì không suy
+     ngược ra được từ điểm — điểm đã gộp cả thưởng nhanh và thưởng chuỗi. */
+  if (tableExists(db, 'quiz_attempts')
+    && addColumn(db, 'quiz_attempts', 'correct', 'INTEGER')) {
+    done.push('quiz_attempts: thêm cột số câu đúng');
+  }
+
   /*
    * Khung nhìn v_student_progress phải dựng lại mỗi lần nâng cấp.
    * `CREATE VIEW IF NOT EXISTS` trong schema.sql không đụng được vào khung nhìn
@@ -209,13 +216,16 @@ export function migrate(db) {
   if (tableExists(db, 'teams')) {
     const cu = db.prepare(
       "SELECT sql FROM sqlite_master WHERE type = 'view' AND name = 'v_student_progress'").get()?.sql ?? '';
-    if (cu && !cu.includes('t.name')) {
+    if (cu && (!cu.includes('t.name') || !cu.includes('a.correct'))) {
       db.exec('DROP VIEW IF EXISTS v_student_progress');
       db.exec(`
         CREATE VIEW v_student_progress AS
         SELECT u.id AS user_id, u.name AS name, u.class_id AS class_id,
                COALESCE(t.name, t.code, '') AS team,
-               (SELECT MAX(score) FROM quiz_attempts a WHERE a.user_id = u.id) AS quiz_score,
+               (SELECT ROUND(MAX(
+                  CASE WHEN a.total > 0 AND a.correct IS NOT NULL THEN a.correct * 10.0 / a.total
+                       ELSE MIN(a.score, 10) END), 1)
+                  FROM quiz_attempts a WHERE a.user_id = u.id) AS quiz_score,
                (SELECT r.status FROM lab_reports r WHERE r.user_id = u.id
                   ORDER BY r.updated_at DESC LIMIT 1) AS report_status,
                (SELECT r.grade FROM lab_reports r WHERE r.user_id = u.id
@@ -223,7 +233,7 @@ export function migrate(db) {
         FROM users u
         LEFT JOIN teams t ON t.id = u.team_id
         WHERE u.role = 'hs'`);
-      done.push('v_student_progress: hiện tên nhóm thay cho mã nhóm');
+      done.push('v_student_progress: hiện tên nhóm và quy điểm về thang 10');
     }
   }
 

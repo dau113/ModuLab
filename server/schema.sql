@@ -148,11 +148,16 @@ CREATE TABLE IF NOT EXISTS quiz_options (
 -- ---------------------------------------------------------------------
 -- 5. Lượt chơi và câu trả lời
 -- ---------------------------------------------------------------------
+-- `score` là ĐIỂM TRÒ CHƠI: mỗi câu đúng 10 điểm, cộng thêm thưởng trả lời
+-- nhanh và thưởng chuỗi đúng liên tiếp, nên nó lớn hơn số câu rất nhiều.
+-- `correct` là SỐ CÂU ĐÚNG. Chấm bài phải dùng cột này chứ không dùng `score`:
+-- lấy điểm trò chơi chia số câu thì ra những con số như 36/10.
 CREATE TABLE IF NOT EXISTS quiz_attempts (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   module_id   TEXT REFERENCES lab_modules(id) ON DELETE SET NULL,
   score       INTEGER NOT NULL DEFAULT 0,
+  correct     INTEGER,
   total       INTEGER NOT NULL DEFAULT 0,
   started_at  TEXT NOT NULL DEFAULT (datetime('now')),
   finished_at TEXT
@@ -295,7 +300,11 @@ SELECT
   u.name              AS name,
   u.class_id          AS class_id,
   COALESCE(t.name, t.code, '') AS team,
-  (SELECT MAX(score) FROM quiz_attempts a WHERE a.user_id = u.id)      AS quiz_score,
+  -- Quy về thang 10 ngay trong khung nhìn, để sổ điểm không hiện điểm trò chơi
+  (SELECT ROUND(MAX(
+     CASE WHEN a.total > 0 AND a.correct IS NOT NULL THEN a.correct * 10.0 / a.total
+          ELSE MIN(a.score, 10) END), 1)
+     FROM quiz_attempts a WHERE a.user_id = u.id)                      AS quiz_score,
   (SELECT r.status   FROM lab_reports  r WHERE r.user_id = u.id
      ORDER BY r.updated_at DESC LIMIT 1)                               AS report_status,
   (SELECT r.grade    FROM lab_reports  r WHERE r.user_id = u.id

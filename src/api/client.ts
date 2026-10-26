@@ -382,6 +382,8 @@ export const api = {
 
   saveAttempt: (payload: {
     userId: string; moduleId?: string; score: number; total: number;
+    /** Số câu đúng — dùng để chấm bài; `score` là điểm trò chơi, không dùng chấm */
+    correct?: number;
     answers?: { questionId: string; optionId?: string; isCorrect: boolean }[];
   }) => callOr(() => offline.saveAttempt(payload), '/attempts', post(payload)),
 

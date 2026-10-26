@@ -15,7 +15,8 @@ import gameHtml from './game.html?raw';
 
 interface PhysicsQuestProps {
   userRole: UserRole;
-  onFinishQuiz?: (score: number, total: number) => void;
+  /** `score` là điểm trò chơi, `correct` là số câu đúng dùng để chấm bài */
+  onFinishQuiz?: (score: number, total: number, correct: number) => void;
   /** Câu hỏi giáo viên bổ sung, ghép thêm vào ngân hàng */
   extraQuestions?: QuizQuestion[];
 }
@@ -99,7 +100,7 @@ export const PhysicsQuest: React.FC<PhysicsQuestProps> = ({ userRole, onFinishQu
       const correct = d.correct ?? 0;
       const total = d.total ?? roundSize;
       setLastResult({ correct, total, won: !!d.won });
-      finishRef.current?.(correct * 10, total);
+      finishRef.current?.(correct * 10, total, correct);
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);

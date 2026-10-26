@@ -17,7 +17,12 @@ import type { QuizQuestion, UserRole } from '../../types';
 
 interface QuizGameProps {
   userRole: UserRole;
-  onFinishQuiz?: (score: number, total: number) => void;
+  /**
+   * Gọi khi chơi xong.
+   * `score` là điểm trò chơi (có thưởng nhanh và thưởng chuỗi) nên lớn hơn số
+   * câu rất nhiều; `correct` mới là số câu đúng, và đó là cái dùng để chấm bài.
+   */
+  onFinishQuiz?: (score: number, total: number, correct: number) => void;
   /** Câu hỏi giáo viên bổ sung, ghép thêm vào ngân hàng */
   extraQuestions?: QuizQuestion[];
 }
@@ -109,7 +114,7 @@ export const QuizGame: React.FC<QuizGameProps> = ({ userRole, onFinishQuiz, extr
     if (idx + 1 >= deck.length) {
       setPhase('result');
       sfx.finish(correctCount / Math.max(1, deck.length) >= 0.6);
-      onFinishQuiz?.(score, deck.length);
+      onFinishQuiz?.(score, deck.length, correctCount);
       return;
     }
     setIdx((i) => i + 1);

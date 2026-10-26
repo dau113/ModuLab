@@ -348,12 +348,13 @@ function Workspace() {
                 <QuizGame
                 userRole={viewer.role}
                 extraQuestions={data.questions}
-                onFinishQuiz={(score, total) => {
+                onFinishQuiz={(score, total, correct) => {
                   void api.saveAttempt({
                     userId: viewer.id,
                     moduleId: currentModuleId,
                     score,
                     total,
+                    correct,
                   }).catch(() => undefined);
                 }}
                 />
@@ -364,12 +365,13 @@ function Workspace() {
               <PhysicsQuest
                 userRole={viewer.role}
                 extraQuestions={data.questions}
-                onFinishQuiz={(score, total) => {
+                onFinishQuiz={(score, total, correct) => {
                   void api.saveAttempt({
                     userId: viewer.id,
                     moduleId: currentModuleId,
                     score,
                     total,
+                    correct,
                   }).catch(() => undefined);
                 }}
               />

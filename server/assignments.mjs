@@ -214,15 +214,18 @@ export const submitAssignment = (student, assignmentId, payload) => tx(() => {
   let reportId = null;
 
   if (a.kind === 'khoi_dong') {
-    /* Lấy lượt chơi tốt nhất của em trong bài thực hành tương ứng */
-    const att = get(`SELECT id, score, total FROM quiz_attempts
+    /* Lượt chơi tốt nhất, xếp theo TỈ LỆ CÂU ĐÚNG chứ không theo điểm trò chơi:
+       điểm trò chơi có thưởng nhanh và thưởng chuỗi nên lượt trả lời vội mà sai
+       nhiều vẫn có thể hơn điểm lượt làm cẩn thận. */
+    const att = get(`SELECT id, score, correct, total FROM quiz_attempts
                      WHERE user_id = ? AND (? IS NULL OR module_id = ?)
                        AND finished_at IS NOT NULL
-                     ORDER BY (CAST(score AS REAL) / MAX(total, 1)) DESC, finished_at DESC
+                     ORDER BY (CAST(COALESCE(correct, 0) AS REAL) / MAX(total, 1)) DESC,
+                              finished_at DESC
                      LIMIT 1`, student.id, a.moduleId, a.moduleId);
     if (!att) fail('Em chưa chơi xong lượt Game ôn tập nào để nộp.', 400);
     attemptId = att.id;
-    score = att.total > 0 ? Math.round((att.score / att.total) * 100) / 10 : 0;
+    score = diemTuLuotChoi(att);
   } else {
     const rep = get(`SELECT id, status, rel_err FROM lab_reports
                      WHERE user_id = ? AND module_id = ?`, student.id, a.moduleId ?? '');
@@ -243,6 +246,33 @@ export const submitAssignment = (student, assignmentId, payload) => tx(() => {
                      submitted_at AS submittedAt
               FROM submissions WHERE id = ?`, sub.id);
 });
+
+/**
+ * Quy một lượt chơi ra điểm 10.
+ *
+ * Dùng SỐ CÂU ĐÚNG chia số câu, không dùng cột `score`. Cột `score` là điểm trò
+ * chơi: mỗi câu đúng 10 điểm cộng thưởng trả lời nhanh và thưởng chuỗi, nên
+ * tính theo nó thì mười câu có thể ra "36/10".
+ *
+ * Lượt chơi cũ từ trước khi có cột `correct` thì không suy ngược ra được, nên
+ * chỉ chặn trong khoảng 0–10 để sổ điểm không hiện con số vô lí.
+ */
+export const diemTuLuotChoi = (att) => {
+  if (!att || !(att.total > 0)) return 0;
+
+  /* Phải so với null/undefined chứ không dùng Number.isFinite: Number(null) ra 0
+     chứ không ra NaN, nên viết kiểu đó thì lượt chơi cũ bị chấm 0 oan. */
+  if (att.correct !== null && att.correct !== undefined) {
+    return Math.round((Number(att.correct) / att.total) * 100) / 10;
+  }
+
+  /* Lượt chơi cũ, trước khi có cột `correct`. Mỗi câu đúng đáng khoảng 10 điểm
+     trò chơi, nên điểm chia số câu là ước lượng sát nhất còn lấy được: đúng hẳn
+     với bản đồ phiêu lưu, hơi rộng tay với trắc nghiệm vì có thưởng. Chặn trong
+     khoảng 0–10 để không bao giờ ra những con số như 36/10 nữa. */
+  const uoc = (Number(att.score) || 0) / att.total;
+  return Math.max(0, Math.min(10, Math.round(uoc * 10) / 10));
+};
 
 /**
  * Quy sai số tương đối ra điểm 10.

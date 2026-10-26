@@ -137,9 +137,13 @@ export const createQuestion = (payload, createdBy) => tx(() => {
 });
 
 export const saveAttempt = (payload) => tx(() => {
-  const info = run(`INSERT INTO quiz_attempts (user_id, module_id, score, total, finished_at)
-                    VALUES (?, ?, ?, ?, datetime('now'))`,
-    payload.userId, payload.moduleId ?? null, payload.score ?? 0, payload.total ?? 0);
+  /* `correct` có thể thiếu nếu màn hình gọi lên chưa cập nhật; để NULL chứ
+     không đoán bừa từ điểm trò chơi, vì đoán sai là sai điểm của học sinh. */
+  const info = run(`INSERT INTO quiz_attempts (user_id, module_id, score, correct, total, finished_at)
+                    VALUES (?, ?, ?, ?, ?, datetime('now'))`,
+    payload.userId, payload.moduleId ?? null, payload.score ?? 0,
+    Number.isFinite(Number(payload.correct)) ? Number(payload.correct) : null,
+    payload.total ?? 0);
   const attemptId = Number(info.lastInsertRowid);
   (payload.answers ?? []).forEach((a) => {
     run(`INSERT INTO quiz_answers (attempt_id, question_id, option_id, is_correct)

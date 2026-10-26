@@ -129,9 +129,12 @@ tx(() => {
     const uid = existingNames.has(s.name)
       ? INITIAL_USERS.find((u) => u.name === s.name).id
       : s.id;
-    const score = Math.round(((s.quizScore ?? 0) / 10) * total);
-    run(`INSERT INTO quiz_attempts (user_id, module_id, score, total, finished_at)
-         VALUES (?, ?, ?, ?, datetime('now'))`, uid, mainModule, score, total);
+    /* quizScore trong dữ liệu mẫu là điểm thang 10, đổi ra số câu đúng rồi mới
+       suy ra điểm trò chơi (mỗi câu đúng 10 điểm, bỏ qua phần thưởng). */
+    const dung = Math.round(((s.quizScore ?? 0) / 10) * total);
+    run(`INSERT INTO quiz_attempts (user_id, module_id, score, correct, total, finished_at)
+         VALUES (?, ?, ?, ?, ?, datetime('now'))`,
+      uid, mainModule, dung * 10, dung, total);
     if (s.reportStatus === 'Đạt') {
       run(`INSERT INTO lab_reports (user_id, module_id, status, submitted_at)
            VALUES (?, ?, 'da_nop', datetime('now'))`, uid, mainModule);

@@ -131,14 +131,6 @@ export const SignIn: React.FC<Props> = ({ onSignedIn, onGuest, onBack }) => {
             </div>
           </div>
 
-          {dangKi && (
-            <p className="text-[clamp(12px,0.82vw,14px)] text-slate-500">
-              {role === 'hs'
-                ? 'Vào lớp sau khi đăng kí: giáo viên sẽ cho em một mã lớp dạng 1204N2 để nhập trong ứng dụng.'
-                : 'Tạo lớp sau khi đăng nhập, trong mục quản lí lớp. Hệ thống sẽ sinh mã để thầy cô phát cho học sinh.'}
-            </p>
-          )}
-
           {error && (
             <div role="alert" className="flex items-start gap-2 rounded-xl border border-rose-200
               bg-rose-50 px-3 py-2.5 text-[clamp(12.5px,0.86vw,15px)] text-rose-800">

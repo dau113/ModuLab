@@ -169,10 +169,6 @@ export const ClassManager: React.FC<Props> = ({ onChanged }) => {
               onChange={(e) => setForm((f) => ({ ...f, groupCount: e.target.value }))} />
           </div>
         </div>
-        <p className="text-[clamp(12px,0.82vw,14px)] text-slate-500">
-          Mã lớp bốn chữ số sinh tự động từ tên gọi tắt — &ldquo;12A4&rdquo; cho ra
-          &ldquo;1204&rdquo;. Để 0 nhóm nếu lớp làm bài riêng lẻ hết; mã N0 vẫn luôn có.
-        </p>
         <button type="submit" disabled={busy}
           className="h-10 px-4 inline-flex items-center gap-2 rounded-xl bg-indigo-600 text-white
             font-bold text-[clamp(13px,0.9vw,15.5px)] hover:bg-indigo-700

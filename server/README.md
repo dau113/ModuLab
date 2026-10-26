@@ -165,3 +165,29 @@ Trong ModuManage, mục **Lớp học & nhóm thực hành**:
 Học sinh trong nhóm bị xoá chuyển sang nhóm "làm riêng lẻ" chứ không rơi ra
 ngoài lớp — nếu rơi ra thì mọi bài các em đã nộp sẽ không còn thuộc lớp nào.
 Nhóm 0 không xoá được.
+
+---
+
+## Hai loại điểm, đừng lẫn (sửa ở V1.73)
+
+Game ôn tập có **điểm trò chơi**: mỗi câu đúng 10 điểm, cộng thêm thưởng trả
+lời nhanh (tối đa 2) và thưởng chuỗi đúng liên tiếp (tối đa 5). Mười câu có thể
+ra hơn một trăm điểm. Đó là điểm để chơi cho vui, không phải điểm học.
+
+**Chấm bài phải dùng cột `quiz_attempts.correct` — số câu đúng.** Bản trước lấy
+`score` chia số câu rồi nhân mười, nên sổ điểm hiện những con số như `36/10`.
+
+| Cột | Nghĩa | Dùng để |
+| --- | --- | --- |
+| `score` | điểm trò chơi, có thưởng | hiển thị trong game |
+| `correct` | số câu đúng | **chấm bài**, thang 10 |
+| `total` | số câu của lượt chơi | mẫu số |
+
+Lượt chơi từ trước V1.73 không có `correct` nên không suy ngược ra được. Những
+lượt đó ước lượng bằng `score / total` rồi chặn trong khoảng 0–10: đúng hẳn với
+bản đồ phiêu lưu (ở đó mỗi câu đúng đúng 10 điểm, không thưởng), hơi rộng tay
+với trắc nghiệm nhanh.
+
+Khi so hai lượt chơi để lấy lượt tốt nhất cũng xếp theo **tỉ lệ câu đúng**, không
+theo điểm trò chơi — nếu không thì lượt trả lời vội mà sai nhiều vẫn có thể hơn
+điểm lượt làm cẩn thận.
