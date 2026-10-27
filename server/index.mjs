@@ -30,6 +30,12 @@ import {
   lopCuaGiaoVien, chiTietLop, taoLop, suaLop, xoaLop, chonLop,
   themNhom, xoaNhom, hocSinhCuaLop, vaoLop, lopCuaToi, roiLop,
 } from './classes.mjs';
+import {
+  baiCuaLop, baiCuaToi, chiTietBai, taoBai, suaBai, xoaBai,
+  themKhoi, suaKhoi, xoaKhoi, sapXepKhoi,
+  xemBai, luuTam, nopBai, bangTheoDoi, baiLamCuaHocSinh, chamBai, traBaiLamLai,
+} from './lessons.mjs';
+import { nhanTep, moTep, duocXemTep, thongTinTep, tepCuaLop, xoaTep, MAX_BYTES } from './uploads.mjs';
 
 const PORT = Number(process.env.PORT || 8787);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -236,6 +242,60 @@ const routes = [
   ['GET', /^\/api\/teacher\/students$/, ({ user }) =>
     listUsers(user.classId), ['gv', 'dev']],
 
+  /* ---------------- Bài giảng tự do ---------------- */
+
+  /* Học sinh */
+  ['GET', /^\/api\/my\/lessons$/, ({ user }) => baiCuaToi(user.id, user.classId), ['hs', 'gv', 'dev']],
+  ['GET', /^\/api\/my\/lessons\/([^/]+)$/, ({ user, m }) =>
+    xemBai(user, decodeURIComponent(m[1])), ['hs', 'gv', 'dev']],
+  ['PUT', /^\/api\/my\/lessons\/([^/]+)$/, ({ user, m, body }) =>
+    luuTam(user, decodeURIComponent(m[1]), body.answers), ['hs']],
+  ['POST', /^\/api\/my\/lessons\/([^/]+)\/submit$/, ({ user, m, body }) =>
+    nopBai(user, decodeURIComponent(m[1]), body.answers), ['hs']],
+
+  /* Giáo viên soạn bài */
+  ['GET', /^\/api\/lessons$/, ({ user, url }) =>
+    baiCuaLop(url.searchParams.get('classId') || user.classId), ['gv', 'dev']],
+  ['POST', /^\/api\/lessons$/, ({ user, body }) => taoBai(user, body), ['gv', 'dev']],
+  ['GET', /^\/api\/lessons\/([^/]+)$/, ({ m }) =>
+    chiTietBai(decodeURIComponent(m[1]), { kemDapAn: true }), ['gv', 'dev']],
+  ['PATCH', /^\/api\/lessons\/([^/]+)$/, ({ user, m, body }) =>
+    suaBai(user, decodeURIComponent(m[1]), body), ['gv', 'dev']],
+  ['DELETE', /^\/api\/lessons\/([^/]+)$/, ({ user, m }) =>
+    xoaBai(user, decodeURIComponent(m[1])), ['gv', 'dev']],
+
+  ['POST', /^\/api\/lessons\/([^/]+)\/blocks$/, ({ user, m, body }) =>
+    themKhoi(user, decodeURIComponent(m[1]), body), ['gv', 'dev']],
+  ['PATCH', /^\/api\/lessons\/([^/]+)\/blocks\/([^/]+)$/, ({ user, m, body }) =>
+    suaKhoi(user, decodeURIComponent(m[1]), decodeURIComponent(m[2]), body), ['gv', 'dev']],
+  ['DELETE', /^\/api\/lessons\/([^/]+)\/blocks\/([^/]+)$/, ({ user, m }) =>
+    xoaKhoi(user, decodeURIComponent(m[1]), decodeURIComponent(m[2])), ['gv', 'dev']],
+  ['POST', /^\/api\/lessons\/([^/]+)\/reorder$/, ({ user, m, body }) =>
+    sapXepKhoi(user, decodeURIComponent(m[1]), body.order), ['gv', 'dev']],
+
+  /* Giáo viên chấm bài */
+  ['GET', /^\/api\/lessons\/([^/]+)\/board$/, ({ user, m }) =>
+    bangTheoDoi(user, decodeURIComponent(m[1])), ['gv', 'dev']],
+  ['GET', /^\/api\/lessons\/([^/]+)\/work\/([^/]+)$/, ({ user, m }) =>
+    baiLamCuaHocSinh(user, decodeURIComponent(m[1]), decodeURIComponent(m[2])), ['gv', 'dev']],
+  ['POST', /^\/api\/lessons\/([^/]+)\/grade\/([^/]+)$/, ({ user, m, body }) =>
+    chamBai(user, decodeURIComponent(m[1]), decodeURIComponent(m[2]), body), ['gv', 'dev']],
+  ['POST', /^\/api\/lessons\/([^/]+)\/reopen\/([^/]+)$/, ({ user, m }) =>
+    traBaiLamLai(user, decodeURIComponent(m[1]), decodeURIComponent(m[2])), ['gv', 'dev']],
+
+  /* Tệp tải lên. Riêng phần TẢI LÊN và XEM TỆP xử lí ngoài bảng này vì chúng
+     đọc thẳng luồng dữ liệu và trả về tệp, không trả JSON. */
+  ['GET', /^\/api\/uploads$/, ({ user, url }) =>
+    tepCuaLop(url.searchParams.get('classId') || user.classId), ['gv', 'dev']],
+  ['DELETE', /^\/api\/uploads\/([^/]+)$/, ({ user, m }) =>
+    xoaTep(user, decodeURIComponent(m[1])), ['gv', 'dev']],
+  ['GET', /^\/api\/uploads\/([^/]+)\/info$/, ({ user, m }) => {
+    const t = thongTinTep(decodeURIComponent(m[1]));
+    if (!t) deny('Không tìm thấy tệp.', 404);
+    if (!duocXemTep(user, t)) deny('Bạn không có quyền xem tệp này.', 403);
+    return t;
+  }, ['hs', 'gv', 'dev']],
+
   /* ---------------- Dành riêng cho tài khoản developer ---------------- */
 
   ['GET', /^\/api\/dev\/overview$/, () => overview(), ['dev']],
@@ -252,6 +312,71 @@ const routes = [
   ['GET', /^\/api\/dev\/logs$/, ({ url }) => recentLogs(url.searchParams.get('limit')), ['dev']],
 ];
 
+/**
+ * Gửi một tệp đã tải lên.
+ *
+ * Mã phiên lấy từ tiêu đề Authorization, nhưng thẻ <img> và <video> của trình
+ * duyệt KHÔNG gửi được tiêu đề riêng — vì vậy chấp nhận thêm mã truyền qua
+ * chuỗi truy vấn `?t=`. Mã này vẫn là mã phiên thật và vẫn phải kiểm như
+ * thường; chỉ là đường mang nó tới khác thôi.
+ */
+function serveUpload(req, res, id) {
+  try {
+    const url = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
+    const user = userFromToken(tokenOf(req) ?? url.searchParams.get('t'));
+    const tep = moTep(id);
+    if (!tep) return json(res, 404, { error: 'Không tìm thấy tệp.' });
+    if (!duocXemTep(user, tep)) return json(res, 403, { error: 'Bạn không có quyền xem tệp này.' });
+
+    /*
+     * Tên tệp trong Content-Disposition phải mã hoá theo RFC 5987: tên tiếng
+     * Việt có dấu mà để nguyên thì tiêu đề HTTP hỏng.
+     *
+     * `inline` chỉ dành cho ảnh, video, âm thanh và PDF. Mọi thứ khác buộc tải
+     * về — mở nội tuyến một tệp lạ là mở đường chạy mã trong trang của mình.
+     */
+    const ten = encodeURIComponent(tep.filename);
+    const range = req.headers.range;
+
+    /* Video cần tua được, mà tua được thì phải trả về từng đoạn theo yêu cầu */
+    if (range && tep.inline && /^bytes=/.test(range)) {
+      const [a, b] = range.replace('bytes=', '').split('-');
+      const start = Number(a) || 0;
+      const end = b ? Math.min(Number(b), tep.size - 1) : tep.size - 1;
+      if (start >= tep.size || start > end) {
+        res.writeHead(416, { 'Content-Range': `bytes */${tep.size}`, ...CORS });
+        return res.end();
+      }
+      res.writeHead(206, {
+        'Content-Type': tep.mime,
+        'Content-Length': end - start + 1,
+        'Content-Range': `bytes ${start}-${end}/${tep.size}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Disposition': `inline; filename*=UTF-8''${ten}`,
+        'X-Content-Type-Options': 'nosniff',
+        'Cache-Control': 'private, max-age=3600',
+        ...CORS,
+      });
+      return tep.stream({ start, end }).pipe(res);
+    }
+
+    res.writeHead(200, {
+      'Content-Type': tep.mime,
+      'Content-Length': tep.size,
+      'Accept-Ranges': 'bytes',
+      'Content-Disposition': `${tep.inline ? 'inline' : 'attachment'}; filename*=UTF-8''${ten}`,
+      /* Chặn trình duyệt tự đoán kiểu tệp rồi chạy nó như HTML */
+      'X-Content-Type-Options': 'nosniff',
+      'Cache-Control': 'private, max-age=3600',
+      ...CORS,
+    });
+    return tep.stream().pipe(res);
+  } catch (err) {
+    console.error('✗ GET /api/uploads:', err.message);
+    return json(res, err.status ?? 400, { error: err.message });
+  }
+}
+
 const server = createServer(async (req, res) => {
   if (req.method === 'OPTIONS') {
     res.writeHead(204, CORS);
@@ -259,6 +384,27 @@ const server = createServer(async (req, res) => {
   }
 
   const url = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
+
+  /*
+   * Hai đường của tệp tải lên không đi qua bảng định tuyến: một đường đọc thẳng
+   * luồng dữ liệu gửi lên, một đường trả về chính tệp chứ không trả JSON. Nhét
+   * chúng vào bảng kia thì phải bẻ cong cả cơ chế đọc thân và cơ chế trả lời.
+   */
+  if (req.method === 'POST' && url.pathname === '/api/uploads') {
+    try {
+      const user = userFromToken(tokenOf(req));
+      if (!user) deny('Bạn cần đăng nhập để tải tệp lên.', 401);
+      if (!['gv', 'dev'].includes(user.role)) deny('Chỉ giáo viên mới tải tệp lên được.', 403);
+      return json(res, 200, await nhanTep(user, url, req));
+    } catch (err) {
+      console.error('✗ POST /api/uploads:', err.message);
+      return json(res, err.status ?? 400, { error: err.message });
+    }
+  }
+
+  const xemTep = req.method === 'GET' && url.pathname.match(/^\/api\/uploads\/([^/]+)$/);
+  if (xemTep) return serveUpload(req, res, decodeURIComponent(xemTep[1]));
+
   const route = routes.find(([method, pattern]) => method === req.method && pattern.test(url.pathname));
 
   if (!route) {

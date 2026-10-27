@@ -16,6 +16,7 @@ import { AuthAccountView } from './components/f1-auth';
 import { SignIn } from './components/f1-auth/sign-in';
 import { DeveloperConsole } from './components/f8-dev';
 import { MyAssignments } from './components/f2-quiz/my-assignments';
+import { MyLessons } from './components/f2-quiz/lesson-view';
 import { JoinClass } from './components/f1-auth/join-class';
 import { QuizGame } from './components/f2-quiz';
 import { PhysicsQuest } from './components/f2-quiz/quest';
@@ -339,6 +340,12 @@ function Workspace() {
                     </section>
                     <section>
                       <h3 className="mb-2 text-[clamp(14px,0.98vw,16.5px)] font-bold text-slate-900">
+                        Bài giảng của thầy cô
+                      </h3>
+                      <MyLessons key={`bg-${classTick}`} />
+                    </section>
+                    <section>
+                      <h3 className="mb-2 text-[clamp(14px,0.98vw,16.5px)] font-bold text-slate-900">
                         Bài tập được giao
                       </h3>
                       <MyAssignments key={classTick} />
@@ -423,7 +430,7 @@ function Workspace() {
 
             {currentStep === 'teacher' && (
               teacherStats
-                ? <TeacherDashboard stats={teacherStats} modules={modules}
+                ? <TeacherDashboard stats={teacherStats} modules={modules} classId={viewer.classId}
                     onChanged={() => {
                       /* Tạo hoặc đổi lớp làm đổi luôn lớp đang mở của giáo viên ở máy chủ,
                          nên phải nạp lại hồ sơ, không thì thanh trên còn ghi lớp cũ. */

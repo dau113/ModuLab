@@ -237,6 +237,9 @@ export function migrate(db) {
     }
   }
 
+  /* Bảng của phần bài giảng tự do đều do schema.sql tạo mới hoàn toàn nên
+     không cần di trú; chỉ dọn tệp mồ côi khi bài giảng bị xoá. */
+
   /* Dọn phiên đã hết hạn để bảng không phình mãi */
   if (tableExists(db, 'sessions')) {
     const n = db.prepare("DELETE FROM sessions WHERE expires_at < datetime('now')").run().changes;

@@ -282,6 +282,85 @@ export interface BoardRow {
   gradedAt: string | null;
 }
 
+/* ---------------- Bài giảng tự do ---------------- */
+
+export type BlockKind = 'text' | 'image' | 'video' | 'file' | 'mcq' | 'short';
+export type LessonState = 'nhap' | 'mo' | 'dong';
+
+export interface LessonBlock {
+  id: string;
+  kind: BlockKind;
+  sortOrder: number;
+  title: string;
+  body: string;
+  uploadId: string | null;
+  linkUrl: string | null;
+  options: { id: string; text: string }[] | null;
+  /** Chỉ có khi giáo viên xem, hoặc học sinh xem lại bài đã chấm */
+  answerKey: string | null;
+  points: number;
+}
+
+export interface Lesson {
+  id: string;
+  classId: string;
+  title: string;
+  description: string;
+  dueAt: string | null;
+  state: LessonState;
+  createdAt: string;
+  blockCount: number;
+  classSize: number;
+  submittedCount: number;
+  gradedCount: number;
+  blocks?: LessonBlock[];
+  maxScore?: number;
+}
+
+export interface MyLesson {
+  id: string;
+  title: string;
+  description: string;
+  dueAt: string | null;
+  state: LessonState;
+  blockCount: number;
+  status: 'dang_lam' | 'da_nop' | 'da_cham' | null;
+  score: number | null;
+  maxScore: number | null;
+  late: number | null;
+  teacherComment: string | null;
+  submittedAt: string | null;
+  gradedAt: string | null;
+}
+
+export interface LessonAnswer {
+  blockId: string;
+  answer: string;
+  isCorrect?: number | null;
+  points?: number;
+}
+
+export interface LessonView extends Lesson {
+  submission: {
+    status: string; score: number | null; maxScore: number | null; late: number;
+    teacherComment: string | null; submittedAt: string | null; gradedAt: string | null;
+  } | null;
+  answers: LessonAnswer[];
+}
+
+export interface LessonBoardRow {
+  userId: string; name: string; seatNo: number | null;
+  team: string; groupNo: number;
+  status: 'chua_lam' | 'dang_lam' | 'da_nop' | 'da_cham';
+  score: number | null; maxScore: number | null; late: number | null;
+  teacherComment: string | null; submittedAt: string | null; gradedAt: string | null;
+}
+
+export interface UploadInfo {
+  id: string; filename: string; mime: string; size: number;
+  url?: string; createdAt?: string;
+}
+
 export interface DevTable {
   name: string;
   rowCount: number;
@@ -439,7 +518,88 @@ export const api = {
   teacherStats: (classCode?: string) =>
     callOr(() => offline.teacherStats(),
       `/teacher/stats${classCode ? `?classCode=${encodeURIComponent(classCode)}` : ''}`),
-  classStudents: () => call<ApiUser[]>('/teacher/students'),
+
+  /* ---------------- Bài giảng tự do ---------------- */
+
+  myLessons: () => call<MyLesson[]>('/my/lessons'),
+  viewLesson: (id: string) => call<LessonView>(`/my/lessons/${encodeURIComponent(id)}`),
+  saveLessonDraft: (id: string, answers: Record<string, string>) =>
+    call<{ ok: boolean }>(`/my/lessons/${encodeURIComponent(id)}`,
+      { method: 'PUT', body: body({ answers }) }),
+  submitLesson: (id: string, answers: Record<string, string>) =>
+    call<{ status: string; score: number; maxScore: number; late: number; needsReview: boolean }>(
+      `/my/lessons/${encodeURIComponent(id)}/submit`, post({ answers })),
+
+  lessons: (classId?: string) =>
+    call<Lesson[]>(`/lessons${classId ? `?classId=${encodeURIComponent(classId)}` : ''}`),
+  lesson: (id: string) => call<Lesson>(`/lessons/${encodeURIComponent(id)}`),
+  createLesson: (payload: { classId?: string; title: string; description?: string; dueAt?: string | null }) =>
+    call<Lesson>('/lessons', post(payload)),
+  updateLesson: (id: string, payload: Partial<{
+    title: string; description: string; dueAt: string | null; state: LessonState;
+  }>) => call<Lesson>(`/lessons/${encodeURIComponent(id)}`, { method: 'PATCH', body: body(payload) }),
+  deleteLesson: (id: string) =>
+    call<{ ok: boolean }>(`/lessons/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+
+  addBlock: (lessonId: string, payload: Partial<LessonBlock> & { kind: BlockKind }) =>
+    call<Lesson>(`/lessons/${encodeURIComponent(lessonId)}/blocks`, post(payload)),
+  updateBlock: (lessonId: string, blockId: string, payload: Partial<LessonBlock>) =>
+    call<Lesson>(`/lessons/${encodeURIComponent(lessonId)}/blocks/${encodeURIComponent(blockId)}`,
+      { method: 'PATCH', body: body(payload) }),
+  deleteBlock: (lessonId: string, blockId: string) =>
+    call<Lesson>(`/lessons/${encodeURIComponent(lessonId)}/blocks/${encodeURIComponent(blockId)}`,
+      { method: 'DELETE' }),
+  reorderBlocks: (lessonId: string, order: string[]) =>
+    call<Lesson>(`/lessons/${encodeURIComponent(lessonId)}/reorder`, post({ order })),
+
+  lessonBoard: (id: string) =>
+    call<{ lesson: Lesson; rows: LessonBoardRow[] }>(`/lessons/${encodeURIComponent(id)}/board`),
+  lessonWork: (id: string, userId: string) =>
+    call<{
+      student: { id: string; name: string; seatNo: number | null };
+      blocks: LessonBlock[]; answers: LessonAnswer[];
+      submission: LessonView['submission'];
+    }>(`/lessons/${encodeURIComponent(id)}/work/${encodeURIComponent(userId)}`),
+  gradeLesson: (id: string, userId: string, payload: {
+    score?: number | null; comment?: string; perBlock?: Record<string, number>;
+  }) => call<{ ok: boolean; score: number }>(
+    `/lessons/${encodeURIComponent(id)}/grade/${encodeURIComponent(userId)}`, post(payload)),
+  reopenLesson: (id: string, userId: string) =>
+    call<{ ok: boolean }>(`/lessons/${encodeURIComponent(id)}/reopen/${encodeURIComponent(userId)}`, post()),
+
+  /* ---------------- Tệp tải lên ----------------
+     Gửi thẳng nội dung tệp làm phần thân, tên và kiểu đi trong chuỗi truy vấn. */
+
+  uploadFile: async (file: File, classId?: string): Promise<UploadInfo> => {
+    const q = new URLSearchParams({ name: file.name, type: file.type || 'application/octet-stream' });
+    if (classId) q.set('classId', classId);
+    const res = await fetch(`${await resolveBase()}/uploads?${q}`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: file,
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(data?.error ?? `Máy chủ trả về lỗi ${res.status}`);
+    return data as UploadInfo;
+  },
+
+  uploadInfo: (id: string) => call<UploadInfo>(`/uploads/${encodeURIComponent(id)}/info`),
+
+  classUploads: (classId?: string) =>
+    call<UploadInfo[]>(`/uploads${classId ? `?classId=${encodeURIComponent(classId)}` : ''}`),
+  deleteUpload: (id: string) =>
+    call<{ ok: boolean }>(`/uploads/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+
+  /**
+   * Địa chỉ xem tệp.
+   *
+   * Thẻ <img> và <video> không gửi được tiêu đề Authorization, nên mã phiên
+   * phải đi kèm trong chuỗi truy vấn. Máy chủ vẫn kiểm mã này như thường.
+   */
+  fileUrl: async (uploadId: string) => {
+    const base = await resolveBase();
+    return `${base}/uploads/${encodeURIComponent(uploadId)}${token ? `?t=${encodeURIComponent(token)}` : ''}`;
+  },
 
   /* ---------------- Dành riêng cho tài khoản developer ---------------- */
 

@@ -191,3 +191,66 @@ với trắc nghiệm nhanh.
 Khi so hai lượt chơi để lấy lượt tốt nhất cũng xếp theo **tỉ lệ câu đúng**, không
 theo điểm trò chơi — nếu không thì lượt trả lời vội mà sai nhiều vẫn có thể hơn
 điểm lượt làm cẩn thận.
+
+---
+
+## Bài giảng tự do (từ V1.75)
+
+Giáo viên tự soạn nội dung thay vì chỉ giao Game ôn tập hay bài thực hành có
+sẵn. Một bài giảng là một dãy **khối** xếp theo thứ tự:
+
+| Khối | Dùng để |
+| --- | --- |
+| Đoạn giảng | giảng bằng chữ |
+| Hình ảnh | ảnh tải lên |
+| Video | video tải lên, hoặc dán liên kết YouTube |
+| Tệp đính kèm | tệp cho học sinh tải về |
+| Trắc nghiệm | máy chấm tự động |
+| Trả lời ngắn | máy so đáp án, giáo viên duyệt lại |
+
+Bài mới luôn ở trạng thái **nháp**, học sinh chưa thấy. Bấm "Giao cho lớp" thì
+mới hiện ra.
+
+### Soạn dở được, giao thì phải đủ
+
+Khi LƯU một khối, máy chủ chỉ xét những lỗi về cấu trúc. Khối thiếu tệp hay câu
+hỏi còn trống vẫn lưu được — bắt buộc phải thế, vì phải tạo khối hình ra rồi mới
+có chỗ bấm tải tệp lên. Đòi đủ ngay lúc tạo thì không bao giờ tạo nổi khối nào.
+
+Khi GIAO bài mới đòi mọi khối phải đủ, và báo rõ khối thứ mấy thiếu gì.
+
+### Chấm điểm
+
+Trắc nghiệm so mã phương án, chấm hẳn đúng hoặc sai.
+
+Trả lời ngắn so chữ sau khi bỏ hoa thường và khoảng trắng thừa; nhiều cách viết
+đúng thì ngăn bằng dấu `|`. Không khớp thì **để ngỏ** chứ không chấm sai —
+"hiệu điện thế" và "hiệu điện thế U" đều đúng mà máy không biết, nên phải để
+giáo viên xem.
+
+**Đáp án không rời khỏi máy chủ** khi bài chưa chấm. Không phải giấu ở giao
+diện — máy chủ cắt hẳn trường đáp án trước khi gửi, nên mở công cụ nhà phát
+triển cũng không thấy. Kết quả đúng/sai từng câu cũng chỉ hiện sau khi chấm, vì
+nộp thử rồi xem đúng/sai cũng là một cách dò đáp án.
+
+### Tệp tải lên
+
+Trình duyệt gửi thẳng nội dung tệp làm phần thân lời gọi, tên và kiểu đi trong
+chuỗi truy vấn — không dùng multipart, vì bộ tách multipart tự viết mà sai với
+dữ liệu nhị phân thì tệp hỏng âm thầm.
+
+| Giới hạn | Giá trị |
+| --- | --- |
+| Dung lượng mỗi tệp | 25 MB (`MODULAB_MAX_UPLOAD`) |
+| Nơi lưu | cạnh tệp CSDL (`MODULAB_UPLOADS`) |
+
+Ba chốt chặn:
+
+- **Danh sách kiểu tệp cho phép**, không phải danh sách cấm — cấm thì luôn sót.
+  HTML và **SVG đều bị từ chối**: SVG là ảnh nhưng chứa được mã kịch bản.
+- Tệp trên đĩa đặt theo mã sinh ra, **không dùng tên gốc** (tên gốc chứa được
+  `../`). Chỉ ảnh, video, âm thanh và PDF được mở nội tuyến; còn lại buộc tải về.
+- Lớp nào chỉ người của lớp ấy xem được, nên đoán được mã tệp cũng không tải
+  được bài của lớp khác.
+
+Video dài nên dán liên kết YouTube thay vì tải lên.

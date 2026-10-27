@@ -312,3 +312,84 @@ SELECT
 FROM users u
 LEFT JOIN teams t ON t.id = u.team_id
 WHERE u.role = 'hs';
+
+-- ---------------------------------------------------------------------
+-- 11. Bài giảng tự do
+--
+-- Giáo viên tự soạn nội dung thay vì chỉ giao Game ôn tập hay bài thực hành
+-- có sẵn. Một bài giảng gồm nhiều KHỐI xếp theo thứ tự: đoạn văn, hình, video,
+-- tệp đính kèm, câu trắc nghiệm, câu trả lời ngắn.
+--
+-- Để nội dung và câu hỏi chung một bảng chứ không tách đôi, vì giáo viên soạn
+-- xen kẽ: giảng một đoạn, cho xem hình, rồi hỏi ngay một câu về hình đó.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS lessons (
+  id           TEXT PRIMARY KEY,
+  class_id     TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+  title        TEXT NOT NULL,
+  description  TEXT NOT NULL DEFAULT '',
+  due_at       TEXT,
+  state        TEXT NOT NULL DEFAULT 'nhap' CHECK (state IN ('nhap', 'mo', 'dong')),
+  created_by   TEXT REFERENCES users(id) ON DELETE SET NULL,
+  created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_lessons_class ON lessons(class_id, state);
+
+-- Tệp giáo viên tải lên. Lưu trên đĩa dưới tên sinh ra, KHÔNG dùng tên gốc:
+-- tên gốc do người dùng đặt nên có thể chứa đường dẫn hay kí tự lạ.
+CREATE TABLE IF NOT EXISTS uploads (
+  id         TEXT PRIMARY KEY,
+  owner_id   TEXT REFERENCES users(id) ON DELETE SET NULL,
+  class_id   TEXT REFERENCES classes(id) ON DELETE CASCADE,
+  filename   TEXT NOT NULL,
+  mime       TEXT NOT NULL,
+  size       INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS lesson_blocks (
+  id         TEXT PRIMARY KEY,
+  lesson_id  TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+  kind       TEXT NOT NULL CHECK (kind IN ('text', 'image', 'video', 'file', 'mcq', 'short')),
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  title      TEXT NOT NULL DEFAULT '',
+  body       TEXT NOT NULL DEFAULT '',
+  upload_id  TEXT REFERENCES uploads(id) ON DELETE SET NULL,
+  link_url   TEXT,
+  -- Phương án trắc nghiệm, lưu dạng JSON: [{"id":"a","text":"..."}]
+  options    TEXT,
+  -- Đáp án đúng. Trắc nghiệm là mã phương án; câu ngắn là đáp án mẫu.
+  answer_key TEXT,
+  points     REAL NOT NULL DEFAULT 1
+);
+
+CREATE INDEX IF NOT EXISTS idx_blocks_lesson ON lesson_blocks(lesson_id, sort_order);
+
+CREATE TABLE IF NOT EXISTS lesson_submissions (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  lesson_id       TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+  user_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  status          TEXT NOT NULL DEFAULT 'dang_lam'
+                  CHECK (status IN ('dang_lam', 'da_nop', 'da_cham')),
+  score           REAL,
+  max_score       REAL,
+  late            INTEGER NOT NULL DEFAULT 0 CHECK (late IN (0, 1)),
+  teacher_comment TEXT,
+  submitted_at    TEXT,
+  graded_at       TEXT,
+  updated_at      TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (lesson_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS lesson_answers (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  submission_id INTEGER NOT NULL REFERENCES lesson_submissions(id) ON DELETE CASCADE,
+  block_id      TEXT NOT NULL REFERENCES lesson_blocks(id) ON DELETE CASCADE,
+  answer        TEXT NOT NULL DEFAULT '',
+  -- NULL nghĩa là máy chưa chấm được, chờ giáo viên xem
+  is_correct    INTEGER,
+  points        REAL NOT NULL DEFAULT 0,
+  UNIQUE (submission_id, block_id)
+);

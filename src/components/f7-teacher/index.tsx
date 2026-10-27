@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { TeacherClassStats, LabModule } from '../../types';
 import { AssignmentManager } from './assignments';
 import { ClassManager } from './classes';
+import { LessonManager } from './lessons';
 import { BentoCard, WarningBadge } from '../common';
 import { 
   Users, 
@@ -21,9 +22,11 @@ interface TeacherDashboardProps {
   modules: LabModule[];
   /** Gọi khi có bài tập mới hoặc điểm vừa đổi, để màn hình cha nạp lại số liệu lớp */
   onChanged?: () => void;
+  /** Lớp đang mở của giáo viên */
+  classId?: string | null;
 }
 
-export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ stats, modules, onChanged }) => {
+export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ stats, modules, onChanged, classId }) => {
   const [isExporting, setIsExporting] = useState<boolean>(false);
 
   /**
@@ -131,6 +134,14 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ stats, modul
         subtitle="Tạo lớp, chia nhóm, rồi phát mã cho học sinh tự vào">
         <div className="mt-2">
           <ClassManager onChanged={onChanged} />
+        </div>
+      </BentoCard>
+
+      {/* Bài giảng tự do — giáo viên tự soạn nội dung và câu hỏi */}
+      <BentoCard className="md:col-span-6" title="BÀI GIẢNG TỰ DO"
+        subtitle="Tự soạn nội dung: đoạn giảng, hình, video, tệp và câu hỏi">
+        <div className="mt-2">
+          <LessonManager classId={classId} onChanged={onChanged} />
         </div>
       </BentoCard>
 
