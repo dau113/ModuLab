@@ -1,6 +1,7 @@
 import { Component, StrictMode, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
+import { setupValidationMessages } from './validation';
 import './index.css';
 
 /**
@@ -58,6 +59,9 @@ class ErrorBoundary extends Component<BoundaryProps, BoundaryState> {
     );
   }
 }
+
+/* Đặt trước khi vẽ giao diện để ô nào cũng dùng lời nhắc của mình */
+setupValidationMessages();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
