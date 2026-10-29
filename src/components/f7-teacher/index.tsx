@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { TeacherClassStats, LabModule } from '../../types';
 import { AssignmentManager } from './assignments';
 import { ClassManager } from './classes';
-import { LessonManager } from './lessons';
 import { BentoCard, WarningBadge } from '../common';
 import { 
   Users, 
@@ -23,10 +22,12 @@ interface TeacherDashboardProps {
   /** Gọi khi có bài tập mới hoặc điểm vừa đổi, để màn hình cha nạp lại số liệu lớp */
   onChanged?: () => void;
   /** Lớp đang mở của giáo viên */
+  /* classId không còn dùng ở đây từ khi phần soạn bài chuyển sang ModuDoc.
+     Giữ lại trong kiểu để App.tsx truyền vào vẫn hợp lệ. */
   classId?: string | null;
 }
 
-export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ stats, modules, onChanged, classId }) => {
+export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ stats, modules, onChanged }) => {
   const [isExporting, setIsExporting] = useState<boolean>(false);
 
   /**
@@ -137,12 +138,15 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ stats, modul
         </div>
       </BentoCard>
 
-      {/* Bài giảng tự do — giáo viên tự soạn nội dung và câu hỏi */}
+      {/* Soạn bài giảng đã chuyển sang ModuDoc — để lại một dòng chỉ đường,
+          vì trước đây thẻ soạn bài nằm ngay ở trang này. */}
       <BentoCard className="md:col-span-6" title="BÀI GIẢNG TỰ DO"
-        subtitle="Tự soạn nội dung: đoạn giảng, hình, video, tệp và câu hỏi">
-        <div className="mt-2">
-          <LessonManager classId={classId} onChanged={onChanged} />
-        </div>
+        subtitle="Phần soạn bài nay nằm trong ModuDoc">
+        <p className="mt-2 text-[clamp(12.5px,0.86vw,15px)] text-slate-600">
+          Mở <strong className="font-semibold text-slate-800">ModuDoc → Bài giảng tự do</strong> ở
+          thanh bên trái để soạn và giao bài. Ở đó có đủ sáu loại nội dung, thêm trắc nghiệm
+          theo ảnh đề, và bảng theo dõi từng học sinh đã nộp hay chưa.
+        </p>
       </BentoCard>
 
       {/* Giao bài tập — ghi thẳng vào cơ sở dữ liệu, học sinh thấy ngay.

@@ -11,7 +11,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Plus, Trash2, Loader2, AlertCircle, Send, Lock, LockOpen, ChevronUp, ChevronDown,
   Type, Image as ImageIcon, Video, Paperclip, ListChecks, PenLine, Upload,
-  BookOpen, Users, CheckCircle2, Clock, CircleDashed, RotateCcw,
+  BookOpen, Users, CheckCircle2, Clock, CircleDashed, RotateCcw, ScanText,
 } from 'lucide-react';
 import { api } from '../../api/client';
 import type { Lesson, LessonBlock, BlockKind, LessonBoardRow } from '../../api/client';
@@ -32,8 +32,12 @@ const LOAI_KHOI: { kind: BlockKind; text: string; Icon: typeof Type }[] = [
   { kind: 'video', text: 'Video', Icon: Video },
   { kind: 'file', text: 'Tệp đính kèm', Icon: Paperclip },
   { kind: 'mcq', text: 'Trắc nghiệm', Icon: ListChecks },
+  { kind: 'mcqimg', text: 'Trắc nghiệm theo ảnh đề', Icon: ScanText },
   { kind: 'short', text: 'Trả lời ngắn', Icon: PenLine },
 ];
+
+/** Khối ảnh đề: đề nằm trong ảnh nên không có chữ câu hỏi lẫn chữ phương án */
+const LA_ANH_DE = (k: BlockKind) => k === 'mcqimg';
 
 const TRANG_THAI: Record<string, { text: string; cls: string; Icon: typeof Clock }> = {
   chua_lam: { text: 'Chưa làm', cls: 'bg-slate-100 text-slate-500', Icon: CircleDashed },
@@ -99,7 +103,7 @@ const BlockEditor: React.FC<{
   const doi = (p: Partial<LessonBlock>) => setB((v) => ({ ...v, ...p }));
 
   const meta = LOAI_KHOI.find((l) => l.kind === b.kind)!;
-  const laHoi = b.kind === 'mcq' || b.kind === 'short';
+  const laHoi = b.kind === 'mcq' || b.kind === 'mcqimg' || b.kind === 'short';
 
   return (
     <div className={`${card} p-3.5`}>
@@ -135,12 +139,13 @@ const BlockEditor: React.FC<{
       <div className="space-y-2.5">
         <div>
           <label className={label} htmlFor={`t-${b.id}`}>
-            {laHoi ? 'Câu hỏi' : 'Tiêu đề'}
+            {LA_ANH_DE(b.kind) ? 'Nhãn câu (không bắt buộc)' : laHoi ? 'Câu hỏi' : 'Tiêu đề'}
           </label>
           <input id={`t-${b.id}`} className={field} value={b.title}
             onChange={(e) => doi({ title: e.target.value })}
             onBlur={() => onSave({ title: b.title })}
-            placeholder={laHoi ? 'Đơn vị của điện trở là gì?' : 'Mở đầu'} />
+            placeholder={LA_ANH_DE(b.kind) ? 'Câu 3'
+              : laHoi ? 'Đơn vị của điện trở là gì?' : 'Mở đầu'} />
         </div>
 
         {(b.kind === 'text' || b.kind === 'image' || b.kind === 'video' || b.kind === 'file') && (
@@ -154,8 +159,9 @@ const BlockEditor: React.FC<{
           </div>
         )}
 
-        {(b.kind === 'image' || b.kind === 'file' || b.kind === 'video') && (
+        {(b.kind === 'image' || b.kind === 'file' || b.kind === 'video' || b.kind === 'mcqimg') && (
           <div className="space-y-2">
+            {LA_ANH_DE(b.kind) && <span className={label}>Ảnh đề — chụp hoặc quét câu hỏi trong sách</span>}
             {b.uploadId
               ? (
                 <div className="flex flex-wrap items-start gap-2">
@@ -163,13 +169,14 @@ const BlockEditor: React.FC<{
                   <button onClick={() => { doi({ uploadId: null }); onSave({ uploadId: null }); }}
                     className="h-8 px-2.5 rounded-lg border border-slate-200 text-slate-600
                       text-[clamp(12px,0.82vw,14px)] hover:border-rose-300 hover:text-rose-700 transition-colors">
-                    Bỏ tệp
+                    {LA_ANH_DE(b.kind) ? 'Đổi ảnh' : 'Bỏ tệp'}
                   </button>
                 </div>
               )
               : (
                 <UploadButton classId={classId} onError={onError}
-                  accept={b.kind === 'image' ? 'image/*' : b.kind === 'video' ? 'video/*' : undefined as never}
+                  accept={b.kind === 'image' || b.kind === 'mcqimg' ? 'image/*'
+                    : b.kind === 'video' ? 'video/*' : undefined as never}
                   onDone={(id) => { doi({ uploadId: id }); onSave({ uploadId: id }); }} />
               )}
 
@@ -237,6 +244,39 @@ const BlockEditor: React.FC<{
                 hover:border-indigo-400 hover:text-indigo-700 transition-colors">
               <Plus className="w-3.5 h-3.5" /> Thêm phương án
             </button>
+          </div>
+        )}
+
+        {b.kind === 'mcqimg' && (
+          <div>
+            <span className={label}>Đáp án đúng — bấm đúng chữ cái ghi trong đề</span>
+            <div className="flex flex-wrap items-center gap-2">
+              {(b.options ?? []).map((o) => {
+                const chon = b.answerKey === o.id;
+                return (
+                  <button key={o.id} type="button" aria-pressed={chon}
+                    aria-label={`Đáp án đúng là ${o.id}`}
+                    onClick={() => { doi({ answerKey: o.id }); onSave({ answerKey: o.id }); }}
+                    className={`w-11 h-11 rounded-xl border-2 font-extrabold
+                      text-[clamp(15px,1vw,18px)] transition-colors ${chon
+                        ? 'border-emerald-600 bg-emerald-50 text-emerald-700'
+                        : 'border-slate-300 bg-white text-slate-600 hover:border-indigo-400'}`}>
+                    {o.id}
+                  </button>
+                );
+              })}
+              <label className="ml-1 flex items-center gap-2 text-[clamp(12px,0.82vw,14px)] text-slate-600">
+                Số phương án
+                <select className={`${field} w-16 px-2`} value={(b.options ?? []).length || 4}
+                  onChange={(e) => onSave({ choiceCount: Number(e.target.value) })}>
+                  {[2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </label>
+            </div>
+            <p className="mt-1.5 text-[clamp(11.5px,0.78vw,13.5px)] text-slate-500">
+              Thầy cô không phải gõ lại đề hay bốn phương án — học sinh đọc đề trong ảnh rồi
+              bấm chọn chữ cái. Máy chấm hẳn đúng sai theo chữ cái này.
+            </p>
           </div>
         )}
 
@@ -332,6 +372,9 @@ export const LessonManager: React.FC<{ classId?: string | null; onChanged?: () =
     if (!lesson) return;
     const mau: Record<string, Partial<LessonBlock>> = {
       mcq: { title: '', points: 1, options: [{ id: 'a', text: '' }, { id: 'b', text: '' }], answerKey: 'a' },
+      /* Ảnh đề thì để trống đáp án: thầy cô phải nhìn ảnh mới biết đáp án nào
+         đúng, điền sẵn một chữ cái là mời chọn nhầm. Máy chủ chỉ đòi đủ lúc giao bài. */
+      mcqimg: { title: '', points: 1, choiceCount: 4 },
       short: { title: '', points: 1, answerKey: '' },
     };
     /* Khối trắc nghiệm và trả lời ngắn phải có sẵn phương án và đáp án tạm, vì

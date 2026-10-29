@@ -13,7 +13,8 @@ import {
   LogOut,
   LayoutGrid,
   Database,
-  ChevronDown
+  ChevronDown,
+  NotebookPen
 } from 'lucide-react';
 import { useTheme } from '../../theme';
 import { useSettings, ACCENTS } from '../../settings';
@@ -268,6 +269,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
       children: [
         { id: 'theory', label: t('nav.theory.lesson'), icon: <BookOpen className="w-3.5 h-3.5" /> },
         { id: 'tools', label: t('nav.theory.tools'), icon: <Wrench className="w-3.5 h-3.5" /> },
+        /* Bài giảng do chính thầy cô của lớp soạn — cũng là tài liệu học nên
+           nằm chung nhóm ModuDoc, chứ không tách thành một mục riêng. */
+        { id: 'lessons', label: t('nav.theory.lessons'), icon: <NotebookPen className="w-3.5 h-3.5" /> },
       ],
     },
     { id: 'teacher', label: t('nav.teacher'), icon: <Users className="w-4 h-4" />, roleOnly: 'gv' },
@@ -322,7 +326,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   )}
                 </div>
 
-                {/* Hai mục nhỏ của phần Lý thuyết, chỉ hiện khi đang ở phần này */}
+                {/* Các mục nhỏ của phần ModuDoc, chỉ hiện khi đang ở phần này */}
                 {s.children && isActive && (
                   <div className="mt-1 ml-4 pl-3 border-l-2 border-indigo-100 flex flex-col gap-0.5">
                     {s.children.map((c) => {

@@ -157,6 +157,17 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
    */
   const circuitBroken = damages.length > 0;
 
+  /**
+   * Dụng cụ đo mắc sai kiểu — vôn kế nối tiếp hoặc ampe kế song song.
+   *
+   * Phải chặn ngay tại mặt đồng hồ. Phần soát mạch đã kết luận và in lời cảnh
+   * báo ra bảng bên cạnh từ trước, nhưng mặt đồng hồ lại lấy số thẳng từ nhánh
+   * nên vẫn hiện một con số trông rất thật: vôn kế mắc nối tiếp hiện đúng 12V.
+   * Học sinh nào không đọc bảng cảnh báo thì cứ thế chép số vào bài. Cảnh báo
+   * mà vẫn cho số đọc thì coi như chưa chặn gì cả.
+   */
+  const meterFault = (id: string) => report.meters.find((m) => m.compId === id)?.fault ?? null;
+
   /* Bố cục sơ đồ: tự xếp lại mạch thành hình chữ nhật như vẽ trên giấy */
   const layout = useMemo(() => layoutSchematic(
     sim.branches.map((b) => ({ compId: b.compId, kind: b.kind, na: b.na, nb: b.nb })),
@@ -215,7 +226,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
     if (f === 'off') return { value: null, text: '', unit: '', live: base };
 
     /* Mạch đang hỏng: đồng hồ không đưa ra số đọc nào, tránh học sinh ghi nhầm số liệu */
-    if (circuitBroken) {
+    if (circuitBroken || meterFault(p.id)) {
       return {
         value: null, text: '---', unit: spec.unit,
         live: { ...base, reading: '---', unit: spec.unit, bar: 0 },
@@ -297,9 +308,11 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
         voltReading: showing ? (p.volt ?? 12).toFixed(1) : '---',
       };
     }
-    /* Mạch đang hỏng thì kim về 0: số đo lúc này không có ý nghĩa */
-    if (elec === 'ammeter') return { needle: circuitBroken ? 0 : Math.min(1, cur / 3) };
-    if (elec === 'voltmeter') return { needle: circuitBroken ? 0 : Math.min(1, Math.abs(b?.V ?? 0) / 15) };
+    /* Mạch hỏng, hoặc dụng cụ mắc sai kiểu, thì kim về 0: số đo lúc này không
+       có ý nghĩa, để kim chỉ một trị số là mời học sinh ghi lại số liệu sai. */
+    const kimTat = circuitBroken || meterFault(p.id) !== null;
+    if (elec === 'ammeter') return { needle: kimTat ? 0 : Math.min(1, cur / 3) };
+    if (elec === 'voltmeter') return { needle: kimTat ? 0 : Math.min(1, Math.abs(b?.V ?? 0) / 15) };
     if (elec === 'lamp' || elec === 'led') {
       /* Độ sáng so với dòng định mức của chính loại bóng đang lắp. Lấy luỹ thừa
          để mắt cảm nhận đều thay vì nhảy vọt ngay ở đoạn đầu. */
@@ -1043,6 +1056,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
                 return (
                 <button
                   key={k}
+                  data-add={k}
                   onClick={() => addPart(k)}
                   title={PART_CATALOG[k].desc}
                   className="group relative rounded-xl p-2 flex flex-col items-center gap-1 border bg-slate-50 hover:bg-indigo-50 border-slate-200 hover:border-indigo-300 transition-colors"
@@ -1420,6 +1434,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
                 const faulty = report.faultyIds.includes(p.id);
                 return (
                   <g key={p.id} transform={`translate(${p.x},${p.y})`}
+                    data-part={p.id} data-kind={p.kind}
                     onPointerDown={(e) => handlePartDown(e, p)}
                     onClick={(e) => e.stopPropagation()}
                     className={`${tool === 'erase' ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'}`}>
@@ -1567,6 +1582,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
                       const active = !!pending && pending.c === p.id && pending.t === t.id;
                       return (
                         <g key={t.id}
+                          data-term={`${p.id}:${t.id}`}
                           onPointerDown={(e) => handleTerminal(e, { c: p.id, t: t.id })}
                           onClick={(e) => { if (tool !== 'select') e.stopPropagation(); }}
                           className={tool === 'wire' || tool === 'erase' ? 'cursor-crosshair' : ''}>

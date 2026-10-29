@@ -194,22 +194,48 @@ theo điểm trò chơi — nếu không thì lượt trả lời vội mà sai 
 
 ---
 
-## Bài giảng tự do (từ V1.75)
+## Bài giảng tự do (từ V1.75, chuyển vào ModuDoc ở V1.76)
 
 Giáo viên tự soạn nội dung thay vì chỉ giao Game ôn tập hay bài thực hành có
 sẵn. Một bài giảng là một dãy **khối** xếp theo thứ tự:
 
-| Khối | Dùng để |
-| --- | --- |
-| Đoạn giảng | giảng bằng chữ |
-| Hình ảnh | ảnh tải lên |
-| Video | video tải lên, hoặc dán liên kết YouTube |
-| Tệp đính kèm | tệp cho học sinh tải về |
-| Trắc nghiệm | máy chấm tự động |
-| Trả lời ngắn | máy so đáp án, giáo viên duyệt lại |
+| Khối | Mã | Dùng để |
+| --- | --- | --- |
+| Đoạn giảng | `text` | giảng bằng chữ |
+| Hình ảnh | `image` | ảnh tải lên |
+| Video | `video` | video tải lên, hoặc dán liên kết YouTube |
+| Tệp đính kèm | `file` | tệp cho học sinh tải về |
+| Trắc nghiệm | `mcq` | gõ sẵn phương án, máy chấm tự động |
+| Trắc nghiệm theo ảnh đề | `mcqimg` | đề nằm trong ảnh, máy chấm tự động |
+| Trả lời ngắn | `short` | máy so đáp án, giáo viên duyệt lại |
 
 Bài mới luôn ở trạng thái **nháp**, học sinh chưa thấy. Bấm "Giao cho lớp" thì
 mới hiện ra.
+
+Từ V1.76 phần này nằm ở **ModuDoc → Bài giảng tự do** cho cả hai vai: giáo viên
+soạn, học sinh làm. Trước đó phần soạn nằm trong ModuManage còn phần làm nằm
+trong ModuStart. ModuManage và ModuStart đều còn một dòng chỉ đường sang đây.
+
+### Trắc nghiệm theo ảnh đề (từ V1.76)
+
+Dành cho đề in sẵn trong sách hay phiếu bài tập: giáo viên chụp hoặc quét câu
+hỏi rồi tải ảnh lên, **không gõ lại đề cũng không gõ lại bốn phương án**, chỉ
+bấm chọn chữ cái đúng. Học sinh nhìn ảnh ở bên trái và bấm A/B/C/D ở bên phải.
+
+Danh sách phương án **do máy chủ dựng**, không nhận từ trình duyệt — chữ cái
+phải đúng là chữ cái học sinh đang đọc trong ảnh, chứ không để ai gửi lên một
+danh sách lệch với đề. Số phương án đổi được trong khoảng 2–6, mặc định 4; giảm
+số phương án mà đáp án cũ rơi ra ngoài thì đáp án bị bỏ để giáo viên chọn lại,
+chứ không báo lỗi — người dùng có làm gì sai đâu.
+
+Khối này không đòi gõ câu hỏi (đề đã nằm trong ảnh), nhưng lúc giao bài thì
+phải có đủ **ảnh đề** và **đáp án**.
+
+> Lược đồ: thêm loại khối mới phải sửa cả ràng buộc `CHECK` trong `schema.sql`
+> **và** bước dựng lại bảng trong `migrate.mjs`. Với cơ sở dữ liệu đã có thì
+> `schema.sql` bị bỏ qua hoàn toàn, SQLite lại không cho đổi `CHECK` bằng
+> `ALTER TABLE` — quên bước di trú là mọi lớp đang chạy đều không thêm nổi khối
+> kiểu mới, mà lỗi báo ở tận lệnh `INSERT` nên rất khó lần ra.
 
 ### Soạn dở được, giao thì phải đủ
 

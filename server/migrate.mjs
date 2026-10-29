@@ -91,6 +91,53 @@ const rebuildUsers = (db) => {
 };
 
 /**
+ * Dựng lại bảng lesson_blocks khi ràng buộc loại khối còn là bản cũ.
+ *
+ * Bản cũ chỉ cho sáu loại khối; thêm loại 'mcqimg' vào schema.sql không đủ, vì
+ * với tệp dữ liệu đã có thì lệnh CREATE TABLE ở đó bị bỏ qua hoàn toàn và ràng
+ * buộc CHECK cũ vẫn còn nguyên. Cứ thế đưa lên máy chủ thật thì mọi lớp đang
+ * chạy đều không thêm nổi câu trắc nghiệm theo ảnh đề, mà lỗi lại báo ở tận
+ * lệnh INSERT nên rất khó lần ra.
+ */
+const rebuildLessonBlocks = (db) => {
+  if (!tableExists(db, 'lesson_blocks')) return false;
+  if (sqlOf(db, 'lesson_blocks').includes("'mcqimg'")) return false;
+
+  db.exec('PRAGMA foreign_keys = OFF');
+  try {
+    db.exec('BEGIN');
+    db.exec(`
+      CREATE TABLE lesson_blocks_moi (
+        id         TEXT PRIMARY KEY,
+        lesson_id  TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+        kind       TEXT NOT NULL CHECK (kind IN ('text', 'image', 'video', 'file', 'mcq', 'mcqimg', 'short')),
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        title      TEXT NOT NULL DEFAULT '',
+        body       TEXT NOT NULL DEFAULT '',
+        upload_id  TEXT REFERENCES uploads(id) ON DELETE SET NULL,
+        link_url   TEXT,
+        options    TEXT,
+        answer_key TEXT,
+        points     REAL NOT NULL DEFAULT 1
+      )`);
+    const old = columnsOf(db, 'lesson_blocks');
+    const carry = ['id', 'lesson_id', 'kind', 'sort_order', 'title', 'body',
+      'upload_id', 'link_url', 'options', 'answer_key', 'points'].filter((c) => old.includes(c));
+    db.exec(`INSERT INTO lesson_blocks_moi (${carry.join(', ')}) SELECT ${carry.join(', ')} FROM lesson_blocks`);
+    db.exec('DROP TABLE lesson_blocks');
+    db.exec('ALTER TABLE lesson_blocks_moi RENAME TO lesson_blocks');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_blocks_lesson ON lesson_blocks(lesson_id, sort_order)');
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  } finally {
+    db.exec('PRAGMA foreign_keys = ON');
+  }
+  return true;
+};
+
+/**
  * Sinh mã vào lớp bốn chữ số cho những lớp có từ trước.
  *
  * Thử đoán từ tên lớp trước — "12A4" cho ra "1204", vừa dễ nhớ vừa khớp với mã
@@ -199,6 +246,8 @@ export function migrate(db) {
   if (tableExists(db, 'users') && addColumn(db, 'users', 'seat_no', 'INTEGER')) {
     done.push('users: thêm số thứ tự trong lớp');
   }
+
+  if (rebuildLessonBlocks(db)) done.push('lesson_blocks: thêm loại khối trắc nghiệm theo ảnh đề');
 
   /* Số câu đúng, tách khỏi điểm trò chơi. Lượt chơi cũ để trống vì không suy
      ngược ra được từ điểm — điểm đã gộp cả thưởng nhanh và thưởng chuỗi. */

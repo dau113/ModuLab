@@ -1,13 +1,14 @@
 /**
  * Bài giảng tự do: giáo viên tự soạn nội dung và câu hỏi.
  *
- * Một bài giảng là một dãy KHỐI xếp theo thứ tự. Sáu loại khối:
+ * Một bài giảng là một dãy KHỐI xếp theo thứ tự. Bảy loại khối:
  *
  *   text   — đoạn giảng bằng chữ
  *   image  — hình ảnh tải lên
  *   video  — video tải lên, hoặc dán liên kết YouTube
  *   file   — tệp đính kèm để học sinh tải về
- *   mcq    — câu trắc nghiệm, máy tự chấm
+ *   mcq    — câu trắc nghiệm gõ tay, máy tự chấm
+ *   mcqimg — câu trắc nghiệm theo ẢNH ĐỀ, máy tự chấm
  *   short  — câu trả lời ngắn, máy so đáp án rồi giáo viên duyệt lại
  *
  * Nội dung và câu hỏi chung một bảng vì giáo viên soạn xen kẽ: giảng một đoạn,
@@ -20,11 +21,28 @@ const fail = (message, status = 400) => {
   throw Object.assign(new Error(message), { status });
 };
 
-const LOAI_KHOI = ['text', 'image', 'video', 'file', 'mcq', 'short'];
-const LOAI_CAU_HOI = ['mcq', 'short'];
+const LOAI_KHOI = ['text', 'image', 'video', 'file', 'mcq', 'mcqimg', 'short'];
+const LOAI_CAU_HOI = ['mcq', 'mcqimg', 'short'];
 const TRANG_THAI = ['nhap', 'mo', 'dong'];
 
 export const laCauHoi = (kind) => LOAI_CAU_HOI.includes(kind);
+
+/**
+ * Khối trắc nghiệm theo ảnh đề.
+ *
+ * Đề bài nằm trong ảnh giáo viên chụp hoặc quét, nên phần mềm không có — và
+ * không cần có — chữ của câu hỏi lẫn chữ của bốn phương án. Giáo viên chỉ chụp
+ * ảnh rồi bấm chọn chữ cái đúng. Phương án vì thế do máy chủ tự dựng ra theo số
+ * lượng, chứ không nhận từ trình duyệt: để A luôn là A, không ai gửi lên được
+ * một danh sách phương án lệch với chữ cái học sinh đang nhìn trong ảnh.
+ */
+const CHU_CAI = ['A', 'B', 'C', 'D', 'E', 'F'];
+const SO_PA_MAC_DINH = 4;
+
+const dungPhuongAn = (soLuong) => {
+  const n = Math.max(2, Math.min(CHU_CAI.length, Number(soLuong) || SO_PA_MAC_DINH));
+  return CHU_CAI.slice(0, n).map((c) => ({ id: c, text: c }));
+};
 
 /* ------------------------------------------------------------------ */
 /* Đọc                                                                 */
@@ -221,8 +239,14 @@ const kiemDeGiao = (lessonId) => {
     if (b.kind === 'text' && !String(b.body ?? '').trim() && !String(b.title ?? '').trim()) {
       thieu.push(`${o} chưa có nội dung`);
     }
-    if (laCauHoi(b.kind) && !String(b.title ?? '').trim()) {
+    /* Khối ảnh đề không đòi gõ câu hỏi: đề nằm trong ảnh, bắt gõ lại là bắt làm
+       đúng cái việc mà khối này sinh ra để khỏi phải làm. */
+    if (laCauHoi(b.kind) && b.kind !== 'mcqimg' && !String(b.title ?? '').trim()) {
       thieu.push(`${o} chưa có câu hỏi`);
+    }
+    if (b.kind === 'mcqimg') {
+      if (!b.uploadId) thieu.push(`${o} chưa tải ảnh đề lên`);
+      else if (!String(b.answerKey ?? '').trim()) thieu.push(`${o} chưa chọn đáp án đúng`);
     }
     if (b.kind === 'mcq') {
       const opts = Array.isArray(b.options) ? b.options : [];
@@ -244,12 +268,13 @@ export const themKhoi = (teacher, lessonId, p) => tx(() => {
 
   const ke = (get('SELECT MAX(sort_order) AS m FROM lesson_blocks WHERE lesson_id = ?', lessonId).m ?? -1) + 1;
   const id = `kh-${randomUUID().slice(0, 8)}`;
+  const opts = p.kind === 'mcqimg' ? dungPhuongAn(p.choiceCount) : p.options;
   run(`INSERT INTO lesson_blocks
          (id, lesson_id, kind, sort_order, title, body, upload_id, link_url, options, answer_key, points)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     id, lessonId, p.kind, ke, String(p.title ?? '').trim(), String(p.body ?? '').trim(),
     p.uploadId ?? null, String(p.linkUrl ?? '').trim() || null,
-    p.options ? JSON.stringify(p.options) : null,
+    opts ? JSON.stringify(opts) : null,
     p.answerKey ?? null, laCauHoi(p.kind) ? Number(p.points) || 1 : 0);
   return chiTietBai(lessonId, { kemDapAn: true });
 });
@@ -270,6 +295,18 @@ export const suaKhoi = (teacher, lessonId, blockId, p) => tx(() => {
     answerKey: p.answerKey !== undefined ? p.answerKey : cu.answer_key,
     points: p.points !== undefined ? p.points : cu.points,
   };
+
+  if (cu.kind === 'mcqimg') {
+    /* Phương án của khối ảnh đề luôn do máy chủ dựng, kể cả khi trình duyệt gửi
+       lên danh sách khác. Đổi từ bốn phương án xuống ba mà đáp án cũ là D thì bỏ
+       luôn đáp án cho giáo viên chọn lại — báo lỗi "đáp án không có trong danh
+       sách" ở đây chỉ làm người dùng bí, vì họ có làm gì sai đâu. */
+    gop.options = dungPhuongAn(
+      p.choiceCount !== undefined ? p.choiceCount : (safeJson(cu.options)?.length ?? SO_PA_MAC_DINH),
+    );
+    if (!gop.options.some((o) => o.id === gop.answerKey)) gop.answerKey = null;
+  }
+
   kiemKhoi(cu.kind, gop);
 
   run(`UPDATE lesson_blocks
@@ -360,7 +397,7 @@ const chuanHoa = (s) => String(s ?? '')
  * đúng mà máy không biết, nên phải để giáo viên xem.
  */
 export const chamMotCau = (block, answer) => {
-  if (block.kind === 'mcq') {
+  if (block.kind === 'mcq' || block.kind === 'mcqimg') {
     const dung = String(answer ?? '') === String(block.answerKey ?? '');
     return { isCorrect: dung ? 1 : 0, points: dung ? Number(block.points) || 0 : 0 };
   }

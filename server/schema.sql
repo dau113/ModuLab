@@ -352,7 +352,10 @@ CREATE TABLE IF NOT EXISTS uploads (
 CREATE TABLE IF NOT EXISTS lesson_blocks (
   id         TEXT PRIMARY KEY,
   lesson_id  TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
-  kind       TEXT NOT NULL CHECK (kind IN ('text', 'image', 'video', 'file', 'mcq', 'short')),
+  -- mcqimg: trắc nghiệm theo ảnh đề — đề nằm trong ảnh, học sinh chỉ chọn chữ cái.
+  -- Sửa danh sách này thì phải sửa cả bước dựng lại bảng trong migrate.mjs, vì
+  -- SQLite không cho đổi ràng buộc CHECK của bảng đã có bằng ALTER TABLE.
+  kind       TEXT NOT NULL CHECK (kind IN ('text', 'image', 'video', 'file', 'mcq', 'mcqimg', 'short')),
   sort_order INTEGER NOT NULL DEFAULT 0,
   title      TEXT NOT NULL DEFAULT '',
   body       TEXT NOT NULL DEFAULT '',

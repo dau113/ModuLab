@@ -26,6 +26,10 @@ const fmt = (iso: string | null) => {
 };
 const quaHan = (iso: string | null) => !!iso && Date.now() > Date.parse(iso);
 
+/** Khối nào là câu hỏi — phải khớp với LOAI_CAU_HOI bên máy chủ */
+const LA_CAU_HOI = (b: LessonBlock) =>
+  b.kind === 'mcq' || b.kind === 'mcqimg' || b.kind === 'short';
+
 const BADGE: Record<string, { text: string; cls: string; Icon: typeof Clock }> = {
   chua_lam: { text: 'Chưa làm', cls: 'bg-slate-100 text-slate-500', Icon: CircleDashed },
   dang_lam: { text: 'Đang làm', cls: 'bg-amber-100 text-amber-800', Icon: Clock },
@@ -83,7 +87,10 @@ const BlockView: React.FC<{
     <div className={`${card} p-3.5 ${dung ? 'border-emerald-300' : sai ? 'border-rose-300' : ''}`}>
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
-          <h4 className="font-bold text-[clamp(14px,0.98vw,16.5px)] text-slate-900">{b.title}</h4>
+          {/* Câu theo ảnh đề thường bỏ trống nhãn, vì đề đã nằm trong ảnh */}
+          {b.title && (
+            <h4 className="font-bold text-[clamp(14px,0.98vw,16.5px)] text-slate-900">{b.title}</h4>
+          )}
           {b.body && (
             <p className="mt-0.5 text-[clamp(12.5px,0.86vw,15px)] text-slate-600 whitespace-pre-wrap">{b.body}</p>
           )}
@@ -117,6 +124,53 @@ const BlockView: React.FC<{
               </label>
             );
           })}
+        </div>
+      )}
+
+      {/*
+        Câu trắc nghiệm theo ảnh đề: đề ở BÊN TRÁI, chữ cái chọn ở BÊN PHẢI.
+        Hai cột nằm cạnh nhau để em vừa nhìn đề vừa bấm, khỏi cuộn lên cuộn
+        xuống. Màn hình hẹp thì xếp dọc lại, ảnh trên, chữ cái dưới.
+
+        Phải chặn bề ngang lại. Để cột ảnh giãn hết cỡ thì trên màn hình rộng
+        ảnh nằm sát mép trái còn bốn chữ cái dạt sang tận mép phải, cách nhau
+        hơn một mét rưỡi màn hình — nhìn đề một đằng, bấm một nẻo. Chặn ở mức
+        đọc được là vừa: ảnh vẫn đủ lớn để đọc đề mà chữ cái vẫn nằm trong
+        tầm mắt.
+      */}
+      {b.kind === 'mcqimg' && (
+        <div className="mt-2.5 grid gap-3 max-w-4xl md:justify-start
+          md:grid-cols-[minmax(0,max-content)_auto] md:items-start">
+          <div className="min-w-0">
+            {b.uploadId
+              ? <UploadMedia uploadId={b.uploadId} />
+              : (
+                <p className="text-[clamp(12.5px,0.86vw,15px)] text-slate-500">
+                  Câu này chưa có ảnh đề.
+                </p>
+              )}
+          </div>
+          <div className="flex md:flex-col flex-wrap gap-2 md:w-[4.5rem]">
+            {(b.options ?? []).map((o) => {
+              const chon = answer === o.id;
+              const laDapAn = b.answerKey !== null && b.answerKey === o.id;
+              return (
+                <button key={o.id} type="button" disabled={readOnly}
+                  aria-pressed={chon} aria-label={`Chọn phương án ${o.id}`}
+                  onClick={() => onChange(o.id)}
+                  className={`w-[4.5rem] h-12 rounded-xl border-2 font-extrabold
+                    text-[clamp(16px,1.1vw,19px)] transition-colors disabled:cursor-default ${
+                    laDapAn ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                      : chon && sai ? 'border-rose-500 bg-rose-50 text-rose-700'
+                        : chon ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                          : 'border-slate-300 bg-white text-slate-600 enabled:hover:border-indigo-400'}`}>
+                  {o.id}
+                  {laDapAn && <CheckCircle2 className="inline-block ml-1 w-4 h-4 align-[-2px]" />}
+                  {chon && sai && !laDapAn && <XCircle className="inline-block ml-1 w-4 h-4 align-[-2px]" />}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -198,10 +252,9 @@ export const MyLessons: React.FC = () => {
 
   const nop = async () => {
     if (!openId || !view) return;
-    const soCau = (view.blocks ?? []).filter((b) => b.kind === 'mcq' || b.kind === 'short').length;
-    const daLam = (view.blocks ?? [])
-      .filter((b) => b.kind === 'mcq' || b.kind === 'short')
-      .filter((b) => String(answers[b.id] ?? '').trim()).length;
+    const cau = (view.blocks ?? []).filter(LA_CAU_HOI);
+    const soCau = cau.length;
+    const daLam = cau.filter((b) => String(answers[b.id] ?? '').trim()).length;
     if (daLam < soCau
       && !window.confirm(`Em mới trả lời ${daLam}/${soCau} câu. Vẫn nộp chứ?`)) return;
 

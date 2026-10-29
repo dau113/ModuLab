@@ -17,6 +17,7 @@ import { SignIn } from './components/f1-auth/sign-in';
 import { DeveloperConsole } from './components/f8-dev';
 import { MyAssignments } from './components/f2-quiz/my-assignments';
 import { MyLessons } from './components/f2-quiz/lesson-view';
+import { LessonManager } from './components/f7-teacher/lessons';
 import { JoinClass } from './components/f1-auth/join-class';
 import { QuizGame } from './components/f2-quiz';
 import { PhysicsQuest } from './components/f2-quiz/quest';
@@ -274,6 +275,7 @@ function Workspace() {
               <span className="font-bold text-slate-800">
                 {currentStep === 'theory' && `${t('nav.theory')} — ${t('nav.theory.lesson')}`}
                 {currentStep === 'tools' && `${t('nav.theory')} — ${t('nav.theory.tools')}`}
+                {currentStep === 'lessons' && `${t('nav.theory')} — ${t('nav.theory.lessons')}`}
                 {currentStep === 'quiz' && `${t('nav.quiz')} — ${t('nav.quiz.drill')}`}
                 {currentStep === 'quest' && `${t('nav.quiz')} — ${t('nav.quest')}`}
                 {/* Phần có trang con thì ghép tên ngắn với tên trang con; phần
@@ -321,12 +323,23 @@ function Workspace() {
               <ToolExplorer tools={data.tools} />
             )}
 
-            {currentStep === 'quiz' && (
+            {/*
+              Bài giảng tự do, nằm trong nhóm ModuDoc.
+              Cùng một mục nhưng hai vai nhìn thấy hai thứ khác nhau: giáo viên
+              soạn bài, học sinh làm bài. Gộp vào một chỗ để tài liệu của lớp
+              nằm cùng chỗ với tài liệu ôn tập, khỏi phải nhớ bài giảng của thầy
+              cô thì vào mục nào.
+            */}
+            {currentStep === 'lessons' && (
               <div className="h-full overflow-y-auto pr-1 ml-scroll space-y-4">
-                {/* Bài tập giáo viên giao — chỉ hiện cho học sinh đã đăng nhập */}
-                {!isGuestMode && viewer.role === 'hs' && (
+                {viewer.role === 'gv' || viewer.role === 'dev' ? (
+                  <LessonManager classId={viewer.classId ?? null} onChanged={() => setClassTick((n) => n + 1)} />
+                ) : isGuestMode ? (
+                  <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-500">
+                    Phần này dành cho tài khoản đã đăng nhập — bài giảng do thầy cô của lớp em soạn.
+                  </p>
+                ) : (
                   <>
-                    {/* Vào lớp trước đã — chưa có lớp thì chưa nhận được bài nào */}
                     <section>
                       <h3 className="mb-2 text-[clamp(14px,0.98vw,16.5px)] font-bold text-slate-900">
                         Lớp của em
@@ -344,6 +357,37 @@ function Workspace() {
                       </h3>
                       <MyLessons key={`bg-${classTick}`} />
                     </section>
+                  </>
+                )}
+              </div>
+            )}
+
+            {currentStep === 'quiz' && (
+              <div className="h-full overflow-y-auto pr-1 ml-scroll space-y-4">
+                {/* Bài tập giáo viên giao — chỉ hiện cho học sinh đã đăng nhập */}
+                {!isGuestMode && viewer.role === 'hs' && (
+                  <>
+                    {/* Vào lớp trước đã — chưa có lớp thì chưa nhận được bài nào */}
+                    <section>
+                      <h3 className="mb-2 text-[clamp(14px,0.98vw,16.5px)] font-bold text-slate-900">
+                        Lớp của em
+                      </h3>
+                      <JoinClass compact onJoined={(c) => {
+                        setCurrentUser((prev) => (prev
+                          ? { ...prev, classCode: c.classCode, teamCode: c.groupName, seatNo: c.seatNo }
+                          : prev));
+                        setClassTick((n) => n + 1);
+                      }} />
+                    </section>
+                    {/* Bài giảng tự do đã chuyển sang ModuDoc; để lại một dòng
+                        chỉ đường cho em nào quen tìm ở đây. */}
+                    <button type="button" onClick={() => setCurrentStep('lessons')}
+                      className="w-full text-left px-3.5 py-2.5 rounded-xl border border-slate-200
+                        bg-white text-[clamp(12.5px,0.86vw,15px)] text-slate-600
+                        hover:border-indigo-400 hover:text-indigo-700 transition-colors">
+                      Bài giảng của thầy cô nay nằm ở <strong className="font-semibold">ModuDoc →
+                      Bài giảng tự do</strong>. Bấm vào đây để mở.
+                    </button>
                     <section>
                       <h3 className="mb-2 text-[clamp(14px,0.98vw,16.5px)] font-bold text-slate-900">
                         Bài tập được giao

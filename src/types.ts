@@ -12,7 +12,10 @@ export interface User {
   groupNo?: number | null;
 }
 
-export type LabStep = 'theory' | 'tools' | 'quiz' | 'quest' | 'circuit' | 'report';
+/* 'lessons' là bài giảng tự do, nằm trong nhóm ModuDoc cùng với lý thuyết ôn
+   tập và phần khám phá dụng cụ — đều là tài liệu học, chỉ khác ở chỗ phần này
+   do chính thầy cô của lớp soạn ra. */
+export type LabStep = 'theory' | 'tools' | 'lessons' | 'quiz' | 'quest' | 'circuit' | 'report';
 
 export interface LabModule {
   id: string;

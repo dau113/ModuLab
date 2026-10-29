@@ -284,7 +284,7 @@ export interface BoardRow {
 
 /* ---------------- Bài giảng tự do ---------------- */
 
-export type BlockKind = 'text' | 'image' | 'video' | 'file' | 'mcq' | 'short';
+export type BlockKind = 'text' | 'image' | 'video' | 'file' | 'mcq' | 'mcqimg' | 'short';
 export type LessonState = 'nhap' | 'mo' | 'dong';
 
 export interface LessonBlock {
@@ -299,6 +299,13 @@ export interface LessonBlock {
   /** Chỉ có khi giáo viên xem, hoặc học sinh xem lại bài đã chấm */
   answerKey: string | null;
   points: number;
+  /**
+   * Số phương án của khối trắc nghiệm theo ảnh đề (2–6, mặc định 4).
+   *
+   * Chỉ gửi LÊN khi giáo viên đổi; máy chủ tự dựng danh sách chữ cái A, B, C…
+   * rồi trả về trong `options`, nên không bao giờ đọc trường này từ máy chủ.
+   */
+  choiceCount?: number;
 }
 
 export interface Lesson {

@@ -432,6 +432,8 @@ export interface CheckReport {
   safeToPower: boolean;
   ammeterReading: number | null;
   voltmeterReading: number | null;
+  /** Kết luận về cách mắc của từng dụng cụ đo, để mặt đồng hồ biết có được hiện số hay không */
+  meters: MeterVerdict[];
 }
 
 /** Một chỗ hỏng cụ thể trên bàn lắp: hỏng ở đâu, vì sao, hậu quả thế nào */
@@ -507,17 +509,175 @@ export function findDamage(parts: PlacedPart[], wires: Wire[], rxTrue: number): 
   return out;
 }
 
+/* ------------------------------------------------------------------ */
+/* Tô-pô dụng cụ đo: vôn kế phải song song, ampe kế phải nối tiếp      */
+/* ------------------------------------------------------------------ */
+
+/** Dụng cụ đo đang mắc sai kiểu nào */
+export type MeterFault = 'noi-tiep' | 'song-song' | null;
+
+export interface MeterVerdict {
+  compId: string;
+  role: 'ammeter' | 'voltmeter';
+  fault: MeterFault;
+  /** Câu giải thích cho học sinh, rỗng khi mắc đúng */
+  reason: string;
+}
+
+/**
+ * Ngưỡng điện trở để coi một nhánh là có dẫn dòng.
+ *
+ * Vôn kế 2MΩ nằm TRÊN ngưỡng nên không được tính là một đường dẫn. Đó không
+ * phải cách làm cho tiện: xét về dòng thì một nhánh 2MΩ mắc vòng qua ampe kế
+ * chỉ chia đi khoảng một phần triệu dòng mạch, ampe kế vẫn đo gần đủ dòng nên
+ * vẫn là mắc nối tiếp. Nếu tính vôn kế là đường dẫn thì cứ mắc vôn kế vòng qua
+ * cả đoạn mạch là ampe kế lại bị kết luận oan là mắc song song.
+ * Khóa K mở và đèn LED bị khoá (1e11Ω) cũng nằm trên ngưỡng — đúng, vì hở mạch
+ * thì không có đường nào đi qua đó cả.
+ */
+const NGUONG_DAN = 1e5;
+const dongQuaDuoc = (b: Branch) => !b.shorted && b.R < NGUONG_DAN;
+
+/**
+ * Nới ngưỡng để tính cả vôn kế vào, dùng khi chỉ cần biết mạch có kín hay không.
+ *
+ * Hai câu hỏi khác nhau cần hai cách đếm khác nhau. "Có đường vòng qua ampe kế
+ * không" thì vôn kế không đáng kể. Nhưng "mạch có kín không" thì vôn kế mắc nối
+ * tiếp CÓ làm mạch kín — dòng 6µA vẫn là dòng. Lẫn hai câu này vào nhau thì
+ * chính cái lỗi vôn kế nối tiếp lại tự che được mình: nó bóp dòng xuống quá nhỏ,
+ * mạch bị coi là hở, và phần soát mạch bỏ qua không xét nữa.
+ */
+const noiVaoMach = (b: Branch) => !b.shorted && b.R < 1e8;
+
+/** Hai nhánh cùng một cặp nút, tức là mắc song song trực tiếp với nhau */
+const cungCapNut = (a: Branch, b: Branch) =>
+  (a.na === b.na && a.nb === b.nb) || (a.na === b.nb && a.nb === b.na);
+
+/**
+ * Bỏ nhánh `bo` ra khỏi mạch thì hai cực nguồn còn đường nào thông nhau không?
+ *
+ * Đây là phép thử phân biệt nối tiếp với song song, và nó đúng với mọi cách
+ * đấu chứ không chỉ mạch một vòng. Một linh kiện mắc NỐI TIẾP trên mạch chính
+ * thì mọi dòng đều buộc phải đi qua nó: bỏ nó ra là hai cực nguồn mất liên
+ * lạc. Còn nếu bỏ nó ra mà hai cực vẫn thông nhau thì có đường vòng, nghĩa là
+ * dòng chia nhau đi — đó mới là mắc song song.
+ *
+ * Nguồn cũng phải bỏ ra, vì nếu giữ lại thì chính nhánh nguồn là một đường nối
+ * hai cực của nó, mạch nào cũng hoá ra "có đường vòng".
+ */
+function conDuongVong(
+  branches: Branch[], bo: Branch, src: Branch, dan: (b: Branch) => boolean = dongQuaDuoc,
+): boolean {
+  const ke = new Map<number, number[]>();
+  const noi = (a: number, b: number) => {
+    if (!ke.has(a)) ke.set(a, []);
+    ke.get(a)!.push(b);
+  };
+  branches.forEach((b) => {
+    if (b.compId === bo.compId || b.compId === src.compId) return;
+    if (!dan(b)) return;
+    noi(b.na, b.nb);
+    noi(b.nb, b.na);
+  });
+
+  const daToi = new Set<number>([src.na]);
+  const hang = [src.na];
+  while (hang.length) {
+    const u = hang.shift()!;
+    if (u === src.nb) return true;
+    (ke.get(u) ?? []).forEach((v) => {
+      if (!daToi.has(v)) { daToi.add(v); hang.push(v); }
+    });
+  }
+  return false;
+}
+
+/**
+ * Soát cách mắc của từng dụng cụ đo trên bàn lắp.
+ *
+ * Phần này KHÔNG dựa vào việc đoán đâu là điện trở Rx. Trước đây phép kiểm so
+ * dòng qua ampe kế với dòng qua `resistors[0]`, mà danh sách đó lấy cả biến
+ * trở — hễ trên bàn có biến trở đứng trước Rx là so vào biến trở, nên ampe kế
+ * mắc song song Rx lọt lưới còn vôn kế mắc đúng thì bị kết luận là sai.
+ */
+export function meterFaults(
+  parts: PlacedPart[], wires: Wire[], rxTrue: number, simIn?: SimResult,
+): MeterVerdict[] {
+  const sim = simIn ?? simulate(parts, wires, rxTrue);
+  const src = sim.branches.find((b) => b.elec === 'source');
+  const out: MeterVerdict[] = [];
+
+  const dungCu = sim.branches.filter((b) => b.elec === 'ammeter' || b.elec === 'voltmeter');
+  if (!dungCu.length) return out;
+
+  /* Mạch hở thì chưa kết luận gì về cách mắc — khóa K còn mở, dây còn thiếu,
+     chưa có gì để chê. Xét bằng tô-pô chứ không bằng độ lớn của dòng. */
+  const machKin = !!src && conDuongVong(sim.branches, src, src, noiVaoMach);
+
+  dungCu.forEach((b) => {
+    const role = b.elec === 'ammeter' ? 'ammeter' : 'voltmeter';
+    const sach: MeterVerdict = { compId: b.compId, role, fault: null, reason: '' };
+    if (!machKin || !src || b.na === b.nb) { out.push(sach); return; }
+    /* Dụng cụ chưa nối vào mạch (còn treo lơ lửng, hoặc mới nối một đầu) thì
+       không có dòng qua: không phải nối tiếp cũng chẳng phải song song. */
+    if (Math.abs(b.I) < 1e-9) { out.push(sach); return; }
+
+    /* Mắc song song trực tiếp với một linh kiện khác: hai chốt rơi đúng vào
+       hai nút của linh kiện đó. Dùng để nhận ra vôn kế đo hai cực nguồn —
+       trường hợp hợp lệ mà phép thử đường vòng dưới đây lại tưởng là nối tiếp,
+       bởi mạch chỉ có hai nhánh nên bỏ vôn kế ra là hai cực mất liên lạc. */
+    const songSongVoi = sim.branches.find((x) =>
+      x.compId !== b.compId && dongQuaDuoc(x) && cungCapNut(x, b));
+
+    const nam_noi_tiep = !conDuongVong(sim.branches, b, src);
+
+    if (role === 'voltmeter') {
+      if (songSongVoi || !nam_noi_tiep) { out.push(sach); return; }
+      out.push({
+        ...sach,
+        fault: 'noi-tiep',
+        reason: 'Vôn kế đang mắc NỐI TIẾP trong mạch chính. Điện trở của vôn kế cỡ '
+          + 'mêga-ôm nên nó chặn gần hết dòng điện: ampe kế tụt về 0 và số vôn kế hiện '
+          + 'ra là điện áp của nguồn, không phải hiệu điện thế cần đo. Hãy tháo vôn kế '
+          + 'ra khỏi mạch chính rồi mắc SONG SONG hai đầu đoạn mạch cần đo.',
+      });
+      return;
+    }
+
+    if (nam_noi_tiep) { out.push(sach); return; }
+    out.push({
+      ...sach,
+      fault: 'song-song',
+      reason: 'Ampe kế đang mắc SONG SONG, nối tắt đoạn mạch mà nó bắc qua. Điện trở '
+        + 'ampe kế gần bằng 0 nên dòng dồn hết qua đồng hồ, phần mạch bị bắc qua gần như '
+        + 'không còn dòng. Số chỉ này không phải cường độ dòng điện cần đo, và trên bộ '
+        + 'dụng cụ thật thì cầu chì trong ampe kế đã đứt. Hãy mắc ampe kế NỐI TIẾP.',
+    });
+  });
+
+  return out;
+}
+
 export function checkCircuit(parts: PlacedPart[], wires: Wire[], rxTrue: number): CheckReport {
   const sim = simulate(parts, wires, rxTrue);
   const msgs: CheckMessage[] = [];
   const faulty: string[] = [];
+
+  const meters = meterFaults(parts, wires, rxTrue, sim);
+  const faultOf = (id: string) => meters.find((m) => m.compId === id)?.fault ?? null;
 
   const by = (e: ElecKind) => sim.branches.filter((b) => b.elec === e);
   const sources = by('source');
   /* Vật dẫn cần đo: điện trở mẫu, hoặc biến trở khi học sinh dùng biến trở làm Rx */
   const LOAD_KINDS: PartKind[] = ['resistor', 'rheostat'];
   const isLoad = (k: PartKind) => LOAD_KINDS.includes(k);
-  const resistors = sim.branches.filter((b) => isLoad(b.kind));
+  /* Điện trở mẫu đứng trước biến trở: bài thực hành đo điện trở lấy Rx làm vật
+     cần đo, còn biến trở chỉ để hạn dòng. Xếp bừa theo thứ tự đặt lên bàn thì
+     hễ biến trở đứng trước là mọi phép so dòng và so áp đều so vào sai linh kiện. */
+  const resistors = [
+    ...sim.branches.filter((b) => b.kind === 'resistor'),
+    ...sim.branches.filter((b) => isLoad(b.kind) && b.kind !== 'resistor'),
+  ];
   const isVoltMode = (id: string) => {
     const p = parts.find((x) => x.id === id);
     if (!p) return false;
@@ -554,6 +714,7 @@ export function checkCircuit(parts: PlacedPart[], wires: Wire[], rxTrue: number)
       safeToPower: false,
       ammeterReading: null,
       voltmeterReading: null,
+      meters,
     };
   }
 
@@ -594,26 +755,40 @@ export function checkCircuit(parts: PlacedPart[], wires: Wire[], rxTrue: number)
   });
 
   const rx = resistors[0];
-  const am = ammeters[0];
-  const vm = voltmeters[0];
+  /* Lấy dụng cụ mắc đúng để đọc số; mắc sai thì nêu ra ở phần báo lỗi bên dưới */
+  const am = ammeters.find((b) => faultOf(b.compId) === null) ?? ammeters[0];
+  const vm = voltmeters.find((b) => faultOf(b.compId) === null) ?? voltmeters[0];
   const sw = switches[0];
   const src = sources[0];
 
+  /* Mắc sai kiểu: lỗi nặng, nêu trước mọi lời nhắc khác */
+  meters.filter((m) => m.fault).forEach((m) => {
+    msgs.push({ level: 'err', text: m.reason });
+    faulty.push(m.compId);
+  });
+
   const srcCurrent = src ? Math.abs(src.I) : 0;
-  const ammeterReading = am ? Math.abs(am.I) : null;
-  const voltmeterReading = vm ? Math.abs(vm.V) : null;
+  /*
+   * Dụng cụ mắc sai kiểu thì KHÔNG trả về số đọc.
+   *
+   * Đây là chỗ hổng nặng nhất của bản trước: phần soát mạch có báo lỗi hẳn ra
+   * màn hình, nhưng số đọc vẫn được trả về nên mặt đồng hồ vẫn hiện một con số
+   * nhìn rất hợp lí — vôn kế mắc nối tiếp hiện ngay 12V, học sinh chép vào bảng
+   * số liệu là xong. Báo lỗi mà vẫn đưa số liệu thì chẳng khác nào không báo.
+   */
+  const ammeterReading = am && faultOf(am.compId) === null ? Math.abs(am.I) : null;
+  const voltmeterReading = vm && faultOf(vm.compId) === null ? Math.abs(vm.V) : null;
 
   /* Nguy hiểm: đoản mạch nguồn */
   if (src && srcCurrent > 2.5) {
     faulty.push(src.compId);
     if (am && Math.abs(am.I) > 2.5) faulty.push(am.compId);
     msgs.push({ level: 'err', text: `Đoản mạch! Dòng qua nguồn đạt ${srcCurrent.toFixed(1)}A — vượt xa mức an toàn 2,5A. Tháo ngay dây nối tắt hai cực nguồn.` });
-    if (am && rx && Math.abs(am.I) > Math.abs(rx.I) * 5) {
-      msgs.push({ level: 'err', text: 'Ampe kế đang mắc SONG SONG với điện trở. Điện trở trong của ampe kế ≈ 0 nên dòng dồn hết qua đồng hồ, sẽ nổ cầu chì.' });
-    }
+    /* Câu nhắc "ampe kế mắc song song" trước đây đặt ở đây đã bỏ: giờ meterFaults
+       kết luận việc đó bằng tô-pô và nêu ra ở trên, kể cả khi dòng chưa vượt ngưỡng. */
     return {
       level: 'err', title: 'CẤM ĐÓNG ĐIỆN — MẠCH NGUY HIỂM', messages: msgs, faultyIds: faulty,
-      safeToPower: false, ammeterReading, voltmeterReading,
+      safeToPower: false, ammeterReading, voltmeterReading, meters,
     };
   }
 
@@ -622,27 +797,30 @@ export function checkCircuit(parts: PlacedPart[], wires: Wire[], rxTrue: number)
     msgs.push({ level: 'warn', text: 'Khóa K đang mở nên chưa có dòng điện. Kiểm tra xong hãy đóng khóa để đo.' });
   }
 
-  if (rx && am) {
+  /*
+   * Hai phép kiểm dưới đây chỉ xét ĐÚNG ĐOẠN MẠCH ĐANG ĐO, không xét kiểu mắc
+   * nữa — kiểu mắc đã do meterFaults kết luận bằng tô-pô. Ở đây mắc đúng kiểu
+   * rồi nhưng có thể vẫn chưa bắc vào Rx: ampe kế nằm trên một nhánh khác, hay
+   * vôn kế đo hai cực nguồn thay vì hai đầu Rx. Số đọc lúc đó vẫn là một giá
+   * trị thật của mạch, chỉ là không phải số liệu bài yêu cầu, nên chỉ nhắc chứ
+   * không chặn.
+   */
+  if (rx && am && faultOf(am.compId) === null) {
     const ir = Math.abs(rx.I);
     const ia = Math.abs(am.I);
     if (ia > 1e-6 && ir > 1e-6 && Math.abs(ia - ir) / Math.max(ia, ir) > 0.05) {
       faulty.push(am.compId);
-      msgs.push({ level: 'err', text: 'Ampe kế không nằm nối tiếp trên mạch chính: dòng qua đồng hồ khác dòng qua Rx. Hãy mắc ampe kế nối tiếp với Rx.' });
+      msgs.push({ level: 'err', text: 'Ampe kế đang nằm trên một nhánh khác: dòng qua đồng hồ không bằng dòng qua Rx. Hãy mắc ampe kế nối tiếp ngay với Rx.' });
     } else if (ia > 1e-6) {
       msgs.push({ level: 'ok', text: 'Ampe kế mắc nối tiếp đúng quy tắc, dòng vào chốt (+).' });
     }
   }
 
-  if (rx && vm) {
+  if (rx && vm && faultOf(vm.compId) === null) {
     const dv = Math.abs(Math.abs(vm.V) - Math.abs(rx.V));
-    const iv = Math.abs(vm.I);
-    const ir = Math.abs(rx.I);
-    if (ir > 1e-7 && iv / ir > 0.02) {
+    if (dv > 0.05) {
       faulty.push(vm.compId);
-      msgs.push({ level: 'err', text: 'Vôn kế đang mắc NỐI TIẾP trong mạch chính. Điện trở vôn kế cỡ mêga-ôm sẽ chặn dòng qua Rx — hãy mắc song song hai đầu Rx.' });
-    } else if (dv > 0.05) {
-      faulty.push(vm.compId);
-      msgs.push({ level: 'err', text: 'Vôn kế chưa mắc song song đúng hai đầu điện trở Rx. Số chỉ hiện tại không phải hiệu điện thế trên Rx.' });
+      msgs.push({ level: 'err', text: 'Vôn kế mắc song song đúng kiểu nhưng chưa bắc vào hai đầu điện trở Rx. Số chỉ hiện tại là hiệu điện thế của đoạn mạch khác, không phải U trên Rx.' });
     } else if (Math.abs(vm.V) > 1e-3) {
       msgs.push({ level: 'ok', text: 'Vôn kế mắc song song đúng hai đầu Rx.' });
     }
@@ -670,7 +848,7 @@ export function checkCircuit(parts: PlacedPart[], wires: Wire[], rxTrue: number)
     msgs.unshift({ level: 'ok', text: 'Sơ đồ đấu nối khớp với mạch chuẩn đo điện trở bằng vôn kế – ampe kế.' });
     return {
       level: 'ok', title: 'Mạch đúng chuẩn và an toàn', messages: msgs, faultyIds: [],
-      safeToPower: true, ammeterReading, voltmeterReading,
+      safeToPower: true, ammeterReading, voltmeterReading, meters,
     };
   }
 
@@ -682,5 +860,6 @@ export function checkCircuit(parts: PlacedPart[], wires: Wire[], rxTrue: number)
     safeToPower: false,
     ammeterReading,
     voltmeterReading,
+    meters,
   };
 }

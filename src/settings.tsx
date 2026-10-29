@@ -48,6 +48,7 @@ const DICT = {
   'nav.theory': ['ModuDoc', 'ModuDoc'],
   'nav.theory.lesson': ['Lý thuyết ôn tập', 'Lesson notes'],
   'nav.theory.tools': ['Khám phá dụng cụ', 'Explore instruments'],
+  'nav.theory.lessons': ['Bài giảng tự do', 'Teacher lessons'],
   'nav.quiz': ['ModuStart', 'ModuStart'],
   'nav.quiz.drill': ['Ôn tập nhanh', 'Quick drill'],
   'nav.quest': ['Trò chơi phiêu lưu', 'Adventure game'],
