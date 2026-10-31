@@ -357,28 +357,6 @@ function Workspace() {
                       </h3>
                       <MyLessons key={`bg-${classTick}`} />
                     </section>
-                  </>
-                )}
-              </div>
-            )}
-
-            {currentStep === 'quiz' && (
-              <div className="h-full overflow-y-auto pr-1 ml-scroll space-y-4">
-                {/* Bài tập giáo viên giao — chỉ hiện cho học sinh đã đăng nhập */}
-                {!isGuestMode && viewer.role === 'hs' && (
-                  <>
-                    {/* Vào lớp trước đã — chưa có lớp thì chưa nhận được bài nào */}
-                    <section>
-                      <h3 className="mb-2 text-[clamp(14px,0.98vw,16.5px)] font-bold text-slate-900">
-                        Lớp của em
-                      </h3>
-                      <JoinClass compact onJoined={(c) => {
-                        setCurrentUser((prev) => (prev
-                          ? { ...prev, classCode: c.classCode, teamCode: c.groupName, seatNo: c.seatNo }
-                          : prev));
-                        setClassTick((n) => n + 1);
-                      }} />
-                    </section>
                     <section>
                       <h3 className="mb-2 text-[clamp(14px,0.98vw,16.5px)] font-bold text-slate-900">
                         Bài tập được giao
@@ -387,6 +365,14 @@ function Workspace() {
                     </section>
                   </>
                 )}
+              </div>
+            )}
+
+            {/* ModuStart chỉ còn trò chơi ôn tập. Phần vào lớp và phần bài tập
+                được giao đã dồn hết sang ModuDoc → Bài giảng tự do, để mọi thứ
+                thuộc về lớp nằm chung một chỗ. */}
+            {currentStep === 'quiz' && (
+              <div className="h-full overflow-y-auto pr-1 ml-scroll space-y-4">
                 <QuizGame
                 userRole={viewer.role}
                 extraQuestions={data.questions}

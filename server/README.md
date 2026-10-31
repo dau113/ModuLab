@@ -6,12 +6,39 @@ Backend viết bằng Node thuần: `node:http` cho API và `node:sqlite` cho c�
 ## Chạy lần đầu
 
 ```bash
-npm run db:seed     # tạo tệp server/data/modulab.db và nạp dữ liệu khởi tạo
+npm run db:seed     # tạo tệp server/data/modulab.db và nạp NỘI DUNG khởi tạo
 npm run server      # chạy API ở http://localhost:8787
 npm run dev         # ở cửa sổ dòng lệnh khác — giao diện gọi /api qua proxy của Vite
 ```
 
 `npm run db:reset` xoá sạch rồi nạp lại từ đầu.
+
+### Dữ liệu bắt đầu từ 0 (từ V1.79)
+
+`db:seed` chỉ nạp **nội dung**: bài thực hành, thư viện dụng cụ, ngân hàng câu
+hỏi. Không có lớp, không có học sinh, mọi thống kê bằng 0. Lớp do giáo viên tự
+tạo, học sinh tự đăng kí rồi nhập mã vào lớp.
+
+Trước đó `db:seed` dựng sẵn lớp "11A2 - Chuyên Lý THPT" với tám học sinh, kèm
+điểm, báo cáo và thống kê lỗi bịa ra, nên vừa mở bảng quản lý đã thấy "8/8 HS",
+"12 HS sai"… Số liệu trông như thật mà chẳng của ai cả: thầy cô mới dùng không
+biết đâu là lớp mình, còn đem đi báo cáo thì thành số liệu khống.
+
+Cần dữ liệu trình diễn để quay video hay chụp ảnh cho bài báo cáo:
+
+```bash
+npm run db:demo              # thêm lớp trình diễn vào
+npm run db:demo -- --clear   # xoá đúng lớp đó, KHÔNG đụng lớp thật
+```
+
+Cơ sở dữ liệu đã chạy từ bản cũ mà còn lớp trình diễn thì chạy lệnh `--clear`
+một lần là sạch, không phải xoá cả cơ sở dữ liệu.
+
+> Khi không còn lớp nào, `teacherStats` trả về bảng **rỗng** chứ không trả
+> `null`. Giao diện chờ có số liệu mới vẽ bảng quản lý, trả `null` thì nó đứng
+> mãi ở dòng "Đang nạp số liệu lớp…" — mà chỗ tạo lớp đầu tiên lại nằm trong
+> chính bảng ấy, nên giáo viên mới đăng kí sẽ tắc hoàn toàn. Trước V1.79 không
+> ai gặp vì lúc nào cũng có sẵn lớp trình diễn để trả về.
 
 ## Các tệp
 
@@ -19,7 +46,8 @@ npm run dev         # ở cửa sổ dòng lệnh khác — giao diện gọi /a
 |---|---|
 | `schema.sql` | Toàn bộ lược đồ: 14 bảng và 1 khung nhìn tổng hợp |
 | `db.mjs` | Mở cơ sở dữ liệu, áp lược đồ, các hàm truy vấn theo nghiệp vụ |
-| `seed.mjs` | Nạp dữ liệu khởi tạo, đọc thẳng từ `src/data/mockData.ts` |
+| `seed.mjs` | Nạp NỘI DUNG khởi tạo, đọc thẳng từ `src/data/mockData.ts` |
+| `seed-demo.mjs` | Lớp trình diễn — nạp và xoá riêng, không dính vào `seed.mjs` |
 | `index.mjs` | Định tuyến API |
 | `data/modulab.db` | Tệp cơ sở dữ liệu (không đưa lên kho mã nguồn) |
 

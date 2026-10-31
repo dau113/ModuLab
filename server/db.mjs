@@ -44,7 +44,15 @@ export const tx = (fn) => {
   }
 };
 
-export const isEmpty = () => get('SELECT COUNT(*) AS n FROM users').n === 0;
+/**
+ * Cơ sở dữ liệu đã nạp nội dung chưa.
+ *
+ * Xét bảng bài thực hành chứ không xét bảng người dùng. Từ V1.79 bước nạp
+ * không còn dựng lớp và học sinh trình diễn nữa, nên đếm người dùng thì cơ sở
+ * dữ liệu nào cũng ra 0 và lần khởi động nào cũng nạp lại — mà nạp lại lên một
+ * cơ sở dữ liệu đã có bài thực hành là vi phạm khoá chính, hỏng cả lượt chạy.
+ */
+export const isEmpty = () => get('SELECT COUNT(*) AS n FROM lab_modules').n === 0;
 
 export const logActivity = (userId, action, detail) =>
   run('INSERT INTO activity_logs (user_id, action, detail) VALUES (?, ?, ?)',
@@ -235,11 +243,32 @@ export const getCircuit = (id) => {
 };
 
 /** Số liệu tổng hợp cho Bảng quản lý — tính trực tiếp từ dữ liệu thật */
+/** Bảng thống kê rỗng: giáo viên chưa có lớp nào thì mọi số đều là 0 */
+const THONG_KE_RONG = {
+  classCode: '',
+  className: '',
+  totalStudents: 0,
+  totalTeams: 0,
+  quizCompleted: 0,
+  reportsSubmitted: 0,
+  errorStats: [],
+  studentList: [],
+};
+
 export const teacherStats = (classCode) => {
   const cls = classCode
     ? get('SELECT * FROM classes WHERE code = ?', classCode)
     : get('SELECT * FROM classes ORDER BY created_at LIMIT 1');
-  if (!cls) return null;
+  /*
+   * Chưa có lớp thì trả về bảng RỖNG, đừng trả null.
+   *
+   * Giao diện chờ có số liệu mới vẽ bảng quản lý, null thì nó đứng mãi ở dòng
+   * "Đang nạp số liệu lớp…". Trước V1.79 không ai gặp vì bước nạp luôn dựng
+   * sẵn một lớp trình diễn nên lúc nào cũng có lớp để trả về. Bỏ lớp ấy đi thì
+   * lộ ra: giáo viên mới đăng kí không bao giờ vào được bảng quản lý, mà chỗ
+   * tạo lớp đầu tiên lại nằm trong chính bảng ấy — tắc hoàn toàn.
+   */
+  if (!cls) return { ...THONG_KE_RONG, classCode: classCode ?? '' };
 
   const students = all(`SELECT user_id AS id, name, team, quiz_score, report_status
                         FROM v_student_progress WHERE class_id = ? ORDER BY team, name`, cls.id);

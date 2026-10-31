@@ -1,7 +1,7 @@
 {
   "name": "react-example",
   "private": true,
-  "version": "1.78.0",
+  "version": "1.79.0",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
@@ -12,7 +12,8 @@
     "db:seed": "node --experimental-sqlite --experimental-strip-types server/seed.mjs",
     "db:reset": "node --experimental-sqlite --experimental-strip-types server/seed.mjs --reset",
     "start": "npm run db:seed && npm run server",
-    "dev:account": "node --experimental-sqlite server/dev-account.mjs"
+    "dev:account": "node --experimental-sqlite server/dev-account.mjs",
+    "db:demo": "node --experimental-sqlite --experimental-strip-types server/seed-demo.mjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",

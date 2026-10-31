@@ -131,8 +131,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ stats, modul
       </BentoCard>
 
       {/* Lớp và nhóm — nơi sinh ra mã để phát cho học sinh */}
-      <BentoCard className="md:col-span-6" title="LỚP HỌC & NHÓM THỰC HÀNH"
-        subtitle="Tạo lớp, chia nhóm, rồi phát mã cho học sinh tự vào">
+      <BentoCard className="md:col-span-6" title="LỚP HỌC & NHÓM THỰC HÀNH">
         <div className="mt-2">
           <ClassManager onChanged={onChanged} />
         </div>
@@ -140,8 +139,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ stats, modul
 
       {/* Giao bài tập — ghi thẳng vào cơ sở dữ liệu, học sinh thấy ngay.
           Để chiếm trọn bề ngang vì bên trong có bảng theo dõi từng học sinh. */}
-      <BentoCard className="md:col-span-6" title="QUẢN LÝ GIAO BÀI TẬP"
-        subtitle="Bài giao ở đây hiện ngay trong mục bài tập của học sinh">
+      <BentoCard className="md:col-span-6" title="QUẢN LÝ GIAO BÀI TẬP">
         <div className="mt-2">
           <AssignmentManager modules={modules} onChanged={onChanged} />
         </div>

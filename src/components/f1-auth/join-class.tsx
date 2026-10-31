@@ -148,15 +148,6 @@ export const JoinClass: React.FC<Props> = ({ onJoined, compact }) => {
         </div>
       </form>
 
-      <p className="mt-2 text-[clamp(12px,0.82vw,14px)] text-slate-500 flex items-start gap-1.5">
-        <Users className="w-3.5 h-3.5 shrink-0 mt-0.5 text-slate-400" />
-        <span>
-          Mã có dạng <span className="font-mono font-semibold text-slate-700">1204N2</span> —
-          lớp 1204, nhóm 2. Nếu em không làm bài theo nhóm thì dùng mã kết thúc bằng
-          <span className="font-mono font-semibold text-slate-700"> N0</span>.
-        </span>
-      </p>
-
       {error && (
         <div role="alert" className="mt-2.5 flex items-start gap-2 rounded-xl border border-rose-200
           bg-rose-50 px-3 py-2.5 text-[clamp(12.5px,0.86vw,15px)] text-rose-800">

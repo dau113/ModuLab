@@ -1,17 +1,23 @@
 /**
- * Nạp dữ liệu khởi tạo vào cơ sở dữ liệu.
- * Nguồn dữ liệu lấy thẳng từ src/data/mockData.ts nên không phải chép tay lần hai.
+ * Nạp NỘI DUNG khởi tạo vào cơ sở dữ liệu: bài thực hành, thư viện dụng cụ và
+ * ngân hàng câu hỏi. Nguồn lấy thẳng từ src/data/mockData.ts nên không phải
+ * chép tay lần hai.
  *
  *   npm run db:seed          — chỉ nạp khi cơ sở dữ liệu còn trống
  *   npm run db:reset         — xoá sạch rồi nạp lại
+ *
+ * TỪ V1.79 BƯỚC NÀY KHÔNG DỰNG DỮ LIỆU TRÌNH DIỄN NỮA. Trước đây nó tạo sẵn
+ * lớp "11A2 - Chuyên Lý THPT" với tám học sinh, kèm lượt chơi, báo cáo và
+ * thống kê lỗi bịa ra, nên vừa mở bảng quản lý đã thấy "8/8 HS", "12 HS sai"…
+ * Số liệu ấy trông như thật mà chẳng của ai cả: thầy cô mới dùng không phân
+ * biệt được đâu là lớp mình, còn đem đi báo cáo thì thành số liệu khống.
+ *
+ * Nay mọi thống kê bắt đầu từ 0. Lớp và học sinh do chính giáo viên tạo và học
+ * sinh tự đăng kí. Muốn có lại dữ liệu trình diễn để quay video hay chụp ảnh
+ * thì chạy `npm run db:demo`.
  */
 import { db, run, tx, isEmpty, DB_PATH } from './db.mjs';
-import { hashPassword } from './auth.mjs';
-import { doanMaTuTen } from './classes.mjs';
-import {
-  INITIAL_USERS, LAB_MODULES, EXPLORE_TOOLS, QUIZ_QUESTIONS,
-  INITIAL_REPORT_ROWS, TEACHER_CLASS_STATS,
-} from '../src/data/mockData.ts';
+import { LAB_MODULES, EXPLORE_TOOLS, QUIZ_QUESTIONS } from '../src/data/mockData.ts';
 
 const RESET = process.argv.includes('--reset');
 
@@ -34,68 +40,14 @@ if (RESET) {
   process.exit(0);
 }
 
-const slug = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-  .replace(/đ/gi, 'd').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-
 tx(() => {
-  /* ---------- Lớp học và nhóm ---------- */
-  const stats = TEACHER_CLASS_STATS;
-  const classId = `class-${slug(stats.classCode)}`;
-  /* Mã vào lớp đoán từ tên lớp: "11A2-VL" cho ra "1102" */
-  const maVaoLop = doanMaTuTen(stats.classCode) ?? '1102';
-  run('INSERT INTO classes (id, code, name, join_code) VALUES (?, ?, ?, ?)',
-    classId, stats.classCode, stats.className, maVaoLop);
-
-  /* Nhóm 0 — làm riêng lẻ. Lớp nào cũng phải có. */
-  run(`INSERT INTO teams (id, class_id, code, group_no, name)
-       VALUES (?, ?, 'N0', 0, 'Làm riêng lẻ')`, `team-${slug(stats.classCode)}-n0`, classId);
-
-  const teamCodes = new Set();
-  INITIAL_USERS.forEach((u) => u.teamCode && teamCodes.add(u.teamCode));
-  stats.studentList.forEach((s) => s.team && teamCodes.add(s.team));
-  const teamId = {};
-  [...teamCodes].forEach((code, i) => {
-    const id = `team-${slug(code)}`;
-    teamId[code] = id;
-    /* Số nhóm rút từ tên nếu có ("Nhóm 3 - Bàn 5" → 3), không thì đánh số tiếp */
-    const m = String(code).match(/(\d+)/);
-    const so = m && Number(m[1]) > 0 ? Number(m[1]) : i + 1;
-    run('INSERT INTO teams (id, class_id, code, group_no, name) VALUES (?, ?, ?, ?, ?)',
-      id, classId, `N${so}`, so, code);
-  });
-
-  /* ---------- Người dùng ----------
-     Mọi tài khoản mẫu dùng chung một mật khẩu để còn thử được ngay. Đây là dữ
-     liệu trình diễn, nên lớp thật phải để học sinh tự đăng kí lấy mật khẩu
-     riêng chứ đừng nạp bằng lệnh này. */
-  const MK_MAU = process.env.MODULAB_SEED_PASSWORD || 'modulab123';
-  const bam = hashPassword(MK_MAU);
-
-  INITIAL_USERS.forEach((u) => {
-    run(`INSERT INTO users (id, name, email, role, class_id, team_id, password_hash)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      u.id, u.name, u.email, u.role, classId, u.teamCode ? teamId[u.teamCode] : null, bam);
-  });
-  const teacher = INITIAL_USERS.find((u) => u.role === 'gv');
-  if (teacher) run('UPDATE classes SET teacher_id = ? WHERE id = ?', teacher.id, classId);
-
-  /* Danh sách học sinh trong bảng quản lý — bỏ qua người đã có ở trên */
-  const existingNames = new Set(INITIAL_USERS.map((u) => u.name));
-  stats.studentList.forEach((s) => {
-    if (existingNames.has(s.name)) return;
-    run(`INSERT INTO users (id, name, email, role, class_id, team_id, password_hash)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      s.id, s.name, `${slug(s.name)}@thpt.edu.vn`, 'hs', classId,
-      s.team ? teamId[s.team] : null, bam);
-  });
-
   /* ---------- Bài thực hành ---------- */
   LAB_MODULES.forEach((m, i) => {
     run(`INSERT INTO lab_modules (id, title, description, theory_content, max_error, status, owner_id, sort_order)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       m.id, m.title, m.description ?? '', m.theoryContent ?? '',
       m.maxErrorThreshold ?? 0.10,
-      m.status ?? 'da_duyet', teacher?.id ?? null, i);
+      m.status ?? 'da_duyet', null, i);
   });
   const mainModule = LAB_MODULES[0]?.id ?? null;
 
@@ -116,58 +68,16 @@ tx(() => {
   QUIZ_QUESTIONS.forEach((q, i) => {
     run(`INSERT INTO quiz_questions (id, module_id, question, explanation, time_limit, created_by, sort_order)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      q.id, mainModule, q.question, q.explanation ?? '', q.timeLimit ?? 30, teacher?.id ?? null, i);
+      q.id, mainModule, q.question, q.explanation ?? '', q.timeLimit ?? 30, null, i);
     q.options.forEach((o, j) => {
       run('INSERT INTO quiz_options (id, question_id, content, is_correct, sort_order) VALUES (?, ?, ?, ?, ?)',
         o.id, q.id, o.text, o.isCorrect ? 1 : 0, j);
     });
   });
-
-  /* ---------- Lượt chơi mẫu để bảng quản lý có số liệu ---------- */
-  const total = QUIZ_QUESTIONS.length;
-  stats.studentList.forEach((s) => {
-    const uid = existingNames.has(s.name)
-      ? INITIAL_USERS.find((u) => u.name === s.name).id
-      : s.id;
-    /* quizScore trong dữ liệu mẫu là điểm thang 10, đổi ra số câu đúng rồi mới
-       suy ra điểm trò chơi (mỗi câu đúng 10 điểm, bỏ qua phần thưởng). */
-    const dung = Math.round(((s.quizScore ?? 0) / 10) * total);
-    run(`INSERT INTO quiz_attempts (user_id, module_id, score, correct, total, finished_at)
-         VALUES (?, ?, ?, ?, ?, datetime('now'))`,
-      uid, mainModule, dung * 10, dung, total);
-    if (s.reportStatus === 'Đạt') {
-      run(`INSERT INTO lab_reports (user_id, module_id, status, submitted_at)
-           VALUES (?, ?, 'da_nop', datetime('now'))`, uid, mainModule);
-    }
-  });
-
-  /* ---------- Bảng số liệu mẫu cho học sinh đầu tiên ---------- */
-  const firstStudent = INITIAL_USERS.find((u) => u.role === 'hs');
-  if (firstStudent && mainModule) {
-    let report = db.prepare('SELECT id FROM lab_reports WHERE user_id = ? AND module_id = ?')
-      .get(firstStudent.id, mainModule);
-    if (!report) {
-      run('INSERT INTO lab_reports (user_id, module_id) VALUES (?, ?)', firstStudent.id, mainModule);
-      report = db.prepare('SELECT id FROM lab_reports WHERE user_id = ? AND module_id = ?')
-        .get(firstStudent.id, mainModule);
-    }
-    INITIAL_REPORT_ROWS.forEach((r) => {
-      run(`INSERT INTO report_rows (report_id, idx, u_value, u_unit, i_value, i_unit, r_calc)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        report.id, r.id, r.u, r.uUnit, r.i, r.iUnit, r.rCalc);
-    });
-  }
-
-  /* ---------- Thống kê lỗi thường gặp ---------- */
-  stats.errorStats.forEach((e) => {
-    run('INSERT INTO error_stats (class_id, label, wrong_count) VALUES (?, ?, ?)',
-      classId, e.question, e.wrongCount);
-  });
 });
 
 const count = (t) => db.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get().n;
-console.log(`✓ Đã nạp dữ liệu vào ${DB_PATH}`);
-console.log(`  lớp ${count('classes')} · nhóm ${count('teams')} · người dùng ${count('users')}`);
+console.log(`✓ Đã nạp nội dung vào ${DB_PATH}`);
 console.log(`  bài thực hành ${count('lab_modules')} · dụng cụ ${count('tools')} (chế độ đo ${count('tool_modes')})`);
-console.log(`  câu hỏi ${count('quiz_questions')} (phương án ${count('quiz_options')}) · lượt chơi ${count('quiz_attempts')}`);
-console.log(`  báo cáo ${count('lab_reports')} · dòng số liệu ${count('report_rows')} · thống kê lỗi ${count('error_stats')}`);
+console.log(`  câu hỏi ${count('quiz_questions')} · phương án ${count('quiz_options')}`);
+console.log(`  lớp ${count('classes')} · người dùng ${count('users')} — bắt đầu từ 0, giáo viên tự tạo lớp`);
