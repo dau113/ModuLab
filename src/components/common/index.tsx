@@ -249,7 +249,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     label: string;
     icon: React.ReactNode;
     roleOnly?: UserRole;
-    children?: { id: LabStep; label: string; icon: React.ReactNode }[];
+    /* `hideFor` ở mục con: giáo viên soạn bài giảng trong ModuManage nên
+       mục "Bài giảng tự do" trong ModuDoc chỉ dành cho học sinh. */
+    children?: { id: LabStep; label: string; icon: React.ReactNode; hideFor?: UserRole[] }[];
   }[] = [
     {
       id: 'quiz',
@@ -271,7 +273,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { id: 'tools', label: t('nav.theory.tools'), icon: <Wrench className="w-3.5 h-3.5" /> },
         /* Bài giảng do chính thầy cô của lớp soạn — cũng là tài liệu học nên
            nằm chung nhóm ModuDoc, chứ không tách thành một mục riêng. */
-        { id: 'lessons', label: t('nav.theory.lessons'), icon: <NotebookPen className="w-3.5 h-3.5" /> },
+        { id: 'lessons', label: t('nav.theory.lessons'), icon: <NotebookPen className="w-3.5 h-3.5" />,
+          hideFor: ['gv', 'dev'] },
       ],
     },
     { id: 'teacher', label: t('nav.teacher'), icon: <Users className="w-4 h-4" />, roleOnly: 'gv' },
@@ -300,7 +303,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <nav className="flex flex-col gap-1">
           {steps.map((s) => {
             if (s.roleOnly && s.roleOnly !== userRole) return null;
-            const childIds = s.children?.map((c) => c.id) ?? [];
+            const con = (s.children ?? []).filter((c) => !c.hideFor?.includes(userRole));
+            const childIds = con.map((c) => c.id);
             const isActive = s.children
               ? childIds.includes(currentStep as LabStep)
               : currentStep === s.id;
@@ -308,7 +312,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             return (
               <div key={s.id}>
                 <div
-                  onClick={() => onSelectStep(s.children ? s.children[0].id : s.id)}
+                  onClick={() => onSelectStep(con.length ? con[0].id : s.id)}
                   className={`flex items-center justify-between px-3 py-2.5 rounded-xl font-medium text-sm cursor-pointer transition-all select-none ${
                     isActive
                       ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200 font-bold'
@@ -327,9 +331,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </div>
 
                 {/* Các mục nhỏ của phần ModuDoc, chỉ hiện khi đang ở phần này */}
-                {s.children && isActive && (
+                {con.length > 0 && isActive && (
                   <div className="mt-1 ml-4 pl-3 border-l-2 border-indigo-100 flex flex-col gap-0.5">
-                    {s.children.map((c) => {
+                    {con.map((c) => {
                       const childActive = currentStep === c.id;
                       return (
                         <div

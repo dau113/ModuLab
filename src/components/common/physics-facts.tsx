@@ -6,7 +6,7 @@
  * môn mình đang học thì thời gian đó không phí.
  *
  * Mỗi câu đều là một con số hoặc một sự việc kiểm chứng được, không phải lời
- * động viên chung chung — vì đây là phần mềm cho giờ Vật lí.
+ * động viên chung chung — vì đây là phần mềm cho giờ Vật Lí.
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { Lightbulb } from 'lucide-react';

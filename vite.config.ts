@@ -12,10 +12,9 @@ export default defineConfig(() => {
       },
     },
     server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
+      // Đặt DISABLE_HMR=true để tắt nạp nóng và tắt luôn việc theo dõi tệp,
+      // đỡ tốn CPU khi sửa mã hàng loạt bằng công cụ tự động.
       hmr: process.env.DISABLE_HMR !== 'true',
-      // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
       // Chuyển tiếp mọi lời gọi /api sang máy chủ dữ liệu chạy ở cổng 8787
       proxy: {

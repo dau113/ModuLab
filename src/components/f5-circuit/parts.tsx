@@ -1,5 +1,5 @@
 /**
- * Bộ linh kiện 2D vẽ lại theo ảnh chụp bộ dụng cụ thí nghiệm Vật lí THPT.
+ * Bộ linh kiện 2D vẽ lại theo ảnh chụp bộ dụng cụ thí nghiệm Vật Lí THPT.
  * Toàn bộ module dùng chung kiểu dáng: đế nhựa xanh ngọc, chốt cắm đỏ (+) / đen (−).
  */
 import React from 'react';

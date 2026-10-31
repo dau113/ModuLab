@@ -45,9 +45,9 @@ $$I = \\frac{U}{R} \\implies R = \\frac{U}{I}$$
 > * Chỉ đóng điện khi đã kiểm tra và đảm bảo các chốt dương (+) của dụng cụ đo nối về phía cực dương của nguồn.`,
     videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
     maxErrorThreshold: 0.10, // 10%
-    verifiedBy: 'ModuLab Teacher — GV Vật lí',
+    verifiedBy: 'ModuLab Teacher — GV Vật Lí',
     verifiedDate: '20/07/2026',
-    referenceSource: 'SGK Vật lí 11 (Chương trình GDPT 2018) - Bộ Kết nối tri thức',
+    referenceSource: 'SGK Vật Lí 11 (Chương trình GDPT 2018) - Bộ Kết nối tri thức',
     status: 'da_duyet',
   },
   {
@@ -71,7 +71,7 @@ Trong đoạn mạch gồm hai điện trở mắc song song:
     maxErrorThreshold: 0.12,
     verifiedBy: 'Cô Lê Mai — Tổ trưởng chuyên môn',
     verifiedDate: '22/07/2026',
-    referenceSource: 'SGK Vật lí 11 - Bài 23: Điện trở. Định luật Ôm',
+    referenceSource: 'SGK Vật Lí 11 - Bài 23: Điện trở. Định luật Ôm',
     status: 'da_duyet',
   },
 ];

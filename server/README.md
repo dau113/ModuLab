@@ -240,9 +240,17 @@ sẵn. Một bài giảng là một dãy **khối** xếp theo thứ tự:
 Bài mới luôn ở trạng thái **nháp**, học sinh chưa thấy. Bấm "Giao cho lớp" thì
 mới hiện ra.
 
-Từ V1.76 phần này nằm ở **ModuDoc → Bài giảng tự do** cho cả hai vai: giáo viên
-soạn, học sinh làm. Trước đó phần soạn nằm trong ModuManage còn phần làm nằm
-trong ModuStart.
+Chỗ đặt (chốt lại ở V1.80):
+
+| Vai | Soạn / làm bài ở đâu |
+| --- | --- |
+| Giáo viên | **ModuManage** — cùng trang với lớp học, nhóm và giao bài tập |
+| Học sinh | **ModuDoc → Bài giảng tự do** — cùng chỗ với tài liệu ôn tập |
+
+Mục "Bài giảng tự do" trong ModuDoc **ẩn khỏi thanh bên của giáo viên**, vì ở
+đó không còn gì cho họ. Ai không phải học sinh mà đang đứng ở mục ấy thì được
+đưa về mục lý thuyết — thanh bên đã ẩn mục này nên họ không có đường bấm quay
+lại, để nguyên là trơ ra một trang trống.
 
 ### Trắc nghiệm theo ảnh đề (từ V1.76)
 

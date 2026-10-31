@@ -17,7 +17,6 @@ import { SignIn } from './components/f1-auth/sign-in';
 import { DeveloperConsole } from './components/f8-dev';
 import { MyAssignments } from './components/f2-quiz/my-assignments';
 import { MyLessons } from './components/f2-quiz/lesson-view';
-import { LessonManager } from './components/f7-teacher/lessons';
 import { JoinClass } from './components/f1-auth/join-class';
 import { QuizGame } from './components/f2-quiz';
 import { PhysicsQuest } from './components/f2-quiz/quest';
@@ -84,6 +83,15 @@ function Workspace() {
   }, []);
 
   useEffect(() => { void loadAll(); }, [loadAll]);
+
+  /* Mục "Bài giảng tự do" trong ModuDoc chỉ dành cho học sinh — giáo viên soạn
+     bài ở ModuManage. Ai đang đứng ở đó mà không phải học sinh thì đưa về mục
+     lý thuyết: thanh bên đã ẩn mục này nên họ không có đường bấm quay lại. */
+  useEffect(() => {
+    if (currentStep === 'lessons' && currentUser && currentUser.role !== 'hs') {
+      setCurrentStep('theory');
+    }
+  }, [currentStep, currentUser]);
 
   /* Máy chủ báo mã phiên hết hiệu lực thì đưa người dùng về màn đăng nhập ngay,
      thay vì để họ bấm mãi mà không hiểu vì sao chẳng có gì xảy ra. */
@@ -332,9 +340,7 @@ function Workspace() {
             */}
             {currentStep === 'lessons' && (
               <div className="h-full overflow-y-auto pr-1 ml-scroll space-y-4">
-                {viewer.role === 'gv' || viewer.role === 'dev' ? (
-                  <LessonManager classId={viewer.classId ?? null} onChanged={() => setClassTick((n) => n + 1)} />
-                ) : isGuestMode ? (
+                {isGuestMode ? (
                   <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-500">
                     Phần này dành cho tài khoản đã đăng nhập — bài giảng do thầy cô của lớp em soạn.
                   </p>

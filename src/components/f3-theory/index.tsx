@@ -343,8 +343,8 @@ const ParallelFigure: React.FC = () => (
 const LESSONS = [
   { id: 'ohm', label: 'Điện trở & Định luật Ohm', sub: 'KHTN 9 — Bài 11' },
   { id: 'mach', label: 'Đoạn mạch nối tiếp, song song', sub: 'KHTN 9 — Bài 12' },
-  { id: 'cddd', label: 'Cường độ dòng điện', sub: 'Vật lí 11 — Bài 22' },
-  { id: 'nguon', label: 'Mạch điện & nguồn điện', sub: 'Vật lí 11' },
+  { id: 'cddd', label: 'Cường độ dòng điện', sub: 'Vật Lí 11 — Bài 22' },
+  { id: 'nguon', label: 'Mạch điện & nguồn điện', sub: 'Vật Lí 11' },
 ] as const;
 
 type LessonId = typeof LESSONS[number]['id'];

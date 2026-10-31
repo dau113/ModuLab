@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { TeacherClassStats, LabModule } from '../../types';
 import { AssignmentManager } from './assignments';
 import { ClassManager } from './classes';
+import { LessonManager } from './lessons';
 import { BentoCard, WarningBadge } from '../common';
 import { 
   Users, 
@@ -22,12 +23,10 @@ interface TeacherDashboardProps {
   /** Gọi khi có bài tập mới hoặc điểm vừa đổi, để màn hình cha nạp lại số liệu lớp */
   onChanged?: () => void;
   /** Lớp đang mở của giáo viên */
-  /* classId không còn dùng ở đây từ khi phần soạn bài chuyển sang ModuDoc.
-     Giữ lại trong kiểu để App.tsx truyền vào vẫn hợp lệ. */
   classId?: string | null;
 }
 
-export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ stats, modules, onChanged }) => {
+export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ stats, modules, onChanged, classId }) => {
   const [isExporting, setIsExporting] = useState<boolean>(false);
 
   /**
@@ -134,6 +133,15 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ stats, modul
       <BentoCard className="md:col-span-6" title="LỚP HỌC & NHÓM THỰC HÀNH">
         <div className="mt-2">
           <ClassManager onChanged={onChanged} />
+        </div>
+      </BentoCard>
+
+      {/* Soạn bài giảng tự do. Nằm ở đây cùng với lớp và bài tập — tất cả việc
+          của giáo viên gom về một trang. Phía học sinh vẫn đọc bài giảng ở
+          ModuDoc, và mục đó được ẩn khỏi thanh bên của giáo viên. */}
+      <BentoCard className="md:col-span-6" title="BÀI GIẢNG TỰ DO">
+        <div className="mt-2">
+          <LessonManager classId={classId} onChanged={onChanged} />
         </div>
       </BentoCard>
 

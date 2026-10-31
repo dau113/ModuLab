@@ -179,7 +179,7 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({ currentUser, signInPanel, on
       <section className="relative overflow-hidden lg:min-h-[max(600px,86vh)]">
         <img
           src={HERO_BG}
-          alt="Một tiết thực hành Vật lí điện học tại phòng thí nghiệm của trường"
+          alt="Một tiết thực hành Vật Lí điện học tại phòng thí nghiệm của trường"
           className="absolute inset-0 w-full h-full object-cover"
         />
         <div className="absolute inset-0" style={{ backgroundImage: OVERLAY_SIDE }} />
@@ -205,8 +205,8 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({ currentUser, signInPanel, on
             {/* Cột chữ — nguyên văn tiêu đề của bản 1.51 */}
             <div className="pt-4 lg:pt-0">
               <h1 className="text-[clamp(26px,3vw,38px)] font-bold leading-[1.15] tracking-tight text-white">
-                {/* Dấu cách không ngắt (\u00A0) giữ "Vật lí" không bị tách đôi khi xuống dòng */}
-                “ModuLab” — Trợ lí số giờ thực hành vật lí cấp trung học phổ thông
+                {/* Dấu cách không ngắt (\u00A0) giữ "Vật Lí" không bị tách đôi khi xuống dòng */}
+                “ModuLab” — Trợ lí số giờ thực hành Vật Lí cấp trung học phổ thông
               </h1>
 
               {/*
@@ -380,10 +380,10 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({ currentUser, signInPanel, on
         <div className="max-w-4xl mx-auto space-y-2">
           <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-500 max-w-2xl leading-relaxed">
             Sản phẩm hướng theo chủ trương của Chính phủ và Bộ Giáo dục và Đào tạo về dạy học phát
-            triển năng lực, trong đó có yêu cầu tăng cường thực hành và thí nghiệm ở môn Vật lí.
+            triển năng lực, trong đó có yêu cầu tăng cường thực hành và thí nghiệm ở môn Vật Lí.
           </p>
           <p className="text-[clamp(13px,0.9vw,15.5px)] text-slate-400">
-            ModuLab v{APP_VERSION} · Phòng thực hành Vật lí điện học
+            ModuLab v{APP_VERSION} · Phòng thực hành Vật Lí điện học
           </p>
         </div>
       </footer>

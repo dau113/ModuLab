@@ -1317,7 +1317,7 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
 
                   <text x={b.x + BOARD_W / 2} y={b.y + BOARD_H - 20} textAnchor="middle"
                     fontSize={13} fontWeight={700} fill="#DBE6FF" letterSpacing={2.4}>
-                    BẢNG LẮP RÁP MẠCH ĐIỆN MÔN VẬT LÝ
+                    BẢNG LẮP RÁP MẠCH ĐIỆN MÔN VẬT LÍ
                   </text>
 
                   {/* Nút gỡ bảng, hiện khi đang chọn */}
