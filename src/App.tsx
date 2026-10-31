@@ -379,15 +379,6 @@ function Workspace() {
                         setClassTick((n) => n + 1);
                       }} />
                     </section>
-                    {/* Bài giảng tự do đã chuyển sang ModuDoc; để lại một dòng
-                        chỉ đường cho em nào quen tìm ở đây. */}
-                    <button type="button" onClick={() => setCurrentStep('lessons')}
-                      className="w-full text-left px-3.5 py-2.5 rounded-xl border border-slate-200
-                        bg-white text-[clamp(12.5px,0.86vw,15px)] text-slate-600
-                        hover:border-indigo-400 hover:text-indigo-700 transition-colors">
-                      Bài giảng của thầy cô nay nằm ở <strong className="font-semibold">ModuDoc →
-                      Bài giảng tự do</strong>. Bấm vào đây để mở.
-                    </button>
                     <section>
                       <h3 className="mb-2 text-[clamp(14px,0.98vw,16.5px)] font-bold text-slate-900">
                         Bài tập được giao

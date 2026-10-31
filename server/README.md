@@ -214,7 +214,7 @@ mới hiện ra.
 
 Từ V1.76 phần này nằm ở **ModuDoc → Bài giảng tự do** cho cả hai vai: giáo viên
 soạn, học sinh làm. Trước đó phần soạn nằm trong ModuManage còn phần làm nằm
-trong ModuStart. ModuManage và ModuStart đều còn một dòng chỉ đường sang đây.
+trong ModuStart.
 
 ### Trắc nghiệm theo ảnh đề (từ V1.76)
 
@@ -230,6 +230,30 @@ chứ không báo lỗi — người dùng có làm gì sai đâu.
 
 Khối này không đòi gõ câu hỏi (đề đã nằm trong ảnh), nhưng lúc giao bài thì
 phải có đủ **ảnh đề** và **đáp án**.
+
+#### Một ảnh, nhiều câu
+
+Giáo viên hay chụp nguyên một trang phiếu bài tập có năm bảy câu trong đó. Bắt
+cắt ảnh ra từng câu rồi tải lên từng cái một thì mất công hơn là gõ tay, nên
+một khối ảnh đề giữ được **tối đa 30 câu**: bấm "Thêm câu trong ảnh này" rồi
+chọn đáp án cho từng câu. Học sinh thấy mỗi câu một hàng chữ cái, đánh số theo
+đúng số câu trong ảnh.
+
+Danh sách đáp án nằm luôn trong cột `answer_key`, các chữ cái ngăn bằng dấu
+phẩy — `"C,A,,D"` là bốn câu, câu thứ ba chưa chọn. Ô trống chính là cách ghi
+"đã thêm câu nhưng chưa chọn", nhờ vậy số câu suy ra được từ chính chuỗi ấy,
+không phải đẻ thêm cột chỉ để đếm. Khối một câu vẫn ghi đúng một chữ cái nên
+dữ liệu cũ đọc lên vẫn đúng và **không cần di trú**.
+
+Học sinh không nhận `answerKey`, nên máy chủ gửi kèm `subCount` — các em phải
+biết trong ảnh có mấy câu để vẽ đủ chừng ấy hàng, mà số câu thì chỉ có trong
+chuỗi đáp án.
+
+**Chấm theo tỉ lệ:** `points` là điểm của CẢ KHỐI, chia đều cho các câu trong
+ảnh. Đúng bốn trên năm câu thì được bốn phần năm số điểm, chứ không mất trắng
+vì sai một câu. Lúc giao bài, nếu còn câu chưa chọn đáp án thì máy chủ nêu đích
+danh — "Khối 1 chưa chọn đáp án cho câu 2, 4" — vì ảnh chứa cả chục câu mà chỉ
+báo chung chung thì giáo viên phải dò lại từng câu một.
 
 > Lược đồ: thêm loại khối mới phải sửa cả ràng buộc `CHECK` trong `schema.sql`
 > **và** bước dựng lại bảng trong `migrate.mjs`. Với cơ sở dữ liệu đã có thì

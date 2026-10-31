@@ -39,6 +39,14 @@ const LOAI_KHOI: { kind: BlockKind; text: string; Icon: typeof Type }[] = [
 /** Khối ảnh đề: đề nằm trong ảnh nên không có chữ câu hỏi lẫn chữ phương án */
 const LA_ANH_DE = (k: BlockKind) => k === 'mcqimg';
 
+/**
+ * Tách danh sách đáp án của khối ảnh đề: `"C,A,,D"` thành `['C','A','','D']`.
+ * Ô trống là câu đã thêm nhưng chưa chọn đáp án. Phải khớp với `tachDapAn`
+ * bên máy chủ — hai bên cùng đọc đúng một chuỗi.
+ */
+const tachDapAn = (s: string | null | undefined): string[] =>
+  String(s ?? '').split(',').map((x) => x.trim().toUpperCase());
+
 const TRANG_THAI: Record<string, { text: string; cls: string; Icon: typeof Clock }> = {
   chua_lam: { text: 'Chưa làm', cls: 'bg-slate-100 text-slate-500', Icon: CircleDashed },
   dang_lam: { text: 'Đang làm', cls: 'bg-amber-100 text-amber-800', Icon: Clock },
@@ -247,38 +255,90 @@ const BlockEditor: React.FC<{
           </div>
         )}
 
-        {b.kind === 'mcqimg' && (
-          <div>
-            <span className={label}>Đáp án đúng — bấm đúng chữ cái ghi trong đề</span>
-            <div className="flex flex-wrap items-center gap-2">
-              {(b.options ?? []).map((o) => {
-                const chon = b.answerKey === o.id;
-                return (
-                  <button key={o.id} type="button" aria-pressed={chon}
-                    aria-label={`Đáp án đúng là ${o.id}`}
-                    onClick={() => { doi({ answerKey: o.id }); onSave({ answerKey: o.id }); }}
-                    className={`w-11 h-11 rounded-xl border-2 font-extrabold
-                      text-[clamp(15px,1vw,18px)] transition-colors ${chon
-                        ? 'border-emerald-600 bg-emerald-50 text-emerald-700'
-                        : 'border-slate-300 bg-white text-slate-600 hover:border-indigo-400'}`}>
-                    {o.id}
-                  </button>
-                );
-              })}
-              <label className="ml-1 flex items-center gap-2 text-[clamp(12px,0.82vw,14px)] text-slate-600">
-                Số phương án
-                <select className={`${field} w-16 px-2`} value={(b.options ?? []).length || 4}
-                  onChange={(e) => onSave({ choiceCount: Number(e.target.value) })}>
-                  {[2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}
-                </select>
-              </label>
+        {b.kind === 'mcqimg' && (() => {
+          const dap = tachDapAn(b.answerKey);
+          const nhieu = dap.length > 1;
+          const luu = (ds: string[]) => {
+            const s = ds.join(',');
+            doi({ answerKey: s });
+            onSave({ answerKey: s, subCount: ds.length });
+          };
+          return (
+            <div>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mb-1.5">
+                <span className={`${label} mb-0`}>
+                  {nhieu ? 'Đáp án từng câu trong ảnh' : 'Đáp án đúng — bấm đúng chữ cái ghi trong đề'}
+                </span>
+                <label className="flex items-center gap-2 text-[clamp(12px,0.82vw,14px)] text-slate-600">
+                  Số phương án mỗi câu
+                  <select className={`${field} w-16 px-2`} value={(b.options ?? []).length || 4}
+                    onChange={(e) => onSave({ choiceCount: Number(e.target.value) })}>
+                    {[2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                </label>
+              </div>
+
+              <div className="space-y-1.5">
+                {dap.map((chon, i) => (
+                  <div key={i} className="flex flex-wrap items-center gap-2">
+                    {nhieu && (
+                      <span className="w-14 shrink-0 font-semibold text-slate-500
+                        text-[clamp(12px,0.82vw,14px)]">Câu {i + 1}</span>
+                    )}
+                    {(b.options ?? []).map((o) => {
+                      const dangChon = chon === o.id;
+                      return (
+                        <button key={o.id} type="button" aria-pressed={dangChon}
+                          aria-label={nhieu
+                            ? `Câu ${i + 1}: đáp án đúng là ${o.id}`
+                            : `Đáp án đúng là ${o.id}`}
+                          onClick={() => {
+                            const ds = [...dap];
+                            /* Bấm lại đúng chữ đang chọn thì bỏ chọn — chọn nhầm
+                               mà không gỡ ra được thì chỉ còn cách xoá cả câu. */
+                            ds[i] = dangChon ? '' : o.id;
+                            luu(ds);
+                          }}
+                          className={`w-11 h-11 rounded-xl border-2 font-extrabold
+                            text-[clamp(15px,1vw,18px)] transition-colors ${dangChon
+                              ? 'border-emerald-600 bg-emerald-50 text-emerald-700'
+                              : 'border-slate-300 bg-white text-slate-600 hover:border-indigo-400'}`}>
+                          {o.id}
+                        </button>
+                      );
+                    })}
+                    {nhieu && (
+                      <button type="button" aria-label={`Xoá câu ${i + 1}`}
+                        onClick={() => luu(dap.filter((_, k) => k !== i))}
+                        className="h-9 w-9 shrink-0 inline-flex items-center justify-center rounded-lg
+                          border border-slate-200 text-slate-400 hover:text-rose-600
+                          hover:border-rose-300 transition-colors">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <button type="button" onClick={() => luu([...dap, ''])}
+                disabled={dap.length >= 30}
+                className="mt-2 h-8 px-2.5 inline-flex items-center gap-1.5 rounded-lg border
+                  border-dashed border-slate-300 text-slate-600 text-[clamp(12px,0.82vw,14px)]
+                  hover:border-indigo-400 hover:text-indigo-700 disabled:opacity-40 transition-colors">
+                <Plus className="w-3.5 h-3.5" /> Thêm câu trong ảnh này
+              </button>
+
+              <p className="mt-1.5 text-[clamp(11.5px,0.78vw,13.5px)] text-slate-500">
+                Thầy cô không phải gõ lại đề hay các phương án — học sinh đọc đề trong ảnh rồi
+                bấm chọn chữ cái. Máy chấm hẳn đúng sai theo chữ cái này.
+                {nhieu
+                  ? ` Ảnh này có ${dap.length} câu; điểm ghi bên dưới là điểm của cả khối,
+                      chia đều cho từng câu.`
+                  : ' Một ảnh chứa nhiều câu thì bấm "Thêm câu trong ảnh này".'}
+              </p>
             </div>
-            <p className="mt-1.5 text-[clamp(11.5px,0.78vw,13.5px)] text-slate-500">
-              Thầy cô không phải gõ lại đề hay bốn phương án — học sinh đọc đề trong ảnh rồi
-              bấm chọn chữ cái. Máy chấm hẳn đúng sai theo chữ cái này.
-            </p>
-          </div>
-        )}
+          );
+        })()}
 
         {b.kind === 'short' && (
           <div>
@@ -297,7 +357,9 @@ const BlockEditor: React.FC<{
 
         {laHoi && (
           <div className="w-28">
-            <label className={label} htmlFor={`p-${b.id}`}>Điểm</label>
+            <label className={label} htmlFor={`p-${b.id}`}>
+              {b.kind === 'mcqimg' && tachDapAn(b.answerKey).length > 1 ? 'Điểm cả khối' : 'Điểm'}
+            </label>
             <input id={`p-${b.id}`} type="number" min="0.5" max="100" step="0.5" className={field}
               value={b.points} onChange={(e) => doi({ points: Number(e.target.value) })}
               onBlur={() => onSave({ points: b.points })} />

@@ -38,10 +38,36 @@ export const laCauHoi = (kind) => LOAI_CAU_HOI.includes(kind);
  */
 const CHU_CAI = ['A', 'B', 'C', 'D', 'E', 'F'];
 const SO_PA_MAC_DINH = 4;
+const SO_CAU_TOI_DA = 30;
 
 const dungPhuongAn = (soLuong) => {
   const n = Math.max(2, Math.min(CHU_CAI.length, Number(soLuong) || SO_PA_MAC_DINH));
   return CHU_CAI.slice(0, n).map((c) => ({ id: c, text: c }));
+};
+
+/**
+ * MỘT ảnh đề có thể chứa NHIỀU câu trắc nghiệm.
+ *
+ * Giáo viên hay chụp nguyên một trang phiếu bài tập với năm bảy câu trong đó.
+ * Bắt cắt ảnh ra từng câu rồi tải lên từng cái một thì mất công hơn là gõ tay.
+ * Nên một khối ảnh đề giữ một danh sách đáp án, mỗi câu trong ảnh một ô.
+ *
+ * Danh sách ấy nằm luôn trong cột `answer_key`, các chữ cái ngăn bằng dấu phẩy:
+ * `"C,A,,D"` là bốn câu, trong đó câu thứ ba chưa chọn đáp án. Ô trống chính là
+ * cách ghi "đã thêm câu nhưng chưa chọn" — nhờ vậy số câu suy ra được từ chính
+ * chuỗi này, không phải đẻ thêm cột mới chỉ để đếm. Khối một câu vẫn ghi đúng
+ * một chữ cái như cũ nên dữ liệu cũ đọc lên vẫn đúng.
+ */
+export const tachDapAn = (s) => String(s ?? '').split(',').map((x) => x.trim().toUpperCase());
+const ghepDapAn = (ds) => ds.join(',');
+const soCauCua = (answerKey) => Math.max(1, tachDapAn(answerKey).length);
+
+/** Cắt hoặc nối thêm ô trống cho đúng số câu, và bỏ chữ cái không còn hợp lệ */
+const chuanDapAn = (cu, { soCau, chuHopLe }) => {
+  const ds = tachDapAn(cu);
+  const n = Math.max(1, Math.min(SO_CAU_TOI_DA, Number(soCau) || ds.length || 1));
+  const ra = Array.from({ length: n }, (_, i) => ds[i] ?? '');
+  return ghepDapAn(chuHopLe ? ra.map((x) => (chuHopLe.includes(x) ? x : '')) : ra);
 };
 
 /* ------------------------------------------------------------------ */
@@ -59,6 +85,10 @@ const doiKhoi = (r) => ({
   options: r.options ? safeJson(r.options) : null,
   answerKey: r.answer_key,
   points: r.points,
+  /* Số câu trong ảnh đề. Tính ra ở đây chứ không để trình duyệt tự đếm, vì
+     học sinh không được nhận `answerKey` — mà vẫn phải biết trong ảnh có mấy
+     câu để vẽ đủ chừng ấy hàng chữ cái. */
+  subCount: r.kind === 'mcqimg' ? soCauCua(r.answer_key) : undefined,
 });
 
 const safeJson = (s) => {
@@ -204,7 +234,14 @@ export const xoaBai = (teacher, lessonId) => {
 const kiemKhoi = (kind, p) => {
   if (!LOAI_KHOI.includes(kind)) fail('Loại khối nội dung không hợp lệ.');
 
-  if (Array.isArray(p.options) && p.options.length) {
+  /* Khối ảnh đề có đáp án dạng danh sách "C,A,,D" nên không đem so với danh
+     sách phương án như khối trắc nghiệm thường — phần chuẩn hoá bên dưới đã lo
+     việc bỏ chữ cái không hợp lệ rồi. */
+  if (kind === 'mcqimg') {
+    if (soCauCua(p.answerKey) > SO_CAU_TOI_DA) {
+      fail(`Một ảnh đề nhận tối đa ${SO_CAU_TOI_DA} câu. Nhiều hơn thì tách thành khối khác.`);
+    }
+  } else if (Array.isArray(p.options) && p.options.length) {
     const ids = p.options.map((o) => String(o?.id ?? '').trim());
     if (ids.some((x) => !x)) fail('Phương án nào cũng phải có mã.');
     if (new Set(ids).size !== ids.length) fail('Các phương án bị trùng mã.');
@@ -245,8 +282,13 @@ const kiemDeGiao = (lessonId) => {
       thieu.push(`${o} chưa có câu hỏi`);
     }
     if (b.kind === 'mcqimg') {
+      const dap = tachDapAn(b.answerKey);
+      /* Nêu ĐÍCH DANH câu nào còn trống. Ảnh chứa cả chục câu mà chỉ báo
+         "chưa chọn đáp án" thì giáo viên phải dò lại từng câu một. */
+      const trong = dap.map((x, k) => (x ? null : k + 1)).filter(Boolean);
       if (!b.uploadId) thieu.push(`${o} chưa tải ảnh đề lên`);
-      else if (!String(b.answerKey ?? '').trim()) thieu.push(`${o} chưa chọn đáp án đúng`);
+      else if (trong.length === dap.length) thieu.push(`${o} chưa chọn đáp án đúng`);
+      else if (trong.length) thieu.push(`${o} chưa chọn đáp án cho câu ${trong.join(', ')}`);
     }
     if (b.kind === 'mcq') {
       const opts = Array.isArray(b.options) ? b.options : [];
@@ -268,14 +310,21 @@ export const themKhoi = (teacher, lessonId, p) => tx(() => {
 
   const ke = (get('SELECT MAX(sort_order) AS m FROM lesson_blocks WHERE lesson_id = ?', lessonId).m ?? -1) + 1;
   const id = `kh-${randomUUID().slice(0, 8)}`;
-  const opts = p.kind === 'mcqimg' ? dungPhuongAn(p.choiceCount) : p.options;
+  let opts = p.options;
+  let dapAn = p.answerKey ?? null;
+  if (p.kind === 'mcqimg') {
+    opts = dungPhuongAn(p.choiceCount);
+    dapAn = chuanDapAn(p.answerKey, {
+      soCau: p.subCount, chuHopLe: opts.map((o) => o.id),
+    });
+  }
   run(`INSERT INTO lesson_blocks
          (id, lesson_id, kind, sort_order, title, body, upload_id, link_url, options, answer_key, points)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     id, lessonId, p.kind, ke, String(p.title ?? '').trim(), String(p.body ?? '').trim(),
     p.uploadId ?? null, String(p.linkUrl ?? '').trim() || null,
     opts ? JSON.stringify(opts) : null,
-    p.answerKey ?? null, laCauHoi(p.kind) ? Number(p.points) || 1 : 0);
+    dapAn, laCauHoi(p.kind) ? Number(p.points) || 1 : 0);
   return chiTietBai(lessonId, { kemDapAn: true });
 });
 
@@ -298,13 +347,16 @@ export const suaKhoi = (teacher, lessonId, blockId, p) => tx(() => {
 
   if (cu.kind === 'mcqimg') {
     /* Phương án của khối ảnh đề luôn do máy chủ dựng, kể cả khi trình duyệt gửi
-       lên danh sách khác. Đổi từ bốn phương án xuống ba mà đáp án cũ là D thì bỏ
-       luôn đáp án cho giáo viên chọn lại — báo lỗi "đáp án không có trong danh
-       sách" ở đây chỉ làm người dùng bí, vì họ có làm gì sai đâu. */
+       lên danh sách khác. Đổi từ bốn phương án xuống ba mà có câu đang chọn D
+       thì bỏ riêng chữ cái ấy cho giáo viên chọn lại — báo lỗi "đáp án không có
+       trong danh sách" ở đây chỉ làm người dùng bí, vì họ có làm gì sai đâu. */
     gop.options = dungPhuongAn(
       p.choiceCount !== undefined ? p.choiceCount : (safeJson(cu.options)?.length ?? SO_PA_MAC_DINH),
     );
-    if (!gop.options.some((o) => o.id === gop.answerKey)) gop.answerKey = null;
+    gop.answerKey = chuanDapAn(gop.answerKey, {
+      soCau: p.subCount !== undefined ? p.subCount : soCauCua(gop.answerKey),
+      chuHopLe: gop.options.map((o) => o.id),
+    });
   }
 
   kiemKhoi(cu.kind, gop);
@@ -397,7 +449,20 @@ const chuanHoa = (s) => String(s ?? '')
  * đúng mà máy không biết, nên phải để giáo viên xem.
  */
 export const chamMotCau = (block, answer) => {
-  if (block.kind === 'mcq' || block.kind === 'mcqimg') {
+  if (block.kind === 'mcqimg') {
+    /*
+     * Một khối có thể gánh nhiều câu nên phải chấm từng câu rồi cho điểm theo
+     * tỉ lệ: `points` là điểm của CẢ KHỐI, chia đều cho các câu trong ảnh. Đúng
+     * bốn trên năm câu thì được bốn phần năm số điểm, chứ không mất trắng vì
+     * sai một câu.
+     */
+    const dap = tachDapAn(block.answerKey);
+    const tra = tachDapAn(answer);
+    const dung = dap.reduce((s, x, i) => s + (x && tra[i] === x ? 1 : 0), 0);
+    const diem = Math.round(((Number(block.points) || 0) * dung / dap.length) * 100) / 100;
+    return { isCorrect: dung === dap.length ? 1 : 0, points: diem };
+  }
+  if (block.kind === 'mcq') {
     const dung = String(answer ?? '') === String(block.answerKey ?? '');
     return { isCorrect: dung ? 1 : 0, points: dung ? Number(block.points) || 0 : 0 };
   }

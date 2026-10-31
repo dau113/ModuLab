@@ -138,17 +138,6 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ stats, modul
         </div>
       </BentoCard>
 
-      {/* Soạn bài giảng đã chuyển sang ModuDoc — để lại một dòng chỉ đường,
-          vì trước đây thẻ soạn bài nằm ngay ở trang này. */}
-      <BentoCard className="md:col-span-6" title="BÀI GIẢNG TỰ DO"
-        subtitle="Phần soạn bài nay nằm trong ModuDoc">
-        <p className="mt-2 text-[clamp(12.5px,0.86vw,15px)] text-slate-600">
-          Mở <strong className="font-semibold text-slate-800">ModuDoc → Bài giảng tự do</strong> ở
-          thanh bên trái để soạn và giao bài. Ở đó có đủ sáu loại nội dung, thêm trắc nghiệm
-          theo ảnh đề, và bảng theo dõi từng học sinh đã nộp hay chưa.
-        </p>
-      </BentoCard>
-
       {/* Giao bài tập — ghi thẳng vào cơ sở dữ liệu, học sinh thấy ngay.
           Để chiếm trọn bề ngang vì bên trong có bảng theo dõi từng học sinh. */}
       <BentoCard className="md:col-span-6" title="QUẢN LÝ GIAO BÀI TẬP"

@@ -388,30 +388,28 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({ currentUser, signInPanel, on
         </div>
       </footer>
 
-      {/* Ảnh phóng to: chỗ duy nhất hiện đủ lời chú thích của từng ảnh */}
+      {/*
+        Ảnh phóng to: chỉ có ảnh, không kèm lời chú thích.
+        Lời chú thích vẫn giữ trong SLIDES để làm chữ thay thế cho thẻ ảnh —
+        người dùng trình đọc màn hình và trường hợp ảnh không tải được vẫn cần
+        biết ảnh chụp gì, chỉ là không in ra màn hình nữa.
+      */}
       {zoom !== null && (
         <div
           className="fixed inset-0 z-50 p-6 grid place-items-center"
           style={{ backgroundColor: 'rgba(2,6,23,0.92)' }}
           onClick={() => setZoom(null)}>
-          <div className="max-w-3xl w-full" onClick={(e) => e.stopPropagation()}>
+          <div className="relative max-w-3xl w-full" onClick={(e) => e.stopPropagation()}>
             <img src={SLIDES[zoom].src} alt={SLIDES[zoom].caption}
               className="w-full rounded-xl" />
-            <div className="mt-4 flex items-start gap-4">
-              <div className="min-w-0">
-                <p className="text-white text-[clamp(16px,1.2vw,19px)] font-semibold">
-                  {SLIDES[zoom].label}
-                </p>
-                <p className="mt-1 text-white/70 text-[clamp(13px,0.9vw,15.5px)] leading-relaxed">
-                  {SLIDES[zoom].caption}
-                </p>
-              </div>
-              <button onClick={() => setZoom(null)} aria-label="Đóng ảnh"
-                className="ml-auto h-9 w-9 shrink-0 grid place-items-center rounded-lg
-                  border border-white/30 text-white/80 hover:bg-white/15 transition-colors">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+            {/* Không còn khối chữ bên dưới nên nút đóng dời lên góc ảnh, kèm
+                nền mờ để còn thấy được khi góc ảnh sáng màu. */}
+            <button onClick={() => setZoom(null)} aria-label="Đóng ảnh"
+              className="absolute top-3 right-3 h-9 w-9 grid place-items-center rounded-lg
+                border border-white/30 text-white hover:bg-white/20 transition-colors"
+              style={{ backgroundColor: 'rgba(2,6,23,0.55)' }}>
+              <X className="w-4 h-4" />
+            </button>
           </div>
         </div>
       )}

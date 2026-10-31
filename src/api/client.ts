@@ -306,6 +306,14 @@ export interface LessonBlock {
    * rồi trả về trong `options`, nên không bao giờ đọc trường này từ máy chủ.
    */
   choiceCount?: number;
+  /**
+   * Số câu trắc nghiệm nằm trong MỘT ảnh đề.
+   *
+   * Máy chủ tính ra rồi gửi xuống; học sinh cần nó để vẽ đủ chừng ấy hàng chữ
+   * cái, vì các em không được nhận `answerKey` — thứ duy nhất ghi số câu.
+   * Gửi LÊN cùng `answerKey` khi giáo viên thêm hoặc bớt câu.
+   */
+  subCount?: number;
 }
 
 export interface Lesson {

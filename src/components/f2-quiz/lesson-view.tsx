@@ -30,6 +30,22 @@ const quaHan = (iso: string | null) => !!iso && Date.now() > Date.parse(iso);
 const LA_CAU_HOI = (b: LessonBlock) =>
   b.kind === 'mcq' || b.kind === 'mcqimg' || b.kind === 'short';
 
+/**
+ * Tách danh sách lựa chọn của khối ảnh đề: `"C,A,,D"` thành `['C','A','','D']`.
+ * Dùng cho cả đáp án của thầy cô lẫn bài làm của học sinh — hai bên cùng một
+ * cách ghi, ô trống nghĩa là câu ấy chưa chọn.
+ */
+const tachDapAn = (s: string | null | undefined): string[] =>
+  String(s ?? '').split(',').map((x) => x.trim().toUpperCase());
+
+/** Câu đã làm xong chưa — khối ảnh đề phải chọn đủ mọi câu trong ảnh */
+const daTraLoi = (b: LessonBlock, v: string) => {
+  if (b.kind !== 'mcqimg') return !!String(v ?? '').trim();
+  const ds = tachDapAn(v);
+  return Array.from({ length: Math.max(1, b.subCount ?? 1) }, (_, i) => ds[i] ?? '')
+    .every((x) => !!x);
+};
+
 const BADGE: Record<string, { text: string; cls: string; Icon: typeof Clock }> = {
   chua_lam: { text: 'Chưa làm', cls: 'bg-slate-100 text-slate-500', Icon: CircleDashed },
   dang_lam: { text: 'Đang làm', cls: 'bg-amber-100 text-amber-800', Icon: Clock },
@@ -82,9 +98,15 @@ const BlockView: React.FC<{
   const dung = result?.isCorrect === 1;
   const sai = result?.isCorrect === 0;
   const ngo = result && result.isCorrect === null;
+  /* Khối ảnh đề nhiều câu được chấm theo tỉ lệ. Đúng bốn trên năm câu mà viền
+     đỏ như sai cả khối thì nhìn nản, trong khi đúng/sai từng câu đã hiện rõ ở
+     từng hàng chữ cái rồi — nên để viền trung tính. */
+  const motPhan = b.kind === 'mcqimg' && (b.subCount ?? 1) > 1
+    && !!result && (result.points ?? 0) > 0 && !dung;
 
   return (
-    <div className={`${card} p-3.5 ${dung ? 'border-emerald-300' : sai ? 'border-rose-300' : ''}`}>
+    <div className={`${card} p-3.5 ${
+      motPhan ? 'border-amber-300' : dung ? 'border-emerald-300' : sai ? 'border-rose-300' : ''}`}>
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
           {/* Câu theo ảnh đề thường bỏ trống nhãn, vì đề đã nằm trong ảnh */}
@@ -150,24 +172,52 @@ const BlockView: React.FC<{
                 </p>
               )}
           </div>
-          <div className="flex md:flex-col flex-wrap gap-2 md:w-[4.5rem]">
-            {(b.options ?? []).map((o) => {
-              const chon = answer === o.id;
-              const laDapAn = b.answerKey !== null && b.answerKey === o.id;
+          {/*
+            Mỗi câu trong ảnh một HÀNG chữ cái, xếp dọc xuống. Một ảnh có thể
+            chứa cả chục câu nên không xếp theo cột được — mười câu nhân bốn
+            chữ cái mà xếp dọc thì dài hơn cả cái ảnh.
+          */}
+          <div className="flex flex-col gap-1.5">
+            {Array.from({ length: Math.max(1, b.subCount ?? 1) }, (_, i) => {
+              const daChon = tachDapAn(answer)[i] ?? '';
+              const dapAn = tachDapAn(b.answerKey)[i] ?? '';
+              const biet = !!dapAn;                 // chỉ có sau khi chấm
+              const saiCau = biet && daChon !== dapAn;
               return (
-                <button key={o.id} type="button" disabled={readOnly}
-                  aria-pressed={chon} aria-label={`Chọn phương án ${o.id}`}
-                  onClick={() => onChange(o.id)}
-                  className={`w-[4.5rem] h-12 rounded-xl border-2 font-extrabold
-                    text-[clamp(16px,1.1vw,19px)] transition-colors disabled:cursor-default ${
-                    laDapAn ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                      : chon && sai ? 'border-rose-500 bg-rose-50 text-rose-700'
-                        : chon ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                          : 'border-slate-300 bg-white text-slate-600 enabled:hover:border-indigo-400'}`}>
-                  {o.id}
-                  {laDapAn && <CheckCircle2 className="inline-block ml-1 w-4 h-4 align-[-2px]" />}
-                  {chon && sai && !laDapAn && <XCircle className="inline-block ml-1 w-4 h-4 align-[-2px]" />}
-                </button>
+                <div key={i} className="flex flex-wrap items-center gap-1.5">
+                  {(b.subCount ?? 1) > 1 && (
+                    <span className="w-12 shrink-0 font-semibold text-slate-500
+                      text-[clamp(12px,0.82vw,14px)]">Câu {i + 1}</span>
+                  )}
+                  {(b.options ?? []).map((o) => {
+                    const chon = daChon === o.id;
+                    const laDapAn = biet && dapAn === o.id;
+                    return (
+                      <button key={o.id} type="button" disabled={readOnly}
+                        aria-pressed={chon}
+                        aria-label={(b.subCount ?? 1) > 1
+                          ? `Câu ${i + 1}: chọn phương án ${o.id}`
+                          : `Chọn phương án ${o.id}`}
+                        onClick={() => {
+                          const ds = Array.from({ length: Math.max(1, b.subCount ?? 1) },
+                            (_, k) => tachDapAn(answer)[k] ?? '');
+                          ds[i] = chon ? '' : o.id;
+                          onChange(ds.join(','));
+                        }}
+                        className={`w-[3.4rem] h-11 rounded-xl border-2 font-extrabold
+                          text-[clamp(15px,1.05vw,18px)] transition-colors disabled:cursor-default ${
+                          laDapAn ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                            : chon && saiCau ? 'border-rose-500 bg-rose-50 text-rose-700'
+                              : chon ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                                : 'border-slate-300 bg-white text-slate-600 enabled:hover:border-indigo-400'}`}>
+                        {o.id}
+                        {laDapAn && <CheckCircle2 className="inline-block ml-1 w-3.5 h-3.5 align-[-2px]" />}
+                        {chon && saiCau && !laDapAn
+                          && <XCircle className="inline-block ml-1 w-3.5 h-3.5 align-[-2px]" />}
+                      </button>
+                    );
+                  })}
+                </div>
               );
             })}
           </div>
@@ -254,7 +304,7 @@ export const MyLessons: React.FC = () => {
     if (!openId || !view) return;
     const cau = (view.blocks ?? []).filter(LA_CAU_HOI);
     const soCau = cau.length;
-    const daLam = cau.filter((b) => String(answers[b.id] ?? '').trim()).length;
+    const daLam = cau.filter((b) => daTraLoi(b, answers[b.id] ?? '')).length;
     if (daLam < soCau
       && !window.confirm(`Em mới trả lời ${daLam}/${soCau} câu. Vẫn nộp chứ?`)) return;
 

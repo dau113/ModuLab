@@ -4,6 +4,7 @@ import { BentoCard } from '../common';
 import {
   BookOpen, Zap, Activity, CircuitBoard, ArrowRight, AlertTriangle, Power,
 } from 'lucide-react';
+import { SimOhm, SimMach, SimCddd, SimNguon } from './sims';
 
 interface TheoryViewProps {
   module: LabModule;
@@ -125,48 +126,48 @@ const LiveCircuitDiagram: React.FC = () => {
   return (
     <div>
       <svg viewBox="0 0 380 190" className="w-full max-w-xl mx-auto block">
-        <path d={LOOP} fill="none" stroke="#94A3B8" strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" />
+        <path d={LOOP} fill="none" stroke="var(--color-slate-400)" strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" />
         {closed && (
-          <path d={LOOP} fill="none" stroke="#F59E0B" strokeWidth={3.5} strokeLinecap="round"
+          <path d={LOOP} fill="none" stroke="var(--color-amber-500)" strokeWidth={3.5} strokeLinecap="round"
             strokeDasharray="6 26" className="ml-current" />
         )}
 
         <g>
-          <line x1={44} y1={95} x2={76} y2={95} stroke="#334155" strokeWidth={4} />
-          <line x1={52} y1={110} x2={68} y2={110} stroke="#334155" strokeWidth={2.5} />
-          <text x={34} y={92} textAnchor="end" fontSize={13} fontWeight={700} fill="#334155">+</text>
-          <text x={34} y={116} textAnchor="end" fontSize={15} fontWeight={700} fill="#334155">−</text>
-          <text x={60} y={140} textAnchor="middle" fontSize={11} fontWeight={700} fill="#64748B">Nguồn</text>
+          <line x1={44} y1={95} x2={76} y2={95} stroke="var(--color-slate-700)" strokeWidth={4} />
+          <line x1={52} y1={110} x2={68} y2={110} stroke="var(--color-slate-700)" strokeWidth={2.5} />
+          <text x={34} y={92} textAnchor="end" fontSize={13} fontWeight={700} fill="var(--color-slate-700)">+</text>
+          <text x={34} y={116} textAnchor="end" fontSize={15} fontWeight={700} fill="var(--color-slate-700)">−</text>
+          <text x={60} y={140} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--color-slate-500)">Nguồn</text>
         </g>
 
         <g>
-          <circle cx={132} cy={60} r={4} fill="#475569" />
-          <circle cx={168} cy={60} r={4} fill="#475569" />
-          <line x1={132} y1={60} x2={168} y2={60} stroke="#E2E8F0" strokeWidth={3} />
+          <circle cx={132} cy={60} r={4} fill="var(--color-slate-600)" />
+          <circle cx={168} cy={60} r={4} fill="var(--color-slate-600)" />
+          <line x1={132} y1={60} x2={168} y2={60} stroke="var(--color-slate-200)" strokeWidth={3} />
           <line x1={132} y1={60} x2={168} y2={closed ? 60 : 40}
-            stroke="#334155" strokeWidth={3.5} strokeLinecap="round"
+            stroke="var(--color-slate-700)" strokeWidth={3.5} strokeLinecap="round"
             style={{ transition: 'all 0.25s cubic-bezier(0.3,1.3,0.6,1)' }} />
           <text x={150} y={26} textAnchor="middle" fontSize={12} fontWeight={800}
-            fill={closed ? '#059669' : '#DC2626'}>K</text>
+            fill={closed ? 'var(--color-emerald-600)' : 'var(--color-rose-600)'}>K</text>
         </g>
 
         <g>
-          <circle cx={235} cy={60} r={15} fill="#FFFFFF" stroke="#0E7490" strokeWidth={2.5} />
-          <text x={235} y={65} textAnchor="middle" fontSize={13} fontWeight={800} fill="#0E7490">A</text>
+          <circle cx={235} cy={60} r={15} fill="var(--color-slate-50)" stroke="var(--color-cyan-700)" strokeWidth={2.5} />
+          <text x={235} y={65} textAnchor="middle" fontSize={13} fontWeight={800} fill="var(--color-cyan-700)">A</text>
         </g>
 
         <g>
-          <rect x={175} y={138} width={56} height={24} rx={4} fill="#FFFFFF" stroke="#7C3AED" strokeWidth={2.5} />
-          <text x={203} y={155} textAnchor="middle" fontSize={13} fontWeight={800} fill="#7C3AED">Rx</text>
+          <rect x={175} y={138} width={56} height={24} rx={4} fill="var(--color-slate-50)" stroke="var(--color-purple-600)" strokeWidth={2.5} />
+          <text x={203} y={155} textAnchor="middle" fontSize={13} fontWeight={800} fill="var(--color-purple-600)">Rx</text>
         </g>
 
         <g>
-          <line x1={175} y1={150} x2={175} y2={178} stroke="#94A3B8" strokeWidth={2.5} />
-          <line x1={231} y1={150} x2={231} y2={178} stroke="#94A3B8" strokeWidth={2.5} />
-          <line x1={175} y1={178} x2={188} y2={178} stroke="#94A3B8" strokeWidth={2.5} />
-          <line x1={218} y1={178} x2={231} y2={178} stroke="#94A3B8" strokeWidth={2.5} />
-          <circle cx={203} cy={178} r={14} fill="#FFFFFF" stroke="#1D4ED8" strokeWidth={2.5} />
-          <text x={203} y={183} textAnchor="middle" fontSize={13} fontWeight={800} fill="#1D4ED8">V</text>
+          <line x1={175} y1={150} x2={175} y2={178} stroke="var(--color-slate-400)" strokeWidth={2.5} />
+          <line x1={231} y1={150} x2={231} y2={178} stroke="var(--color-slate-400)" strokeWidth={2.5} />
+          <line x1={175} y1={178} x2={188} y2={178} stroke="var(--color-slate-400)" strokeWidth={2.5} />
+          <line x1={218} y1={178} x2={231} y2={178} stroke="var(--color-slate-400)" strokeWidth={2.5} />
+          <circle cx={203} cy={178} r={14} fill="var(--color-slate-50)" stroke="var(--color-blue-700)" strokeWidth={2.5} />
+          <text x={203} y={183} textAnchor="middle" fontSize={13} fontWeight={800} fill="var(--color-blue-700)">V</text>
         </g>
       </svg>
 
@@ -197,10 +198,10 @@ const LiveCircuitDiagram: React.FC = () => {
 /** Nguồn điện vẽ theo ký hiệu sách giáo khoa: vạch dài là cực dương */
 const Source: React.FC<{ x: number; y: number }> = ({ x, y }) => (
   <g>
-    <line x1={x - 14} y1={y} x2={x + 14} y2={y} stroke="#334155" strokeWidth={4} />
-    <line x1={x - 7} y1={y + 12} x2={x + 7} y2={y + 12} stroke="#334155" strokeWidth={2.4} />
-    <text x={x - 22} y={y + 3} textAnchor="end" fontSize={13} fontWeight={700} fill="#334155">+</text>
-    <text x={x - 22} y={y + 18} textAnchor="end" fontSize={15} fontWeight={700} fill="#334155">−</text>
+    <line x1={x - 14} y1={y} x2={x + 14} y2={y} stroke="var(--color-slate-700)" strokeWidth={4} />
+    <line x1={x - 7} y1={y + 12} x2={x + 7} y2={y + 12} stroke="var(--color-slate-700)" strokeWidth={2.4} />
+    <text x={x - 22} y={y + 3} textAnchor="end" fontSize={13} fontWeight={700} fill="var(--color-slate-700)">+</text>
+    <text x={x - 22} y={y + 18} textAnchor="end" fontSize={15} fontWeight={700} fill="var(--color-slate-700)">−</text>
   </g>
 );
 
@@ -208,22 +209,22 @@ const Source: React.FC<{ x: number; y: number }> = ({ x, y }) => (
 const ResBox: React.FC<{ x: number; y: number; label: string; w?: number }> = ({ x, y, label, w = 56 }) => (
   <g>
     <rect x={x - w / 2} y={y - 12} width={w} height={24} rx={4}
-      fill="#FFFFFF" stroke="#7C3AED" strokeWidth={2.5} />
-    <text x={x} y={y + 5} textAnchor="middle" fontSize={13} fontWeight={800} fill="#7C3AED">{label}</text>
+      fill="var(--color-slate-50)" stroke="var(--color-purple-600)" strokeWidth={2.5} />
+    <text x={x} y={y + 5} textAnchor="middle" fontSize={13} fontWeight={800} fill="var(--color-purple-600)">{label}</text>
   </g>
 );
 
 /** Khoá K: bấm để đóng hoặc ngắt mạch */
 const KeySwitch: React.FC<{ x: number; y: number; closed: boolean }> = ({ x, y, closed }) => (
   <g>
-    <circle cx={x - 18} cy={y} r={4} fill="#475569" />
-    <circle cx={x + 18} cy={y} r={4} fill="#475569" />
-    <line x1={x - 18} y1={y} x2={x + 18} y2={y} stroke="#E2E8F0" strokeWidth={3} />
+    <circle cx={x - 18} cy={y} r={4} fill="var(--color-slate-600)" />
+    <circle cx={x + 18} cy={y} r={4} fill="var(--color-slate-600)" />
+    <line x1={x - 18} y1={y} x2={x + 18} y2={y} stroke="var(--color-slate-200)" strokeWidth={3} />
     <line x1={x - 18} y1={y} x2={x + 18} y2={closed ? y : y - 20}
-      stroke="#334155" strokeWidth={3.5} strokeLinecap="round"
+      stroke="var(--color-slate-700)" strokeWidth={3.5} strokeLinecap="round"
       style={{ transition: 'all 0.25s cubic-bezier(0.3,1.3,0.6,1)' }} />
     <text x={x} y={y - 30} textAnchor="middle" fontSize={12} fontWeight={800}
-      fill={closed ? '#059669' : '#DC2626'}>K</text>
+      fill={closed ? 'var(--color-emerald-600)' : 'var(--color-rose-600)'}>K</text>
   </g>
 );
 
@@ -245,11 +246,11 @@ const CircuitFigure: React.FC<{
 
       <svg viewBox={viewBox} className="w-full max-w-lg mx-auto block">
         {paths.map((d, i) => (
-          <path key={`w${i}`} d={d} fill="none" stroke="#94A3B8" strokeWidth={3}
+          <path key={`w${i}`} d={d} fill="none" stroke="var(--color-slate-400)" strokeWidth={3}
             strokeLinejoin="round" strokeLinecap="round" />
         ))}
         {closed && paths.map((d, i) => (
-          <path key={`c${i}`} d={d} fill="none" stroke="#F59E0B" strokeWidth={3.5}
+          <path key={`c${i}`} d={d} fill="none" stroke="var(--color-amber-500)" strokeWidth={3.5}
             strokeLinecap="round" strokeDasharray="6 26" className="ml-current" />
         ))}
         {children(closed)}
@@ -284,11 +285,11 @@ const SeriesFigure: React.FC = () => (
     {(closed) => (
       <>
         <Source x={50} y={84} />
-        <text x={50} y={122} textAnchor="middle" fontSize={11} fontWeight={700} fill="#64748B">Nguồn</text>
+        <text x={50} y={122} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--color-slate-500)">Nguồn</text>
         <KeySwitch x={110} y={50} closed={closed} />
         <ResBox x={200} y={50} label="R₁" />
         <ResBox x={290} y={50} label="R₂" />
-        <text x={190} y={152} textAnchor="middle" fontSize={12} fontWeight={700} fill="#0F172A">
+        <text x={190} y={152} textAnchor="middle" fontSize={12} fontWeight={700} fill="var(--color-slate-900)">
           I = I₁ = I₂
         </text>
       </>
@@ -317,17 +318,17 @@ const ParallelFigure: React.FC = () => (
     {(closed) => (
       <>
         <Source x={50} y={100} />
-        <text x={50} y={138} textAnchor="middle" fontSize={11} fontWeight={700} fill="#64748B">Nguồn</text>
+        <text x={50} y={138} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--color-slate-500)">Nguồn</text>
         <KeySwitch x={110} y={50} closed={closed} />
         <ResBox x={245} y={50} label="R₁" />
         <ResBox x={245} y={110} label="R₂" />
         {/* điểm rẽ nhánh */}
-        <circle cx={190} cy={50} r={4} fill="#334155" />
-        <circle cx={300} cy={50} r={4} fill="#334155" />
-        <text x={190} y={186} textAnchor="middle" fontSize={12} fontWeight={700} fill="#0F172A">
+        <circle cx={190} cy={50} r={4} fill="var(--color-slate-700)" />
+        <circle cx={300} cy={50} r={4} fill="var(--color-slate-700)" />
+        <text x={190} y={186} textAnchor="middle" fontSize={12} fontWeight={700} fill="var(--color-slate-900)">
           I = I₁ + I₂
         </text>
-        <text x={330} y={186} textAnchor="end" fontSize={12} fontWeight={700} fill="#0F172A">
+        <text x={330} y={186} textAnchor="end" fontSize={12} fontWeight={700} fill="var(--color-slate-900)">
           U = U₁ = U₂
         </text>
       </>
@@ -424,6 +425,8 @@ const LessonOhm: React.FC = () => (
         [<>S</>, 'Tiết diện của dây dẫn, đơn vị mét vuông (m²)'],
       ]} />
     </Card>
+
+    <SimOhm />
   </>
 );
 
@@ -489,6 +492,8 @@ const LessonMach: React.FC = () => (
         <Frac num={<>R₁ · R₂</>} den={<>R₁ + R₂</>} size="md" />
       </FormulaLine>
     </Card>
+
+    <SimMach />
   </>
 );
 
@@ -532,6 +537,8 @@ const LessonCddd: React.FC = () => (
         [<>e</>, 'Độ lớn điện tích của electron'],
       ]} />
     </Card>
+
+    <SimCddd />
   </>
 );
 
@@ -603,6 +610,8 @@ const LessonNguon: React.FC = () => (
       <SectionTitle n="IV">Sơ đồ mạch đo — bấm khoá K để xem dòng điện chạy</SectionTitle>
       <LiveCircuitDiagram />
     </Card>
+
+    <SimNguon />
 
     <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 flex gap-3">
       <AlertTriangle className="w-6 h-6 text-rose-600 shrink-0 mt-0.5" />
