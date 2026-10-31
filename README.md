@@ -47,6 +47,7 @@ npm run db:demo -- --clear   # xoá đúng lớp đó, không đụng lớp th�
 | [`server/README.md`](server/README.md) | Máy chủ dữ liệu, phân quyền, bài giảng tự do, tệp tải lên |
 | [`src/components/f5-circuit/README.md`](src/components/f5-circuit/README.md) | Bộ giải mạch và quy tắc mắc dụng cụ đo |
 | [`src/components/f3-theory/README.md`](src/components/f3-theory/README.md) | Mô phỏng tương tác trong bài lý thuyết |
+| [`src/components/f2-quiz/README.md`](src/components/f2-quiz/README.md) | Trò chơi ôn tập và trò chơi phiêu lưu |
 
 ## Công nghệ
 

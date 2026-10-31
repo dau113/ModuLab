@@ -338,8 +338,8 @@
   75%      { transform: translateX(4px); }
 }
 
-.ml-rise  { animation: ml-fade-in 0.26s ease-out both; }
-.ml-pop   { animation: ml-pop 0.2s ease-out both; }
+.ml-rise  { animation: ml-fade-in 0.26s ease-out backwards; }
+.ml-pop   { animation: ml-pop 0.2s ease-out backwards; }
 .ml-shake { animation: ml-shake 0.3s ease-in-out; }
 
 /* Chuyển động của linh kiện trong mô phỏng */
@@ -388,7 +388,16 @@
   from { opacity: 0; transform: translateY(10px) scale(0.995); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
-.ml-page { animation: ml-page-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; }
+/* `backwards` chứ KHÔNG phải `both`.
+   `both` gồm cả `forwards`, nghĩa là sau khi chạy xong phần tử vẫn giữ nguyên
+   trạng thái của khung hình cuối — kể cả `transform`. Khung hình cuối ở đây là
+   trạng thái bình thường (transform về 0), nhưng CÓ transform khác với KHÔNG
+   có: một transform, dù là ma trận đơn vị, vẫn biến phần tử thành khối chứa
+   cho mọi hậu duệ `position: fixed`. Lớp phủ toàn màn hình vì thế chỉ phủ được
+   trong lòng thẻ <main> chứ không phủ hết cửa sổ.
+   Bỏ `forwards` đi thì hết chạy là transform trở về `none`, nhìn y hệt vì
+   khung hình cuối vốn trùng với trạng thái bình thường. */
+.ml-page { animation: ml-page-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
 
 /* ==================================================================
    PHÁO HOA CHÚC MỪNG
