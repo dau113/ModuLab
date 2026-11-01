@@ -97,15 +97,14 @@ const KetQua: React.FC<{ ten: string; tri: React.ReactNode; mau?: string; phu?: 
   </div>
 );
 
-/** Khung chung của mọi mô phỏng: tên, câu gợi ý thử, nút đặt lại */
+/** Khung chung của mọi mô phỏng: tên, nút đặt lại */
 const KhungMoPhong: React.FC<{
   ten: string;
-  goiY: React.ReactNode;
   datLai: () => void;
   children: React.ReactNode;
-}> = ({ ten, goiY, datLai, children }) => (
+}> = ({ ten, datLai, children }) => (
   <div data-sim={ten} className="rounded-xl border-2 border-indigo-200 bg-indigo-50/40 p-3.5">
-    <div className="flex flex-wrap items-center gap-2 mb-1">
+    <div className="flex flex-wrap items-center gap-2 mb-3">
       <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-indigo-600
         text-white font-bold text-[11.5px] uppercase tracking-wide">
         <Sigma className="w-3.5 h-3.5" /> Mô phỏng
@@ -118,7 +117,6 @@ const KhungMoPhong: React.FC<{
         <RotateCcw className="w-3.5 h-3.5" /> Đặt lại
       </button>
     </div>
-    <p className="text-[clamp(12.5px,0.86vw,15px)] text-slate-600 mb-3 leading-relaxed">{goiY}</p>
     {children}
   </div>
 );
@@ -187,9 +185,7 @@ export const SimOhm: React.FC = () => {
 
   return (
     <KhungMoPhong
-      ten="Định luật Ohm — kéo thử U và R"
-      goiY={<>Tăng gấp đôi <b>U</b> xem <b>I</b> có gấp đôi không. Rồi giữ nguyên <b>U</b>,
-        tăng gấp đôi <b>R</b> xem <b>I</b> còn lại bao nhiêu.</>}
+      ten="Định luật Ohm"
       datLai={() => { setU(6); setR(100); }}>
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,15rem)] gap-3 items-start">
@@ -287,9 +283,7 @@ export const SimMach: React.FC = () => {
 
   return (
     <KhungMoPhong
-      ten="Nối tiếp hay song song — số nào giữ nguyên, số nào chia ra"
-      goiY={<>Đổi qua lại hai kiểu mắc với cùng <b>R₁</b>, <b>R₂</b>. Để ý: nối tiếp thì
-        <b> I giữ nguyên còn U chia ra</b>; song song thì ngược lại.</>}
+      ten="Nối tiếp hay song song"
       datLai={() => { setKieu('nt'); setU(9); setR1(60); setR2(30); }}>
 
       <div className="flex gap-2 mb-3">
@@ -404,8 +398,6 @@ export const SimCddd: React.FC = () => {
   return (
     <KhungMoPhong
       ten="Cường độ dòng điện sinh ra từ đâu"
-      goiY={<>Dòng điện là dòng các electron trôi có hướng. Kéo thử ba thanh dưới đây xem
-        <b> tiết diện</b>, <b>mật độ hạt</b> và <b>tốc độ trôi</b> ảnh hưởng thế nào tới <b>I</b>.</>}
       datLai={() => { setS(1); setN(8.5); setV(0.1); setDt(2); }}>
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,15rem)] gap-3 items-start">
@@ -499,8 +491,6 @@ export const SimNguon: React.FC = () => {
   return (
     <KhungMoPhong
       ten="Vì sao vôn kế đo được ít hơn số ghi trên pin"
-      goiY={<>Bản thân nguồn cũng có điện trở, gọi là <b>điện trở trong r</b>. Kéo <b>R</b> nhỏ
-        dần xem phần điện áp mất bên trong nguồn lớn lên thế nào.</>}
       datLai={() => { setE(12); setRTrong(1); setRNgoai(20); }}>
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,15rem)] gap-3 items-start">

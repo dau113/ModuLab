@@ -1151,14 +1151,14 @@ export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onPassCircui
                 <HelpCircle className="w-4 h-4" /> Hướng dẫn
               </button>
 
-              {/* Chuyển giữa hình thật và sơ đồ mạch — đặt ngay cạnh tiêu đề cho dễ thấy */}
+              {/* Chuyển giữa hình mô phỏng dụng cụ và sơ đồ mạch — đặt ngay cạnh tiêu đề cho dễ thấy */}
               <div className="flex rounded-xl border-2 border-indigo-200 overflow-hidden">
                 {([
-                  [false, 'Hình thật', Wrench],
+                  [false, 'Mô phỏng', Wrench],
                   [true, 'Sơ đồ mạch', Spline],
                 ] as [boolean, string, React.ElementType][]).map(([mode, label, Icon]) => (
                   <button key={label} onClick={() => setSchematic(mode)}
-                    title={mode ? 'Vẽ lại mạch bằng ký hiệu quy ước như sơ đồ trên giấy' : 'Xem hình dạng thật của bộ dụng cụ'}
+                    title={mode ? 'Vẽ lại mạch bằng ký hiệu quy ước như sơ đồ trên giấy' : 'Xem mô phỏng hình dạng bộ dụng cụ'}
                     className={`h-9 px-3.5 text-[clamp(13px,0.9vw,15.5px)] font-bold flex items-center gap-1.5 transition-colors ${
                       schematic === mode ? 'bg-indigo-600 text-white' : 'bg-white text-slate-500 hover:bg-indigo-50'
                     }`}>
